@@ -4,8 +4,8 @@ import Foundation
 /// location. The app (the fetch hub) writes these to the shared App Group cache; every widget
 /// reads from that cache and never calls AEMET itself.
 ///
-/// Phase 2 starts from what AuraKit already produces — the daily min/max and on-device sun times.
-/// Later slices add the observed temperature, condition icon, hourly strip, UV and avisos.
+/// It carries the daily min/max and on-device sun times, the current-hour forecast and hourly
+/// strip, and — when a station is close and recent enough — a real observed temperature.
 public struct WeatherSnapshot: Codable, Sendable, Hashable {
     /// INE municipality code this snapshot describes (the widget's configured location).
     public let ine: String
@@ -19,8 +19,13 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let tempMax: Int?
     /// Today's forecast peak relative humidity, %.
     public let humedadMax: Int?
-    /// The forecast temperature for the current hour — the card's "now" hero. °C.
+    /// The forecast temperature for the current hour. °C.
     public let currentTemp: Int?
+    /// A real observed temperature from the nearest recent station, when one is close enough. °C.
+    /// Preferred over `currentTemp` for the card's "now" hero.
+    public let observedTemp: Int?
+    /// Name of the station `observedTemp` came from, e.g. "Madrid Retiro".
+    public let observedStation: String?
     /// AEMET sky-state code for the current hour (e.g. "11", "13n"), for the condition icon.
     public let currentSky: String?
     /// AEMET's Spanish description of the current sky state (e.g. "Despejado").
@@ -38,7 +43,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
 
     public init(ine: String, localidad: String, provincia: String,
                 tempMin: Int?, tempMax: Int?, humedadMax: Int?,
-                currentTemp: Int? = nil, currentSky: String? = nil, currentSkyText: String? = nil,
+                currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
+                currentSky: String? = nil, currentSkyText: String? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [], updated: Date) {
         self.ine = ine
@@ -48,6 +54,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.tempMax = tempMax
         self.humedadMax = humedadMax
         self.currentTemp = currentTemp
+        self.observedTemp = observedTemp
+        self.observedStation = observedStation
         self.currentSky = currentSky
         self.currentSkyText = currentSkyText
         self.sunrise = sunrise
@@ -56,6 +64,15 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.hours = hours
         self.updated = updated
     }
+}
+
+public extension WeatherSnapshot {
+    /// The card's "now" hero temperature: the real observed reading when one is available, otherwise
+    /// the current-hour forecast, otherwise today's high. °C.
+    var heroTemp: Int? { observedTemp ?? currentTemp ?? tempMax }
+
+    /// Whether the hero is a real station observation (so the UI can mark it as such).
+    var heroIsObserved: Bool { observedTemp != nil }
 }
 
 /// One hour of the hourly strip: the hour of day, its forecast temperature, sky code, and the
@@ -98,6 +115,7 @@ public extension WeatherSnapshot {
     static func make(location: Location,
                      daily: MunicipioForecast,
                      hourly: MunicipioHourly?,
+                     observed: StationObservation? = nil,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
         let today = daily.prediccion.dia.first
@@ -117,6 +135,8 @@ public extension WeatherSnapshot {
             tempMax: today?.temperatura?.maxima,
             humedadMax: today?.humedadRelativa?.maxima,
             currentTemp: hourly?.current?.temp,
+            observedTemp: observed?.temperature,
+            observedStation: observed?.stationName,
             currentSky: hourly?.current?.sky,
             currentSkyText: hourly?.currentText,
             sunrise: sun.sunrise,

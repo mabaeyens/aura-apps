@@ -16,14 +16,22 @@ enum AEMETService {
     /// well under AEMET's rate limit; a single failure never aborts the rest.
     static func refreshAllForWidgets(_ locations: [Location]) async {
         guard let client = client() else { return }
+        // One national observation fetch serves every location; nearest station is resolved locally.
+        let stale = locations.filter { location in
+            guard let existing = SharedCache.snapshot(forINE: location.ine) else { return true }
+            return Date().timeIntervalSince(existing.updated) >= 3600
+        }
+        guard !stale.isEmpty else { return }
+        let observations = (try? await client.observacionTodas()) ?? []
         var didUpdate = false
-        for location in locations {
-            if let existing = SharedCache.snapshot(forINE: location.ine),
-               Date().timeIntervalSince(existing.updated) < 3600 { continue }
+        for location in stale {
             guard let daily = try? await client.municipioDiaria(location.ine) else { continue }
             let hourly = try? await client.municipioHoraria(location.ine)
+            let observed = StationObservation.nearest(toLatitude: location.latitude,
+                                                      longitude: location.longitude,
+                                                      in: observations)
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                    timeZone: location.timeZone))
+                                                    observed: observed, timeZone: location.timeZone))
             didUpdate = true
         }
         if didUpdate { WidgetCenter.shared.reloadAllTimelines() }

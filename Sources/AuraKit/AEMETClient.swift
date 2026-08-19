@@ -116,6 +116,13 @@ public extension AEMETClient {
         return first
     }
 
+    /// Every conventional station's recent surface observations, in one call. Large (thousands of
+    /// records), so fetch it once per refresh and resolve the nearest station per location locally
+    /// via `StationObservation.nearest(toLatitude:longitude:in:)`.
+    func observacionTodas() async throws -> [StationObservation] {
+        try await fetch("/observacion/convencional/todas", as: [StationObservation].self)
+    }
+
     /// Raw text of the community `hoy` product. `ccaa` is AEMET's community code (e.g. "mad").
     /// Note: `hoy` is amendment-only (re-issued only on significant intraday change), so this can
     /// return a bulletin dated days back. For a bulletin that always covers today, use

@@ -33,7 +33,7 @@ public struct AuraAccessoryCircular: View {
         }
     }
 
-    private var current: Int? { snapshot.currentTemp ?? snapshot.tempMax }
+    private var current: Int? { snapshot.heroTemp }
 
     /// The current temperature clamped into today's range so the ring never overflows.
     private var gaugeValue: Double? {
@@ -60,7 +60,7 @@ public struct AuraAccessoryRectangular: View {
             .lineLimit(1)
 
             HStack(spacing: 4) {
-                Text(AccessoryFormat.temp(snapshot.currentTemp ?? snapshot.tempMax))
+                Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.title3).fontWeight(.semibold)
                 if let text = snapshot.currentSkyText {
                     Text(text).foregroundStyle(.secondary).lineLimit(1)
@@ -114,7 +114,7 @@ private enum AccessoryFormat {
 
     /// "29° Despejado" — temp plus condition when known, temp alone otherwise.
     static func inline(_ s: WeatherSnapshot) -> String {
-        let t = temp(s.currentTemp ?? s.tempMax)
+        let t = temp(s.heroTemp)
         if let text = s.currentSkyText { return "\(t) \(text)" }
         return t
     }

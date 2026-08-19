@@ -43,8 +43,10 @@ do {
         let hourly = try? await client.municipioHoraria(ine)
         let loc = Location(ine: ine, nombre: daily.nombre, provincia: daily.provincia,
                            latitude: 40.4, longitude: -3.7)
-        let s = WeatherSnapshot.make(location: loc, daily: daily, hourly: hourly)
-        print("\(s.localidad): ahora \(s.currentTemp.map { "\($0)°" } ?? "—") \(s.currentSkyText ?? "?")")
+        let observed = try? await client.observacionTodas().nearest(to: loc)
+        let s = WeatherSnapshot.make(location: loc, daily: daily, hourly: hourly, observed: observed)
+        print("\(s.localidad): ahora \(s.heroTemp.map { "\($0)°" } ?? "—") \(s.currentSkyText ?? "?")")
+        if let observed { print("  Observado: \(observed.temperature.map { "\($0)°" } ?? "—") en \(observed.stationName ?? "?") (\(observed.fint ?? "?"))") }
         print("  Máx \(s.tempMax.map(String.init) ?? "—") / Mín \(s.tempMin.map(String.init) ?? "—")  Humedad \(s.humedadMax.map { "\($0)%" } ?? "—")")
         print("  Horas: " + s.hours.map { "\($0.hour)h \($0.temp.map { "\($0)°" } ?? "—") [\($0.sky ?? "?")] \($0.precipProb.map { "\($0)%" } ?? "")" }.joined(separator: " · "))
         print("  Días: " + s.days.map { "\($0.min.map(String.init) ?? "—")/\($0.max.map(String.init) ?? "—")" }.joined(separator: " "))

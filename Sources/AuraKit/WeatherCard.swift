@@ -102,6 +102,9 @@ public struct AuraCardLarge: View {
                     if let text = snapshot.currentSkyText {
                         Text(text).font(.subheadline).lineLimit(1)
                     }
+                    if snapshot.heroIsObserved, let station = snapshot.observedStation {
+                        StatRow(symbol: "sensor.fill", tint: .secondary, text: "Obs. \(station)")
+                    }
                     StatRow(symbol: "thermometer.medium", tint: .secondary, text: WidgetFormat.range(snapshot))
                     if let humidity = snapshot.humedadMax {
                         StatRow(symbol: "humidity", tint: .blue, text: "\(humidity)%")
@@ -212,8 +215,8 @@ private struct StatRow: View {
 enum WidgetFormat {
     static func temp(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—" }
 
-    /// The card's "now" hero: the current-hour temperature, falling back to today's high.
-    static func heroTemp(_ s: WeatherSnapshot) -> String { temp(s.currentTemp ?? s.tempMax) }
+    /// The card's "now" hero: observed reading if available, else current-hour forecast, else high.
+    static func heroTemp(_ s: WeatherSnapshot) -> String { temp(s.heroTemp) }
 
     /// "Máx 34° · Mín 18°".
     static func range(_ s: WeatherSnapshot) -> String {
@@ -254,7 +257,8 @@ public extension WeatherSnapshot {
         return WeatherSnapshot(
             ine: "28079", localidad: "Madrid", provincia: "Madrid",
             tempMin: 18, tempMax: 34, humedadMax: 55,
-            currentTemp: 29, currentSky: "11", currentSkyText: "Despejado",
+            currentTemp: 29, observedTemp: 30, observedStation: "Madrid Retiro",
+            currentSky: "11", currentSkyText: "Despejado",
             sunrise: cal.date(bySettingHour: 7, minute: 12, second: 0, of: base),
             sunset: cal.date(bySettingHour: 21, minute: 11, second: 0, of: base),
             days: days, hours: hours, updated: base
