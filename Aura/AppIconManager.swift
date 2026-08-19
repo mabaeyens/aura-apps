@@ -29,6 +29,11 @@ enum AppIconManager {
         }
     }
 
+    /// The season whose artwork is also the primary AppIcon. For it we show the primary icon (no
+    /// alternate) instead of an identical-looking alternate, so summer never triggers a needless
+    /// switch. Update this if the primary icon ever changes to a different season's art.
+    static let primarySeason: Season = .summer
+
     /// Switch to the seasonal icon for `now` if the device isn't already showing it. Safe to call on
     /// every foreground: it no-ops when the icon already matches (so no repeated alerts), when the
     /// device doesn't support alternate icons, or — harmlessly — before the seasonal icons are added
@@ -36,11 +41,13 @@ enum AppIconManager {
     static func updateForSeason(now: Date = Date()) {
         let app = UIApplication.shared
         guard app.supportsAlternateIcons else { return }
-        let desired = Season.current(for: now).rawValue
+        let season = Season.current(for: now)
+        // The primary season uses the built-in AppIcon (nil); the rest use their named alternate.
+        let desired: String? = season == primarySeason ? nil : season.rawValue
         guard app.alternateIconName != desired else { return }
         app.setAlternateIconName(desired) { error in
             if let error {
-                print("Aura: no se pudo cambiar el icono de temporada (\(desired)): \(error.localizedDescription)")
+                print("Aura: no se pudo cambiar el icono de temporada (\(desired ?? "principal")): \(error.localizedDescription)")
             }
         }
     }
