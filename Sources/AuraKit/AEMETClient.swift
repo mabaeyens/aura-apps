@@ -40,7 +40,7 @@ public struct AEMETClient: Sendable {
             throw ClientError.aemetStatus(envelope.estado ?? -1, envelope.descripcion ?? "no datos url")
         }
         let data = try await fetchData(url: url)
-        return try decodeLatin1(data, as: T.self)
+        return try decodePayload(data, as: T.self)
     }
 
     private func requestEnvelope(path: String) async throws -> Envelope {
@@ -65,18 +65,22 @@ public struct AEMETClient: Sendable {
         return data
     }
 
-    /// AEMET serves payloads as ISO-8859-1; re-encode to UTF-8 so accents survive.
-    private func decodeLatin1<T: Decodable>(_ data: Data, as type: T.Type) throws -> T {
-        let bytes: Data
-        if let text = String(data: data, encoding: .isoLatin1), let utf8 = text.data(using: .utf8) {
-            bytes = utf8
-        } else {
-            bytes = data
-        }
+    /// Decode the payload. AEMET usually serves UTF-8, but some legacy endpoints send
+    /// ISO-8859-1, so fall back to a Latin-1 → UTF-8 re-encode if the direct decode fails.
+    private func decodePayload<T: Decodable>(_ data: Data, as type: T.Type) throws -> T {
+        let decoder = JSONDecoder()
         do {
-            return try JSONDecoder().decode(T.self, from: bytes)
-        } catch {
-            throw ClientError.decoding("payload: \(error)")
+            return try decoder.decode(T.self, from: data)
+        } catch let utf8Error {
+            if let text = String(data: data, encoding: .isoLatin1),
+               let reencoded = text.data(using: .utf8) {
+                do {
+                    return try decoder.decode(T.self, from: reencoded)
+                } catch {
+                    throw ClientError.decoding("payload (utf8 + latin1 both failed): \(error)")
+                }
+            }
+            throw ClientError.decoding("payload: \(utf8Error)")
         }
     }
 }
