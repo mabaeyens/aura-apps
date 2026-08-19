@@ -39,7 +39,7 @@ struct AuraConditionsComplication: Widget {
         }
         .configurationDisplayName("El tiempo")
         .description("La temperatura y los avisos de tu ubicación.")
-        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline, .accessoryCorner])
+        .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner])
     }
 }
 
@@ -50,7 +50,6 @@ struct AuraConditionsView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             switch family {
-            case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot, now: entry.date)
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
                 if AuraAccessoryCorner(snapshot: snapshot, now: entry.date).hasRange {

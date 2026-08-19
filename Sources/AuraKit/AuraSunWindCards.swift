@@ -129,12 +129,13 @@ public struct AuraWindCircular: View {
                     .offset(y: -Self.radius - 1)
                     .rotationEffect(.degrees(Double(i) * 45))
             }
-            // Arrowhead in the direction the wind is going, sat on the crown.
+            // A full arrow (shaft + head), not a stub wedge, so the heading reads clearly. It rides
+            // the outer ring pointing the way the wind is going, coloured by strength.
             if let towards = towardsDegrees {
                 WindArrow()
                     .fill(speedColor)
-                    .frame(width: 10, height: 9)
-                    .offset(y: -Self.radius)
+                    .frame(width: 8, height: 15)
+                    .offset(y: -Self.radius + 2)
                     .rotationEffect(.degrees(towards))
             }
             // Centre: bold speed, and the source direction (or the unit when direction is unknown).
@@ -166,14 +167,23 @@ public struct AuraWindCircular: View {
     }
 }
 
-/// A small upward-pointing (outward, once rotated) arrowhead for the wind rose.
+/// A full arrow — a broad arrowhead over a slim shaft — pointing up (outward once rotated). A whole
+/// arrow marks the wind's heading far more clearly than a lone wedge did.
 private struct WindArrow: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY - rect.height * 0.3))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        let midX = rect.midX
+        let headHeight = rect.height * 0.5
+        let shaftHalf = rect.width * 0.20
+        // Arrowhead (top): tip, out to the two barbs.
+        path.move(to: CGPoint(x: midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + headHeight))
+        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headHeight))
+        // Shaft down the right side, across the base, up the left side.
+        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headHeight))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + headHeight))
         path.closeSubpath()
         return path
     }

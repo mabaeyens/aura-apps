@@ -40,8 +40,9 @@ struct AuraProvider: AppIntentTimelineProvider {
     }
 }
 
-/// Aura's all-in-one location card, on the home screen (small / medium / large) and the Lock Screen
-/// (circular / rectangular / inline). Each instance is configurable to a specific saved location.
+/// Aura's Lock Screen glance — circular, rectangular and inline. Aura is a Lock Screen and
+/// complication product: the Home Screen is left to AEMET's own app, whose widgets cover it well.
+/// Each instance is configurable to a specific saved location.
 struct AuraTodayWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "AuraTodayWidget",
@@ -52,14 +53,11 @@ struct AuraTodayWidget: Widget {
         }
         .configurationDisplayName("El tiempo")
         .description("La predicción de hoy para tu ubicación.")
-        .supportedFamilies([
-            .systemSmall, .systemMedium, .systemLarge,
-            .accessoryCircular, .accessoryRectangular, .accessoryInline,
-        ])
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
 
-/// Picks the family-appropriate layout, or an invitation to open the app when nothing is cached yet.
+/// Picks the Lock Screen layout, or an invitation to open the app when nothing is cached yet.
 struct AuraTodayEntryView: View {
     @Environment(\.widgetFamily) private var family
     let entry: AuraEntry
@@ -67,24 +65,12 @@ struct AuraTodayEntryView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             switch family {
-            case .systemLarge: AuraCardLarge(snapshot: snapshot)
-            case .systemMedium: AuraCardMedium(snapshot: snapshot)
             case .accessoryCircular: AuraAccessoryCircular(snapshot: snapshot)
             case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot)
-            case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
-            default: AuraCardSmall(snapshot: snapshot)
+            default: AuraAccessoryInline(snapshot: snapshot)
             }
-        } else if isAccessory {
-            AuraAccessoryEmpty()
         } else {
-            AuraCardEmpty()
-        }
-    }
-
-    private var isAccessory: Bool {
-        switch family {
-        case .accessoryCircular, .accessoryRectangular, .accessoryInline: return true
-        default: return false
+            AuraAccessoryEmpty()
         }
     }
 }

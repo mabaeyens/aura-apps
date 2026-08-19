@@ -28,9 +28,12 @@ public struct AuraAccessoryCircular: View {
     public var body: some View {
         if let value = gaugeValue, let lo = snapshot.tempMin, let hi = snapshot.tempMax, lo < hi {
             Gauge(value: value, in: Double(lo)...Double(hi)) {
-                conditionIcon
+                conditionIcon.font(.callout)
             } currentValueLabel: {
+                // Fill the ring's centre: a large, bold temperature reads at a glance, matching the
+                // scale Carrot uses rather than the default caption-sized value label.
                 Text(AccessoryFormat.temp(current))
+                    .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
                     .foregroundStyle(.white)
             }
             .gaugeStyle(.accessoryCircular)
@@ -39,9 +42,9 @@ public struct AuraAccessoryCircular: View {
             .tint(Palette.temperatureGradient(min: lo, max: hi))
         } else {
             VStack(spacing: 1) {
-                conditionIcon.font(.title3)
+                conditionIcon.font(.title2)
                 Text(AccessoryFormat.temp(current))
-                    .font(.headline)
+                    .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
                     .foregroundStyle(Palette.temperature(current))
             }
         }
@@ -69,37 +72,45 @@ public struct AuraAccessoryRectangular: View {
     }
 
     public var body: some View {
+        // The Lock Screen renders accessory widgets in a desaturated "vibrant" mode, so colour is
+        // largely dropped: hierarchy comes from weight and grayscale, not tint (Apple HIG). Semantic
+        // font styles — not fixed point sizes — so the text scales with Dynamic Type and never
+        // overflows the way a hardcoded 30pt did once the icon was added.
         VStack(alignment: .leading, spacing: 2) {
-            // Row 1: the condition icon leads the big temperature, with the sky text on the right.
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+            // Row 1: condition glyph, the temperature as the hero, the sky word trailing.
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
                     .font(.title3)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(Palette.temperature(snapshot.heroTemp))
+                    .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
                 if let text = snapshot.currentSkyText {
-                    Spacer(minLength: 4)
-                    Text(text).font(.caption2).foregroundStyle(.secondary)
+                    Text(text).font(.caption).foregroundStyle(.secondary)
                         .lineLimit(1).minimumScaleFactor(0.7)
                 }
             }
 
-            // Row 2: place name on the left, today's range and wind trailing.
-            HStack(spacing: 5) {
-                Text(snapshot.localidad)
-                    .font(.caption).fontWeight(.semibold).lineLimit(1)
-                Spacer(minLength: 4)
-                Text(AccessoryFormat.temp(snapshot.tempMax))
-                    .foregroundStyle(Palette.temperature(snapshot.tempMax))
-                Text(AccessoryFormat.temp(snapshot.tempMin))
-                    .foregroundStyle(Palette.temperature(snapshot.tempMin))
-                if let wind = snapshot.windSpeed {
-                    Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
-                }
+            // Row 2: which location this is, and today's high/low with up/down arrows.
+            HStack(spacing: 6) {
+                Text(snapshot.localidad).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 2)
+                Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
+                Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
             }
             .font(.caption2)
+            .foregroundStyle(.secondary)
+            .labelStyle(TightLabelStyle())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+/// A label whose icon sits snug against its title — for the compact high/low row.
+private struct TightLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 1) {
+            configuration.icon
+            configuration.title
+        }
     }
 }
 
@@ -137,12 +148,14 @@ public struct AuraAccessoryCorner: View {
     }
 
     public var body: some View {
+        // The corner content region is only ~20–24pt tall (Apple HIG), so the icon + degrees use
+        // semantic styles that fit it; the day's range arcs along the bezel via `cornerGauge`.
         VStack(spacing: 0) {
             ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                .font(.system(size: 13))
+                .font(.footnote)
             Text(AccessoryFormat.temp(snapshot.heroTemp))
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .minimumScaleFactor(0.4)
+                .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
+                .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .foregroundStyle(.white)
         }
