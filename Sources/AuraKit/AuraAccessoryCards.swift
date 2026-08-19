@@ -31,10 +31,12 @@ public struct AuraAccessoryCircular: View {
                 conditionIcon
             } currentValueLabel: {
                 Text(AccessoryFormat.temp(current))
-                    .foregroundStyle(Palette.temperature(current))
+                    .foregroundStyle(.white)
             }
             .gaugeStyle(.accessoryCircular)
-            .tint(Palette.temperature(current))
+            // The track gradients across today's actual range, so a warm day reads orange-red and a
+            // cold one blue-teal — not a single flat tint.
+            .tint(Palette.temperatureGradient(min: lo, max: hi))
         } else {
             VStack(spacing: 1) {
                 conditionIcon.font(.title3)
