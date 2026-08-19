@@ -29,9 +29,9 @@ struct AuraProvider: TimelineProvider {
     }
 }
 
-/// Aura's all-in-one location card, in the three home-screen sizes. Configuration (choosing the
-/// location and metric) arrives in Slice D; the live observed temperature and hourly strip land in
-/// the following slice.
+/// Aura's all-in-one location card, on the home screen (small / medium / large) and the Lock Screen
+/// (circular / rectangular / inline). Configuration (choosing the location and metric) arrives in
+/// Slice D.
 struct AuraTodayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraTodayWidget", provider: AuraProvider()) { entry in
@@ -40,11 +40,14 @@ struct AuraTodayWidget: Widget {
         }
         .configurationDisplayName("El tiempo")
         .description("La predicción de hoy para tu ubicación.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            .accessoryCircular, .accessoryRectangular, .accessoryInline,
+        ])
     }
 }
 
-/// Picks the size-appropriate layout, or an invitation to open the app when nothing is cached yet.
+/// Picks the family-appropriate layout, or an invitation to open the app when nothing is cached yet.
 struct AuraTodayEntryView: View {
     @Environment(\.widgetFamily) private var family
     let entry: AuraEntry
@@ -54,10 +57,22 @@ struct AuraTodayEntryView: View {
             switch family {
             case .systemLarge: AuraCardLarge(snapshot: snapshot)
             case .systemMedium: AuraCardMedium(snapshot: snapshot)
+            case .accessoryCircular: AuraAccessoryCircular(snapshot: snapshot)
+            case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot)
+            case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             default: AuraCardSmall(snapshot: snapshot)
             }
+        } else if isAccessory {
+            AuraAccessoryEmpty()
         } else {
             AuraCardEmpty()
+        }
+    }
+
+    private var isAccessory: Bool {
+        switch family {
+        case .accessoryCircular, .accessoryRectangular, .accessoryInline: return true
+        default: return false
         }
     }
 }
