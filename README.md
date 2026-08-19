@@ -9,9 +9,20 @@ complication renders from identical code.
 
 ## Status
 
-Early development — **Phase 1 (iOS app shell)**. The `Aura` iOS app now builds on top of
-`AuraKit`: location management with favorites, the numeric "today" forecast, and the official
-AEMET narrative forecast text. Widgets, macOS and the Watch follow in later phases.
+Active development. The **iPhone app, the widget set, and the Apple Watch app + complication** are
+working and verified on device, all rendering from the shared `AuraKit`:
+
+- **iOS app** — location management with favorites, the numeric "today" forecast, and the official
+  AEMET narrative bulletin.
+- **Widgets** — home-screen (small / medium / large) and Lock Screen (circular / rectangular /
+  inline) families, each configurable to a specific saved location via App Intents.
+- **Apple Watch** — the watch app and a face complication (corner / circular / rectangular / inline),
+  fed live from the phone over WatchConnectivity; the app screen and complication both update in place
+  as the phone syncs.
+- **Real observed temperature** from the nearest AEMET station, and **avisos** (CAP warnings) matched
+  to each location by province.
+
+Still to come: a dedicated **macOS** app (the shared code already builds for it).
 
 ## Aura (iOS app)
 
