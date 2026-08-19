@@ -10,6 +10,10 @@
 		AE00000000000000000000C3 /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000C2 /* AuraKit */; };
 		AE00000000000000000000DB /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000DA /* AuraKit */; };
 		AE00000000000000000000DC /* AuraWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000D2 /* AuraWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AE00000000000000000000EB /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000EA /* AuraKit */; };
+		AE00000000000000000000F7 /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000F6 /* AuraKit */; };
+		AE00000000000000000000ED /* AuraWatchComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000F1 /* AuraWatchComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AE00000000000000000000FC /* AuraWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000E5 /* AuraWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -19,6 +23,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = AE00000000000000000000D1;
 			remoteInfo = AuraWidgetsExtension;
+		};
+		AE00000000000000000000FA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE00000000000000000000A1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AE00000000000000000000E1;
+			remoteInfo = AuraWatch;
+		};
+		AE00000000000000000000FE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AE00000000000000000000A1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AE00000000000000000000EE;
+			remoteInfo = AuraWatchComplication;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -34,11 +52,35 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE00000000000000000000E4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AE00000000000000000000ED /* AuraWatchComplication.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE00000000000000000000FB /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				AE00000000000000000000FC /* AuraWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		AE00000000000000000000A4 /* Aura.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Aura.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE00000000000000000000D2 /* AuraWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AuraWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE00000000000000000000E5 /* AuraWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AuraWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE00000000000000000000F1 /* AuraWatchComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AuraWatchComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -55,6 +97,22 @@
 			path = AuraWidgets;
 			sourceTree = "<group>";
 		};
+		AE00000000000000000000E6 /* AuraWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AE00000000000000000000EC /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			path = AuraWatch;
+			sourceTree = "<group>";
+		};
+		AE00000000000000000000F2 /* AuraWatchComplication */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AE00000000000000000000F8 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			path = AuraWatchComplication;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -64,6 +122,20 @@
 				Info.plist,
 			);
 			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
+		};
+		AE00000000000000000000EC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AE00000000000000000000E1 /* AuraWatch */;
+		};
+		AE00000000000000000000F8 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AE00000000000000000000EE /* AuraWatchComplication */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -84,6 +156,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE00000000000000000000E3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AE00000000000000000000EB /* AuraKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE00000000000000000000F0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AE00000000000000000000F7 /* AuraKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -92,6 +180,8 @@
 			children = (
 				AE00000000000000000000A9 /* Aura */,
 				AE00000000000000000000D6 /* AuraWidgets */,
+				AE00000000000000000000E6 /* AuraWatch */,
+				AE00000000000000000000F2 /* AuraWatchComplication */,
 				AE00000000000000000000A3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,6 +191,8 @@
 			children = (
 				AE00000000000000000000A4 /* Aura.app */,
 				AE00000000000000000000D2 /* AuraWidgetsExtension.appex */,
+				AE00000000000000000000E5 /* AuraWatch.app */,
+				AE00000000000000000000F1 /* AuraWatchComplication.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,11 +208,13 @@
 				AE00000000000000000000A7 /* Frameworks */,
 				AE00000000000000000000A8 /* Resources */,
 				AE00000000000000000000DD /* Embed Foundation Extensions */,
+				AE00000000000000000000FB /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				AE00000000000000000000DE /* PBXTargetDependency */,
+				AE00000000000000000000F9 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AE00000000000000000000A9 /* Aura */,
@@ -156,6 +250,52 @@
 			productReference = AE00000000000000000000D2 /* AuraWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		AE00000000000000000000E1 /* AuraWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AE00000000000000000000E7 /* Build configuration list for PBXNativeTarget "AuraWatch" */;
+			buildPhases = (
+				AE00000000000000000000E2 /* Sources */,
+				AE00000000000000000000E3 /* Frameworks */,
+				AE00000000000000000000E4 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AE00000000000000000000FD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AE00000000000000000000E6 /* AuraWatch */,
+			);
+			name = AuraWatch;
+			packageProductDependencies = (
+				AE00000000000000000000EA /* AuraKit */,
+			);
+			productName = AuraWatch;
+			productReference = AE00000000000000000000E5 /* AuraWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AE00000000000000000000EE /* AuraWatchComplication */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AE00000000000000000000F3 /* Build configuration list for PBXNativeTarget "AuraWatchComplication" */;
+			buildPhases = (
+				AE00000000000000000000EF /* Sources */,
+				AE00000000000000000000F0 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AE00000000000000000000F2 /* AuraWatchComplication */,
+			);
+			name = AuraWatchComplication;
+			packageProductDependencies = (
+				AE00000000000000000000F6 /* AuraKit */,
+			);
+			productName = AuraWatchComplication;
+			productReference = AE00000000000000000000F1 /* AuraWatchComplication.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -170,6 +310,12 @@
 						CreatedOnToolsVersion = 26.6;
 					};
 					AE00000000000000000000D1 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					AE00000000000000000000E1 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					AE00000000000000000000EE = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -194,6 +340,8 @@
 			targets = (
 				AE00000000000000000000A5 /* Aura */,
 				AE00000000000000000000D1 /* AuraWidgetsExtension */,
+				AE00000000000000000000E1 /* AuraWatch */,
+				AE00000000000000000000EE /* AuraWatchComplication */,
 			);
 		};
 /* End PBXProject section */
@@ -230,6 +378,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AE00000000000000000000E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE00000000000000000000EF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -237,6 +399,16 @@
 			isa = PBXTargetDependency;
 			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
 			targetProxy = AE00000000000000000000DF /* PBXContainerItemProxy */;
+		};
+		AE00000000000000000000F9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AE00000000000000000000E1 /* AuraWatch */;
+			targetProxy = AE00000000000000000000FA /* PBXContainerItemProxy */;
+		};
+		AE00000000000000000000FD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AE00000000000000000000EE /* AuraWatchComplication */;
+			targetProxy = AE00000000000000000000FE /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -453,6 +625,118 @@
 			};
 			name = Release;
 		};
+		AE00000000000000000000E8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AuraWatch/AuraWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_LANGUAGE = es;
+				DEVELOPMENT_TEAM = HTVGRBVW58;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AuraWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Aura;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mab.Aura;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		AE00000000000000000000E9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AuraWatch/AuraWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_LANGUAGE = es;
+				DEVELOPMENT_TEAM = HTVGRBVW58;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AuraWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Aura;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.mab.Aura;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		AE00000000000000000000F4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AuraWatchComplication/AuraWatchComplication.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_LANGUAGE = es;
+				DEVELOPMENT_TEAM = HTVGRBVW58;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AuraWatchComplication/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Aura;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp.complication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		AE00000000000000000000F5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = AuraWatchComplication/AuraWatchComplication.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_LANGUAGE = es;
+				DEVELOPMENT_TEAM = HTVGRBVW58;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AuraWatchComplication/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Aura;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp.complication;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -483,6 +767,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		AE00000000000000000000E7 /* Build configuration list for PBXNativeTarget "AuraWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE00000000000000000000E8 /* Debug */,
+				AE00000000000000000000E9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AE00000000000000000000F3 /* Build configuration list for PBXNativeTarget "AuraWatchComplication" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE00000000000000000000F4 /* Debug */,
+				AE00000000000000000000F5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -498,6 +800,14 @@
 			productName = AuraKit;
 		};
 		AE00000000000000000000DA /* AuraKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AuraKit;
+		};
+		AE00000000000000000000EA /* AuraKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AuraKit;
+		};
+		AE00000000000000000000F6 /* AuraKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AuraKit;
 		};

@@ -1,46 +1,50 @@
-# Apple Watch app + complication — wiring guide
+# Apple Watch app + complication
 
-The Watch code is written and lives in the repo; only the two Xcode targets still need creating.
-Xcode's target wizard generates the fiddly parts (Info.plist keys, embed phases, companion-app
-pairing) correctly, so use it rather than hand-editing `project.pbxproj`.
+The Watch surface is a full part of the project: two targets, `AuraWatch` (the watchOS app) and
+`AuraWatchComplication` (its widget/complication extension), both rendering from the shared `AuraKit`
+so the complication is identical to the iPhone Lock Screen widgets.
 
-## What already exists
+## Targets & layout
 
-- **Shared (AuraKit, built and tested):**
-  - `WatchSync` — the iPhone↔Watch bridge over WatchConnectivity. The phone calls `send(_:)` after
-    each refresh (already wired in `TodayView`); the Watch calls `activate()` and receives.
-  - `AuraAccessoryCircular/Rectangular/Inline/Corner` — the complication layouts, identical to the
-    iPhone Lock Screen widgets.
-- **Staged source (in the repo, not yet in any target):**
-  - `AuraWatch/` — `AuraWatchApp.swift`, `WatchRootView.swift`, `AuraWatch.entitlements`.
-  - `AuraWatchComplication/` — `AuraComplicationBundle.swift`, `AuraComplication.swift`,
-    `Info.plist`, `AuraWatchComplication.entitlements`.
+- **`AuraWatch/`** — `AuraWatchApp.swift` (the `@main` app; calls `WatchSync.activate()`),
+  `WatchRootView.swift` (reads the latest snapshot from `SharedCache` and shows localidad, hero
+  temperature, condition, active aviso and today's range), `Info.plist`
+  (`WKApplication`, `WKCompanionAppBundleIdentifier = com.mab.Aura`), `AuraWatch.entitlements`
+  (App Group `group.com.mab.Aura`). Bundle id `com.mab.Aura.watchkitapp`.
+- **`AuraWatchComplication/`** — `AuraComplicationBundle.swift` (`@main` bundle),
+  `AuraComplication.swift` (the timeline provider + `StaticConfiguration` widget covering
+  `.accessoryCircular / .accessoryRectangular / .accessoryInline / .accessoryCorner`),
+  `Info.plist`, `AuraWatchComplication.entitlements`. Bundle id
+  `com.mab.Aura.watchkitapp.complication`, embedded in `AuraWatch`.
 
-## Steps
+Both are watchOS 10.0, `SWIFT_VERSION = 5.0`, team `HTVGRBVW58`, matching the other targets and
+`AuraKit`'s `watchOS(.v10)`.
 
-1. **Add the Watch App target.** File ▸ New ▸ Target ▸ **watchOS ▸ App**.
-   - Product name `AuraWatch`, bundle id `com.mab.Aura.watchkitapp`, language Swift, interface
-     SwiftUI. When asked, set the companion (iOS) app to **Aura** — the wizard fills in
-     `WKCompanionAppBundleIdentifier = com.mab.Aura` and adds the *Embed Watch Content* phase to the
-     iOS app.
-   - Delete the wizard's generated `ContentView.swift` / `*App.swift`, then add the files from
-     `AuraWatch/` to this target. Set its **App Group** capability to `group.com.mab.Aura` (use the
-     staged `AuraWatch.entitlements`).
-   - Add **AuraKit** to the target's *Frameworks, Libraries, and Embedded Content*.
+## Building
 
-2. **Add the complication (Widget Extension) target.** File ▸ New ▸ Target ▸ **watchOS ▸ Widget
-   Extension**, name `AuraWatchComplication`, bundle id `com.mab.Aura.watchkitapp.complication`.
-   - Embed it in **AuraWatch** (not the iOS app). The wizard adds the *Embed Foundation Extensions*
-     phase to the Watch app.
-   - Replace the generated sources with the files from `AuraWatchComplication/`, set the App Group
-     to `group.com.mab.Aura`, and add **AuraKit** to its frameworks.
+Building the **`Aura`** scheme builds and embeds the Watch app + complication automatically. Let each
+target use its own SDK — build with `-destination` only, **never** `-sdk`, which forces one SDK onto
+every target and makes the watch extension try to link the iOS build of `AuraKit`:
 
-3. **Deployment + Swift version.** Set both targets to **watchOS 10.0** and `SWIFT_VERSION = 5.0`
-   (matching the other targets and AuraKit's `watchOS(.v10)`).
+```bash
+# builds iOS app + widget + watch app + complication
+xcodebuild -project Aura.xcodeproj -scheme Aura \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build
 
-4. **Build & run.** Select the `AuraWatch` scheme on a paired Watch simulator. Open Aura on the
-   iPhone once so it pushes a snapshot; the Watch app shows it, and the complication is then
-   available in the watch-face gallery under *El tiempo*.
+# or the watch app on its own
+xcodebuild -project Aura.xcodeproj -scheme AuraWatch \
+  -destination 'platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm)' build
+```
+
+## Running to a physical watch
+
+1. Select the **`AuraWatch`** scheme and your watch as the destination. Building to it the first time
+   is what makes watchOS surface the **Developer Mode** toggle (Settings ▸ Privacy & Security ▸
+   Developer Mode) — it stays hidden until an Xcode build has targeted the watch. Enable it and let
+   the watch restart.
+2. The "connect on demand" pairing dialog is normal — keep the watch unlocked and near the Mac.
+3. Open Aura on the iPhone once so it fetches and pushes a snapshot; the watch app shows it, and the
+   complication becomes available in the watch-face gallery under *El tiempo*.
 
 ## Data flow (no backend, mirrors the iPhone architecture)
 
@@ -49,5 +53,5 @@ iPhone: fetch → WeatherSnapshot → SharedCache (phone)   ──WatchSync.send
 Watch:  WatchSync receives → SharedCache (watch) → complication reads it → reload
 ```
 
-`SharedCache` is device-local, so the Watch keeps its own copy of the App Group cache; `WatchSync`
-is the only thing that crosses between devices.
+`SharedCache` is device-local, so the watch keeps its own copy of the App Group cache; `WatchSync`
+(WatchConnectivity `updateApplicationContext`) is the only thing that crosses between the two devices.

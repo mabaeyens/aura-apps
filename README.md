@@ -31,14 +31,18 @@ The app is the fetch hub: it caches every saved location's `WeatherSnapshot` to 
 mirrors the favourites list so the **widgets** can render any of them. Home-screen (small / medium /
 large) and Lock Screen (circular / rectangular / inline) families are supported, and each widget
 instance is **configurable to a specific location** via App Intents. An Apple Watch app and
-complication share the same layouts — the code is in `AuraWatch/` and `AuraWatchComplication/`; see
-[`docs/WATCHOS.md`](docs/WATCHOS.md) for adding the two Watch targets. Open `Aura.xcodeproj`, or
-build from the command line:
+complication share the same layouts — targets `AuraWatch` and `AuraWatchComplication`, built from the
+same `AuraKit`; see [`docs/WATCHOS.md`](docs/WATCHOS.md) for running to a watch and placing the
+complication. Open `Aura.xcodeproj`, or build from the command line:
 
 ```bash
-xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
+xcodebuild -project Aura.xcodeproj -scheme Aura \
   -destination 'generic/platform=iOS Simulator' build
 ```
+
+Building the `Aura` scheme also builds and embeds the Watch app + complication (each target keeps its
+own SDK — don't pass `-sdk`, which would force one SDK onto every target). Run the `AuraWatch` scheme
+to install straight to a paired watch.
 
 ## AuraKit
 
