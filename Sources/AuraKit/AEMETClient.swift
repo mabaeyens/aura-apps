@@ -108,6 +108,14 @@ public extension AEMETClient {
         return first
     }
 
+    /// Hourly forecast for an INE municipality code — powers the "now" reading and the hourly strip.
+    func municipioHoraria(_ ine: String) async throws -> MunicipioHourly {
+        let list = try await fetch("/prediccion/especifica/municipio/horaria/\(ine)",
+                                   as: [MunicipioHourly].self)
+        guard let first = list.first else { throw ClientError.decoding("empty hourly array") }
+        return first
+    }
+
     /// Raw text of the community `hoy` product. `ccaa` is AEMET's community code (e.g. "mad").
     /// Note: `hoy` is amendment-only (re-issued only on significant intraday change), so this can
     /// return a bulletin dated days back. For a bulletin that always covers today, use

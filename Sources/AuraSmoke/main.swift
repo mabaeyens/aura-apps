@@ -35,6 +35,19 @@ do {
         let bulletin = try await client.prediccionCCAAHoy(ccaa)
         print("CCAA \(ccaa) — official text bulletin:\n")
         print(bulletin)
+    } else if args.first == "snapshot" {
+        // Build the widget snapshot from live daily + hourly, and print what a widget would show.
+        //   AEMET_API_KEY=... swift run aura-smoke snapshot [ine]      (default: 28079 = Madrid)
+        let ine = args.dropFirst().first ?? "28079"
+        let daily = try await client.municipioDiaria(ine)
+        let hourly = try? await client.municipioHoraria(ine)
+        let loc = Location(ine: ine, nombre: daily.nombre, provincia: daily.provincia,
+                           latitude: 40.4, longitude: -3.7)
+        let s = WeatherSnapshot.make(location: loc, daily: daily, hourly: hourly)
+        print("\(s.localidad): ahora \(s.currentTemp.map { "\($0)°" } ?? "—") \(s.currentSkyText ?? "?")")
+        print("  Máx \(s.tempMax.map(String.init) ?? "—") / Mín \(s.tempMin.map(String.init) ?? "—")  Humedad \(s.humedadMax.map { "\($0)%" } ?? "—")")
+        print("  Horas: " + s.hours.map { "\($0.hour)h \($0.temp.map { "\($0)°" } ?? "—") [\($0.sky ?? "?")] \($0.precipProb.map { "\($0)%" } ?? "")" }.joined(separator: " · "))
+        print("  Días: " + s.days.map { "\($0.min.map(String.init) ?? "—")/\($0.max.map(String.init) ?? "—")" }.joined(separator: " "))
     } else if args.first == "raw" {
         // Probe any normalized-text endpoint verbatim, e.g.
         //   AEMET_API_KEY=... swift run aura-smoke raw /prediccion/ccaa/manana/gal

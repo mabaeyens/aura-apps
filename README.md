@@ -27,8 +27,9 @@ A thin shell over `AuraKit`, Spanish-only, four tabs:
   capitals, use the current GPS location (nearest bundled city), reorder, delete.
 - **Ajustes** — enter the AEMET API key (stored in the Keychain) and attribution.
 
-The app is the fetch hub: it calls AEMET and will feed the App Group cache the widgets read
-(Phase 2). Open `Aura.xcodeproj`, or build from the command line:
+The app is the fetch hub: on each refresh it calls AEMET and writes a `WeatherSnapshot` to the
+App Group cache the **home-screen widgets** read (small / medium / large), then reloads their
+timelines. Open `Aura.xcodeproj`, or build from the command line:
 
 ```bash
 xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
@@ -50,18 +51,29 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
 - **`WindDirection`** — 16-point Spanish compass rose (`N`, `NNE`, … , `NNO`) with names and bearings.
 - **`SolarTimes`** — sunrise / sunset via the NOAA solar equations; offline and deterministic,
   matching the Observatorio Astronómico Nacional orto/ocaso tables to the minute.
+- **`WeatherSnapshot`** — the compact, `Codable` view model the widgets render from: current-hour
+  temperature and condition, today's range and humidity, the next hours (`HourSlot`) and the
+  multi-day outlook (`DaySnapshot`). Built by `make(location:daily:hourly:)` from AEMET's daily +
+  hourly municipal forecasts.
+- **`SharedCache`** — the App Group seam (`group.com.mab.Aura`): the app upserts snapshots, the
+  widget extension reads them. No backend — the device is the hub.
+- **`WeatherIcon`** — maps AEMET `estadoCielo` codes to SF Symbols, honouring the `n` night suffix.
+- **`AuraCard*`** — the shared SwiftUI cards (small / medium / large + empty state), so the app and
+  the widget extension render from identical code.
 
 ### Smoke test
 
 ```bash
 AEMET_API_KEY=your-key swift run aura-smoke 28079           # numeric daily forecast (INE code)
 AEMET_API_KEY=your-key swift run aura-smoke boletin 28      # community narrative (province code)
+AEMET_API_KEY=your-key swift run aura-smoke snapshot 28079  # widget snapshot (daily + hourly)
 AEMET_API_KEY=your-key swift run aura-smoke raw /prediccion/ccaa/manana/gal  # any text endpoint
 ```
 
 Every mode reads the key from the environment (never stored in the repo). `boletin` resolves the
-narrative that covers today; `raw` fetches any normalized-text endpoint verbatim, handy for
-inspecting freshness across the `hoy`/`manana`/`pasadomanana`/`medioplazo` horizons.
+narrative that covers today; `snapshot` builds the widget view model and prints what a card would
+show; `raw` fetches any normalized-text endpoint verbatim, handy for inspecting freshness across the
+`hoy`/`manana`/`pasadomanana`/`medioplazo` horizons.
 
 ### Build & test
 

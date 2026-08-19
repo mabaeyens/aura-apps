@@ -77,8 +77,11 @@ struct TodayView: View {
         do {
             let fetched = try await client.municipioDiaria(location.ine)
             forecast = fetched
+            // Hourly is best-effort: the snapshot still works (min/max, sun) without it.
+            let hourly = try? await client.municipioHoraria(location.ine)
             // Feed the App Group cache the widgets read, then ask them to re-render.
-            SharedCache.upsert(WeatherSnapshot.make(location: location, forecast: fetched))
+            SharedCache.upsert(WeatherSnapshot.make(location: location, daily: fetched, hourly: hourly,
+                                                    timeZone: location.timeZone))
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             errorMessage = AEMETService.message(for: error)

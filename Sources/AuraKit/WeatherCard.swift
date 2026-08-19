@@ -6,7 +6,7 @@ import SwiftUI
 
 // MARK: - Small
 
-/// systemSmall: location, today's high as the hero, low, and next sun event.
+/// systemSmall: location + condition, the current temperature as the hero, and today's range.
 public struct AuraCardSmall: View {
     let snapshot: WeatherSnapshot
 
@@ -14,24 +14,22 @@ public struct AuraCardSmall: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(snapshot.localidad)
-                .font(.caption).fontWeight(.medium)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            HStack(alignment: .top) {
+                Text(snapshot.localidad)
+                    .font(.caption).fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                ConditionIcon(sky: snapshot.currentSky).font(.title3)
+            }
 
             Spacer(minLength: 0)
 
-            Text(WidgetFormat.temp(snapshot.tempMax))
+            Text(WidgetFormat.heroTemp(snapshot))
                 .font(.system(size: 42, weight: .semibold, design: .rounded))
                 .minimumScaleFactor(0.7)
-            Text("Mín \(WidgetFormat.temp(snapshot.tempMin))")
+            Text(WidgetFormat.range(snapshot))
                 .font(.caption).foregroundStyle(.secondary)
-
-            if let event = SunEvent.next(for: snapshot) {
-                Label("\(event.label) \(WidgetFormat.time(event.date))", systemImage: event.symbol)
-                    .font(.caption2).foregroundStyle(.secondary)
-                    .padding(.top, 2)
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -39,48 +37,46 @@ public struct AuraCardSmall: View {
 
 // MARK: - Medium
 
-/// systemMedium: hero on the left, today's details stacked on the right.
+/// systemMedium: hero + condition on top, the hourly strip filling the bottom.
 public struct AuraCardMedium: View {
     let snapshot: WeatherSnapshot
 
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.localidad)
-                    .font(.subheadline).fontWeight(.semibold)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                Text(WidgetFormat.temp(snapshot.tempMax))
-                    .font(.system(size: 48, weight: .semibold, design: .rounded))
-                    .minimumScaleFactor(0.7)
-                Text("Mín \(WidgetFormat.temp(snapshot.tempMin))")
-                    .font(.caption).foregroundStyle(.secondary)
+        VStack(spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(snapshot.localidad)
+                        .font(.subheadline).fontWeight(.semibold).lineLimit(1)
+                    Text(WidgetFormat.heroTemp(snapshot))
+                        .font(.system(size: 44, weight: .semibold, design: .rounded))
+                        .minimumScaleFactor(0.7)
+                    Text(WidgetFormat.range(snapshot))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 4) {
+                    ConditionIcon(sky: snapshot.currentSky).font(.largeTitle)
+                    if let text = snapshot.currentSkyText {
+                        Text(text).font(.caption2).foregroundStyle(.secondary)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 8) {
-                if let humidity = snapshot.humedadMax {
-                    StatRow(symbol: "humidity", tint: .blue, text: "\(humidity)%")
-                }
-                if let sunrise = snapshot.sunrise {
-                    StatRow(symbol: "sunrise.fill", tint: .orange, text: WidgetFormat.time(sunrise))
-                }
-                if let sunset = snapshot.sunset {
-                    StatRow(symbol: "sunset.fill", tint: .pink, text: WidgetFormat.time(sunset))
-                }
+            if !snapshot.hours.isEmpty {
                 Spacer(minLength: 0)
+                HourlyStrip(hours: Array(snapshot.hours.prefix(5)))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
 // MARK: - Large
 
-/// systemLarge: header, hero row, then a multi-day list. (Avisos banner lands in Phase 2.5.)
+/// systemLarge: header, hero row, hourly strip, then the multi-day list. (Avisos: Phase 2.5.)
 public struct AuraCardLarge: View {
     let snapshot: WeatherSnapshot
 
@@ -90,24 +86,25 @@ public struct AuraCardLarge: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(snapshot.localidad)
-                    .font(.title3).fontWeight(.semibold)
-                    .lineLimit(1)
+                    .font(.title3).fontWeight(.semibold).lineLimit(1)
                 Spacer()
                 Text("Actualizado \(WidgetFormat.time(snapshot.updated))")
                     .font(.caption2).foregroundStyle(.secondary)
             }
 
-            HStack(alignment: .center, spacing: 16) {
-                Text(WidgetFormat.temp(snapshot.tempMax))
-                    .font(.system(size: 54, weight: .semibold, design: .rounded))
+            HStack(alignment: .center, spacing: 14) {
+                ConditionIcon(sky: snapshot.currentSky)
+                    .font(.system(size: 46))
+                Text(WidgetFormat.heroTemp(snapshot))
+                    .font(.system(size: 52, weight: .semibold, design: .rounded))
                     .minimumScaleFactor(0.7)
-                VStack(alignment: .leading, spacing: 6) {
-                    StatRow(symbol: "thermometer.low", tint: .secondary, text: "Mín \(WidgetFormat.temp(snapshot.tempMin))")
+                VStack(alignment: .leading, spacing: 5) {
+                    if let text = snapshot.currentSkyText {
+                        Text(text).font(.subheadline).lineLimit(1)
+                    }
+                    StatRow(symbol: "thermometer.medium", tint: .secondary, text: WidgetFormat.range(snapshot))
                     if let humidity = snapshot.humedadMax {
                         StatRow(symbol: "humidity", tint: .blue, text: "\(humidity)%")
-                    }
-                    if let sunrise = snapshot.sunrise {
-                        StatRow(symbol: "sunrise.fill", tint: .orange, text: WidgetFormat.time(sunrise))
                     }
                     if let sunset = snapshot.sunset {
                         StatRow(symbol: "sunset.fill", tint: .pink, text: WidgetFormat.time(sunset))
@@ -116,14 +113,18 @@ public struct AuraCardLarge: View {
                 Spacer(minLength: 0)
             }
 
+            if !snapshot.hours.isEmpty {
+                HourlyStrip(hours: Array(snapshot.hours.prefix(6)))
+            }
+
             if !snapshot.days.isEmpty {
                 Divider()
-                VStack(spacing: 6) {
+                VStack(spacing: 5) {
                     ForEach(snapshot.days.prefix(5)) { day in
                         HStack {
                             Text(WidgetFormat.weekday(day.date))
                                 .font(.subheadline)
-                                .frame(width: 64, alignment: .leading)
+                                .frame(width: 72, alignment: .leading)
                             Spacer()
                             Text("\(WidgetFormat.temp(day.min)) / \(WidgetFormat.temp(day.max))")
                                 .font(.subheadline.monospacedDigit())
@@ -161,6 +162,40 @@ public struct AuraCardEmpty: View {
 
 // MARK: - Building blocks
 
+/// The next few hours: hour, condition icon, temperature, and precipitation probability when > 0.
+private struct HourlyStrip: View {
+    let hours: [HourSlot]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(hours) { hour in
+                VStack(spacing: 3) {
+                    Text("\(hour.hour)h")
+                        .font(.caption2).foregroundStyle(.secondary)
+                    ConditionIcon(sky: hour.sky).font(.body)
+                    Text(WidgetFormat.temp(hour.temp))
+                        .font(.caption).fontWeight(.medium)
+                    if let prob = hour.precipProb, prob > 0 {
+                        Text("\(prob)%").font(.caption2).foregroundStyle(.blue)
+                    } else {
+                        Text(" ").font(.caption2)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+}
+
+/// A condition glyph, coloured where the surface allows and single-tint where it doesn't.
+private struct ConditionIcon: View {
+    let sky: String?
+    var body: some View {
+        Image(systemName: WeatherIcon.symbol(forSky: sky))
+            .symbolRenderingMode(.multicolor)
+    }
+}
+
 private struct StatRow: View {
     let symbol: String
     let tint: Color
@@ -174,28 +209,16 @@ private struct StatRow: View {
     }
 }
 
-/// Next sunrise/sunset relative to now, for the small widget's single sun line.
-private struct SunEvent {
-    let label: String
-    let symbol: String
-    let date: Date
-
-    static func next(for snapshot: WeatherSnapshot, now: Date = Date()) -> SunEvent? {
-        if let sunrise = snapshot.sunrise, sunrise > now {
-            return SunEvent(label: "Orto", symbol: "sunrise.fill", date: sunrise)
-        }
-        if let sunset = snapshot.sunset, sunset > now {
-            return SunEvent(label: "Ocaso", symbol: "sunset.fill", date: sunset)
-        }
-        // Both already passed today: show tomorrow's implied sunrise if we have it, else sunset.
-        if let sunrise = snapshot.sunrise { return SunEvent(label: "Orto", symbol: "sunrise.fill", date: sunrise) }
-        if let sunset = snapshot.sunset { return SunEvent(label: "Ocaso", symbol: "sunset.fill", date: sunset) }
-        return nil
-    }
-}
-
 enum WidgetFormat {
     static func temp(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—" }
+
+    /// The card's "now" hero: the current-hour temperature, falling back to today's high.
+    static func heroTemp(_ s: WeatherSnapshot) -> String { temp(s.currentTemp ?? s.tempMax) }
+
+    /// "Máx 34° · Mín 18°".
+    static func range(_ s: WeatherSnapshot) -> String {
+        "Máx \(temp(s.tempMax)) · Mín \(temp(s.tempMin))"
+    }
 
     static func time(_ date: Date) -> String {
         let f = DateFormatter()
@@ -223,12 +246,18 @@ public extension WeatherSnapshot {
             guard let date = cal.date(byAdding: .day, value: offset, to: base) else { return nil }
             return DaySnapshot(date: date, min: 17 + offset, max: 33 - offset)
         }
+        let startHour = cal.component(.hour, from: base)
+        let skies = ["11", "11", "12", "13", "13n", "14"]
+        let hours = (0..<6).map { i in
+            HourSlot(hour: (startHour + i) % 24, temp: 29 - i, sky: skies[i], precipProb: i >= 4 ? 15 : 0)
+        }
         return WeatherSnapshot(
             ine: "28079", localidad: "Madrid", provincia: "Madrid",
             tempMin: 18, tempMax: 34, humedadMax: 55,
+            currentTemp: 29, currentSky: "11", currentSkyText: "Despejado",
             sunrise: cal.date(bySettingHour: 7, minute: 12, second: 0, of: base),
             sunset: cal.date(bySettingHour: 21, minute: 11, second: 0, of: base),
-            days: days, updated: base
+            days: days, hours: hours, updated: base
         )
     }
 }
