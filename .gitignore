@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+/.build/
+/Packages/
+.swiftpm/
+
+# Xcode (app targets land in later phases)
+xcuserdata/
+DerivedData/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Local specs (per Projects convention: specs/ is local-only)
+specs/
+
+# Secrets — the AEMET key never enters the repo
+.env
+*.pem
