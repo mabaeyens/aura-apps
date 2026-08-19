@@ -91,6 +91,13 @@
 			);
 			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
 		};
+		AE0000000000000000000090 /* Exceptions for "AuraWatch" folder in "AuraWatch" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AE00000000000000000000E1 /* AuraWatch */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -109,6 +116,9 @@
 		};
 		AE00000000000000000000E6 /* AuraWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AE0000000000000000000090 /* Exceptions for "AuraWatch" folder in "AuraWatch" target */,
+			);
 			path = AuraWatch;
 			sourceTree = "<group>";
 		};
@@ -236,6 +246,7 @@
 			buildPhases = (
 				AE00000000000000000000E2 /* Sources */,
 				AE00000000000000000000E3 /* Frameworks */,
+				AE0000000000000000000091 /* Resources */,
 				AE00000000000000000000E4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -327,6 +338,13 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		AE0000000000000000000091 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AE00000000000000000000A8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -614,6 +632,7 @@
 		AE00000000000000000000E8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = AuraWatch/AuraWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -643,6 +662,7 @@
 		AE00000000000000000000E9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = AuraWatch/AuraWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
