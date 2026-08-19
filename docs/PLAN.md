@@ -68,7 +68,16 @@ own widget / complication instance.
   caching + rate-limit backoff), location → municipality/station lookup, key storage. No UI —
   just "can we reliably get clean data."
 - **Phase 1 — iOS app shell:** location management, favorites, a "today" screen. Proves the
-  data end-to-end.
+  data end-to-end. ✅ *Done:* `Aura.xcodeproj` (iOS target, links the local AuraKit package),
+  four Spanish tabs (Hoy / Predicción / Ubicaciones / Ajustes), Keychain key entry, favorites
+  seeded from the 50 provincial capitals, GPS→nearest-city, on-device sun times, and the official
+  community forecast-text screen with its issue date. All screens verified live (Madrid, A Coruña,
+  Galicia). *Text-source decision:* OpenData's text products are stale for many regions (A Coruña
+  province frozen at 2022, Galicia CCAA ~2 months old), so the narrative comes from AEMET's
+  internal website API (`AEMETBulletinClient`, keyless, fresh for every region); OpenData CCAA
+  text kept as a fallback. See the `aemet-text-forecast-source` memory. *Deferred to later
+  phases:* the full ~8k-municipality table (Phase 1 bundles capitals only), App Group cache,
+  macOS/watchOS targets.
 - **Phase 2 — Widgets (iOS / iPadOS / Mac):** full set — Lock Screen, Home Screen, StandBy, Mac.
 - **Phase 3 — Watch app + complications:** the marquee feature, all complication families.
 - **Phase 4 — Polish:** glyphs, sun-arc rendering, dark mode, refresh tuning.

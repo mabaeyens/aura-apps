@@ -65,6 +65,20 @@ public struct AEMETClient: Sendable {
         return data
     }
 
+    /// Runs the two-call model for `path` where the payload is a plain-text bulletin
+    /// (the normalized `prediccion/{ambito}/{dia}/{area}` products) rather than JSON.
+    /// AEMET serves these as UTF-8; falls back to Latin-1 for any legacy endpoint.
+    public func fetchText(_ path: String) async throws -> String {
+        let envelope = try await requestEnvelope(path: path)
+        guard let datos = envelope.datos, let url = URL(string: datos) else {
+            throw ClientError.aemetStatus(envelope.estado ?? -1, envelope.descripcion ?? "no datos url")
+        }
+        let data = try await fetchData(url: url)
+        if let text = String(data: data, encoding: .utf8) { return text }
+        if let text = String(data: data, encoding: .isoLatin1) { return text }
+        throw ClientError.decoding("text payload: undecodable")
+    }
+
     /// Decode the payload. AEMET usually serves UTF-8, but some legacy endpoints send
     /// ISO-8859-1, so fall back to a Latin-1 → UTF-8 re-encode if the direct decode fails.
     private func decodePayload<T: Decodable>(_ data: Data, as type: T.Type) throws -> T {
@@ -92,5 +106,19 @@ public extension AEMETClient {
                                    as: [MunicipioForecast].self)
         guard let first = list.first else { throw ClientError.decoding("empty forecast array") }
         return first
+    }
+
+    /// Official human-written forecast bulletin AEMET issues for an autonomous community, today.
+    /// `ccaa` is AEMET's community code (e.g. "mad", "gal"); see `Comunidad`. This is the
+    /// actively maintained text product — prefer it over the per-province one.
+    func prediccionCCAAHoy(_ ccaa: String) async throws -> String {
+        try await fetchText("/prediccion/ccaa/hoy/\(ccaa)")
+    }
+
+    /// Official forecast bulletin for a province, today. `provincia` is the 2-digit INE province
+    /// code (`Location.provinciaCode`). Note: AEMET no longer updates this product for several
+    /// provinces (it can return a years-old file), so `prediccionCCAAHoy` is preferred.
+    func prediccionProvinciaHoy(_ provincia: String) async throws -> String {
+        try await fetchText("/prediccion/provincia/hoy/\(provincia)")
     }
 }

@@ -1,0 +1,3 @@
+/* Aura is a Spanish-only app; this marks Spanish as its localization so system
+   controls (Edit/Done, search, etc.) render in Spanish. */
+"CFBundleDisplayName" = "Aura";
