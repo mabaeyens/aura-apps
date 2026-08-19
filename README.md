@@ -62,6 +62,11 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
 - **`SharedLocations`** — the favourites list mirrored to the same App Group, so the widget's
   configuration picker lists exactly the user's saved locations.
 - **`WeatherIcon`** — maps AEMET `estadoCielo` codes to SF Symbols, honouring the `n` night suffix.
+- **`StationObservation`** — decodes `/observacion/convencional/todas` and resolves the nearest
+  recent station to a location (haversine, within 3h and 35km) for a real observed temperature.
+- **`WeatherAlert`** / **`AvisoArea`** / **`CAPParser`** — the avisos pipeline: fetch a community's
+  CAP-XML `.tar`, parse it, and match warnings to a location by province (the warning-zone code
+  carries the province INE). `TarReader` unpacks the plain tar on-device.
 - **`AuraCard*`** — the shared SwiftUI cards (small / medium / large + empty state), so the app and
   the widget extension render from identical code.
 
@@ -70,7 +75,8 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
 ```bash
 AEMET_API_KEY=your-key swift run aura-smoke 28079           # numeric daily forecast (INE code)
 AEMET_API_KEY=your-key swift run aura-smoke boletin 28      # community narrative (province code)
-AEMET_API_KEY=your-key swift run aura-smoke snapshot 28079  # widget snapshot (daily + hourly)
+AEMET_API_KEY=your-key swift run aura-smoke snapshot 28079  # widget snapshot (obs + hourly + aviso)
+AEMET_API_KEY=your-key swift run aura-smoke avisos 04       # active warnings for a province
 AEMET_API_KEY=your-key swift run aura-smoke raw /prediccion/ccaa/manana/gal  # any text endpoint
 ```
 

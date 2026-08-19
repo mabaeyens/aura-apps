@@ -44,12 +44,32 @@ do {
         let loc = Location(ine: ine, nombre: daily.nombre, provincia: daily.provincia,
                            latitude: 40.4, longitude: -3.7)
         let observed = try? await client.observacionTodas().nearest(to: loc)
-        let s = WeatherSnapshot.make(location: loc, daily: daily, hourly: hourly, observed: observed)
+        var alert: WeatherAlert?
+        if let area = AvisoArea.forProvincia(loc.provinciaCode) {
+            alert = (try? await client.avisos(area: area))?.topActive(forProvince: loc.provinciaCode)
+        }
+        let s = WeatherSnapshot.make(location: loc, daily: daily, hourly: hourly,
+                                     observed: observed, alert: alert)
         print("\(s.localidad): ahora \(s.heroTemp.map { "\($0)°" } ?? "—") \(s.currentSkyText ?? "?")")
         if let observed { print("  Observado: \(observed.temperature.map { "\($0)°" } ?? "—") en \(observed.stationName ?? "?") (\(observed.fint ?? "?"))") }
+        if let alert { print("  ⚠︎ Aviso \(alert.level.rawValue): \(alert.phenomenon ?? alert.event)") }
         print("  Máx \(s.tempMax.map(String.init) ?? "—") / Mín \(s.tempMin.map(String.init) ?? "—")  Humedad \(s.humedadMax.map { "\($0)%" } ?? "—")")
         print("  Horas: " + s.hours.map { "\($0.hour)h \($0.temp.map { "\($0)°" } ?? "—") [\($0.sky ?? "?")] \($0.precipProb.map { "\($0)%" } ?? "")" }.joined(separator: " · "))
         print("  Días: " + s.days.map { "\($0.min.map(String.init) ?? "—")/\($0.max.map(String.init) ?? "—")" }.joined(separator: " "))
+    } else if args.first == "avisos" {
+        // Active weather warnings for a province, via its avisos area (CAP tar → parse → filter).
+        //   AEMET_API_KEY=... swift run aura-smoke avisos [provincia]   (default: 04 = Almería)
+        let provincia = args.dropFirst().first ?? "04"
+        guard let area = AvisoArea.forProvincia(provincia) else {
+            FileHandle.standardError.write(Data("No avisos area for province \(provincia)\n".utf8))
+            exit(1)
+        }
+        let all = try await client.avisos(area: area)
+        let mine = all.filter { $0.provinceCode == provincia && $0.isActive() }
+        print("Province \(provincia) (area \(area)): \(all.count) zone-warnings total, \(mine.count) active here")
+        for a in mine.sorted(by: { $0.level.rank > $1.level.rank }) {
+            print("  [\(a.level.rawValue)] \(a.phenomenon ?? a.event) — \(a.areaDesc ?? a.zona) (exp \(a.expires.map(String.init(describing:)) ?? "?"))")
+        }
     } else if args.first == "raw" {
         // Probe any normalized-text endpoint verbatim, e.g.
         //   AEMET_API_KEY=... swift run aura-smoke raw /prediccion/ccaa/manana/gal

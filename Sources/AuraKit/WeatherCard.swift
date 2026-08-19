@@ -20,6 +20,7 @@ public struct AuraCardSmall: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer(minLength: 4)
+                if let alert = snapshot.alert { AlertBadge(level: alert.level) }
                 ConditionIcon(sky: snapshot.currentSky).font(.title3)
             }
 
@@ -47,8 +48,11 @@ public struct AuraCardMedium: View {
         VStack(spacing: 8) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(snapshot.localidad)
-                        .font(.subheadline).fontWeight(.semibold).lineLimit(1)
+                    HStack(spacing: 4) {
+                        if let alert = snapshot.alert { AlertBadge(level: alert.level) }
+                        Text(snapshot.localidad)
+                            .font(.subheadline).fontWeight(.semibold).lineLimit(1)
+                    }
                     Text(WidgetFormat.heroTemp(snapshot))
                         .font(.system(size: 44, weight: .semibold, design: .rounded))
                         .minimumScaleFactor(0.7)
@@ -90,6 +94,10 @@ public struct AuraCardLarge: View {
                 Spacer()
                 Text("Actualizado \(WidgetFormat.time(snapshot.updated))")
                     .font(.caption2).foregroundStyle(.secondary)
+            }
+
+            if let alert = snapshot.alert {
+                AlertBanner(alert: alert)
             }
 
             HStack(alignment: .center, spacing: 14) {
@@ -190,6 +198,49 @@ private struct HourlyStrip: View {
     }
 }
 
+/// The large card's warning banner: a tinted row naming the phenomenon and level.
+private struct AlertBanner: View {
+    let alert: WeatherAlert
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(AlertStyle.color(alert.level))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(alert.phenomenon ?? "Aviso")
+                    .font(.subheadline).fontWeight(.semibold).lineLimit(1)
+                Text("Aviso \(alert.level.rawValue)")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 6).padding(.horizontal, 10)
+        .background(AlertStyle.color(alert.level).opacity(0.18),
+                    in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+/// A compact warning triangle for the small/medium cards, tinted by level.
+private struct AlertBadge: View {
+    let level: WeatherAlert.Level
+    var body: some View {
+        Image(systemName: "exclamationmark.triangle.fill")
+            .font(.caption)
+            .foregroundStyle(AlertStyle.color(level))
+    }
+}
+
+private enum AlertStyle {
+    static func color(_ level: WeatherAlert.Level) -> Color {
+        switch level {
+        case .verde: return .green
+        case .amarillo: return .yellow
+        case .naranja: return .orange
+        case .rojo: return .red
+        }
+    }
+}
+
 /// A condition glyph, coloured where the surface allows and single-tint where it doesn't.
 private struct ConditionIcon: View {
     let sky: String?
@@ -261,7 +312,13 @@ public extension WeatherSnapshot {
             currentSky: "11", currentSkyText: "Despejado",
             sunrise: cal.date(bySettingHour: 7, minute: 12, second: 0, of: base),
             sunset: cal.date(bySettingHour: 21, minute: 11, second: 0, of: base),
-            days: days, hours: hours, updated: base
+            days: days, hours: hours,
+            alert: WeatherAlert(level: .naranja,
+                                event: "Aviso de temperaturas máximas de nivel naranja",
+                                phenomenon: "Temperatura máxima", zona: "280401",
+                                areaDesc: "Metropolitana", onset: base,
+                                expires: base.addingTimeInterval(3 * 3600)),
+            updated: base
         )
     }
 }

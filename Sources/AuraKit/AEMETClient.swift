@@ -79,6 +79,16 @@ public struct AEMETClient: Sendable {
         throw ClientError.decoding("text payload: undecodable")
     }
 
+    /// Runs the two-call model for `path` and returns the raw payload bytes (for binary products
+    /// like the avisos `.tar`).
+    public func fetchBinary(_ path: String) async throws -> Data {
+        let envelope = try await requestEnvelope(path: path)
+        guard let datos = envelope.datos, let url = URL(string: datos) else {
+            throw ClientError.aemetStatus(envelope.estado ?? -1, envelope.descripcion ?? "no datos url")
+        }
+        return try await fetchData(url: url)
+    }
+
     /// Decode the payload. AEMET usually serves UTF-8, but some legacy endpoints send
     /// ISO-8859-1, so fall back to a Latin-1 → UTF-8 re-encode if the direct decode fails.
     private func decodePayload<T: Decodable>(_ data: Data, as type: T.Type) throws -> T {
@@ -121,6 +131,15 @@ public extension AEMETClient {
     /// via `StationObservation.nearest(toLatitude:longitude:in:)`.
     func observacionTodas() async throws -> [StationObservation] {
         try await fetch("/observacion/convencional/todas", as: [StationObservation].self)
+    }
+
+    /// Active meteorological warnings for an AEMET avisos area (a `.tar` of CAP-XML files). `area`
+    /// is a two-digit community code (`AvisoArea.forProvincia`). Filter to a location by province.
+    func avisos(area: String) async throws -> [WeatherAlert] {
+        let tar = try await fetchBinary("/avisos_cap/ultimoelaborado/area/\(area)")
+        return TarReader.files(from: tar)
+            .filter { $0.name.hasSuffix(".xml") }
+            .flatMap { CAPParser.parse($0.body) }
     }
 
     /// Raw text of the community `hoy` product. `ccaa` is AEMET's community code (e.g. "mad").

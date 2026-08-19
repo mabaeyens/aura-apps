@@ -23,6 +23,12 @@ enum AEMETService {
         }
         guard !stale.isEmpty else { return }
         let observations = (try? await client.observacionTodas()) ?? []
+        // Fetch each distinct avisos area at most once, then resolve per location by province.
+        let areas = Set(stale.compactMap { AvisoArea.forProvincia($0.provinciaCode) })
+        var alertsByArea: [String: [WeatherAlert]] = [:]
+        for area in areas {
+            alertsByArea[area] = (try? await client.avisos(area: area)) ?? []
+        }
         var didUpdate = false
         for location in stale {
             guard let daily = try? await client.municipioDiaria(location.ine) else { continue }
@@ -30,11 +36,22 @@ enum AEMETService {
             let observed = StationObservation.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
                                                       in: observations)
+            let alert = AvisoArea.forProvincia(location.provinciaCode)
+                .flatMap { alertsByArea[$0] }?
+                .topActive(forProvince: location.provinciaCode)
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                    observed: observed, timeZone: location.timeZone))
+                                                    observed: observed, alert: alert,
+                                                    timeZone: location.timeZone))
             didUpdate = true
         }
         if didUpdate { WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    /// The most severe active warning for one location's province, or nil. Best-effort.
+    static func topAlert(for location: Location, using client: AEMETClient) async -> WeatherAlert? {
+        guard let area = AvisoArea.forProvincia(location.provinciaCode),
+              let alerts = try? await client.avisos(area: area) else { return nil }
+        return alerts.topActive(forProvince: location.provinciaCode)
     }
 
     /// Spanish message for any error surfaced while talking to AEMET.

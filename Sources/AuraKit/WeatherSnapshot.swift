@@ -38,6 +38,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let days: [DaySnapshot]
     /// The next few hours, for the hourly strip.
     public let hours: [HourSlot]
+    /// The most severe active AEMET warning for this location's province, if any.
+    public let alert: WeatherAlert?
     /// When the app last refreshed this snapshot.
     public let updated: Date
 
@@ -46,7 +48,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
                 currentSky: String? = nil, currentSkyText: String? = nil,
                 sunrise: Date?, sunset: Date?,
-                days: [DaySnapshot] = [], hours: [HourSlot] = [], updated: Date) {
+                days: [DaySnapshot] = [], hours: [HourSlot] = [],
+                alert: WeatherAlert? = nil, updated: Date) {
         self.ine = ine
         self.localidad = localidad
         self.provincia = provincia
@@ -62,6 +65,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.sunset = sunset
         self.days = days
         self.hours = hours
+        self.alert = alert
         self.updated = updated
     }
 }
@@ -116,6 +120,7 @@ public extension WeatherSnapshot {
                      daily: MunicipioForecast,
                      hourly: MunicipioHourly?,
                      observed: StationObservation? = nil,
+                     alert: WeatherAlert? = nil,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
         let today = daily.prediccion.dia.first
@@ -143,6 +148,7 @@ public extension WeatherSnapshot {
             sunset: sun.sunset,
             days: days,
             hours: hourly?.strip ?? [],
+            alert: alert,
             updated: now
         )
     }
