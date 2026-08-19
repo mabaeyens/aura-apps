@@ -8,8 +8,9 @@ import UIKit
 /// API to suppress it. In practice that's at most four brief alerts a year, at the season turns.
 enum AppIconManager {
 
-    /// Meteorological seasons for the Northern Hemisphere (Spain): whole months, so the icon turns on
-    /// the 1st of March/June/September/December. The `rawValue` is the alternate-icon asset name.
+    /// Astronomical seasons for the Northern Hemisphere (Spain): the icon turns at the equinoxes and
+    /// solstices, using fixed approximate dates (they wander a day year to year) — spring Mar 20,
+    /// summer Jun 21, autumn Sep 22, winter Dec 21. The `rawValue` is the alternate-icon asset name.
     enum Season: String, CaseIterable {
         case spring = "AuraSpring"
         case summer = "AuraSummer"
@@ -17,11 +18,13 @@ enum AppIconManager {
         case winter = "AuraWinter"
 
         static func current(for date: Date = Date(), calendar: Calendar = .current) -> Season {
-            switch calendar.component(.month, from: date) {
-            case 3...5:  return .spring
-            case 6...8:  return .summer
-            case 9...11: return .autumn
-            default:     return .winter   // 12, 1, 2
+            let c = calendar.dateComponents([.month, .day], from: date)
+            let md = (c.month ?? 1) * 100 + (c.day ?? 1)   // e.g. Mar 20 → 320
+            switch md {
+            case 320...620:   return .spring
+            case 621...921:   return .summer
+            case 922...1220:  return .autumn
+            default:          return .winter   // Dec 21 – Mar 19
             }
         }
     }
