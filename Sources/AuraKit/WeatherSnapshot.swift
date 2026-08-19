@@ -30,6 +30,10 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let currentSky: String?
     /// AEMET's Spanish description of the current sky state (e.g. "Despejado").
     public let currentSkyText: String?
+    /// Current-hour wind speed, km/h.
+    public let windSpeed: Int?
+    /// Current-hour wind direction (whence it blows), or nil when calm/unknown.
+    public let windDirection: WindDirection?
     /// Sunrise, computed on-device for the location.
     public let sunrise: Date?
     /// Sunset, computed on-device for the location.
@@ -47,6 +51,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 tempMin: Int?, tempMax: Int?, humedadMax: Int?,
                 currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
                 currentSky: String? = nil, currentSkyText: String? = nil,
+                windSpeed: Int? = nil, windDirection: WindDirection? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
                 alert: WeatherAlert? = nil, updated: Date) {
@@ -61,6 +66,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.observedStation = observedStation
         self.currentSky = currentSky
         self.currentSkyText = currentSkyText
+        self.windSpeed = windSpeed
+        self.windDirection = windDirection
         self.sunrise = sunrise
         self.sunset = sunset
         self.days = days
@@ -77,6 +84,18 @@ public extension WeatherSnapshot {
 
     /// Whether the hero is a real station observation (so the UI can mark it as such).
     var heroIsObserved: Bool { observedTemp != nil }
+
+    /// The next sun event to happen, for the sunrise/sunset complication: sunrise if it's still to
+    /// come today, otherwise sunset if that's still to come, otherwise the next sunrise (sun times
+    /// barely move day to day, so today's sunrise stands in for tomorrow's after dark).
+    enum SunEvent: Sendable, Hashable { case sunrise(Date), sunset(Date) }
+
+    func nextSunEvent(now: Date = Date()) -> SunEvent? {
+        if let sr = sunrise, now < sr { return .sunrise(sr) }
+        if let ss = sunset, now < ss { return .sunset(ss) }
+        if let sr = sunrise { return .sunrise(sr) }
+        return sunset.map { .sunset($0) }
+    }
 }
 
 /// One hour of the hourly strip: the hour of day, its forecast temperature, sky code, and the
@@ -130,6 +149,7 @@ public extension WeatherSnapshot {
             return DaySnapshot(date: date, min: dia.temperatura?.minima, max: dia.temperatura?.maxima)
         }
 
+        let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
         let hourly = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
 
         return WeatherSnapshot(
@@ -144,6 +164,8 @@ public extension WeatherSnapshot {
             observedStation: observed?.stationName,
             currentSky: hourly?.current?.sky,
             currentSkyText: hourly?.currentText,
+            windSpeed: wind?.speed ?? nil,
+            windDirection: wind?.direction ?? nil,
             sunrise: sun.sunrise,
             sunset: sun.sunset,
             days: days,
@@ -171,6 +193,30 @@ public extension WeatherSnapshot {
             ?? (dias.count > 1 ? skyText(dias[1], hour: current?.hour) : nil)
 
         return (current, text, Array(upcoming.prefix(6)))
+    }
+
+    /// The wind for the current hour (or the next available reading), as speed km/h + direction.
+    private static func currentWind(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date)
+        -> (speed: Int?, direction: WindDirection?) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let currentHour = cal.component(.hour, from: now)
+
+        // Wind entries (not gusts) at/after `from`, else the day's earliest, as (speed, direction).
+        func wind(in dia: MunicipioHourly.Dia, from: Int) -> (Int?, WindDirection?)? {
+            let readings = (dia.vientoAndRachaMax ?? []).compactMap { w -> (hour: Int, speed: Int?, dir: WindDirection?)? in
+                guard let hour = Int(w.periodo),
+                      let speed = w.velocidad?.first, let dir = w.direccion?.first else { return nil }
+                return (hour, Int(speed), WindDirection(aemet: dir))
+            }.sorted { $0.hour < $1.hour }
+            guard let match = readings.first(where: { $0.hour >= from }) ?? readings.first else { return nil }
+            return (match.speed, match.dir)
+        }
+
+        let dias = forecast.prediccion.dia
+        if let day0 = dias.first, let w = wind(in: day0, from: currentHour) { return w }
+        if dias.count > 1, let w = wind(in: dias[1], from: 0) { return w }
+        return (nil, nil)
     }
 
     /// Merge one day's parallel hourly arrays into ordered `HourSlot`s.

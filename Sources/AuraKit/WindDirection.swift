@@ -3,7 +3,7 @@ import Foundation
 /// 16-point compass rose with Spanish (rosa de los vientos) abbreviations and names.
 ///
 /// Meteorological convention: the bearing is the direction the wind blows *from*.
-public enum WindDirection: Int, CaseIterable, Sendable {
+public enum WindDirection: Int, CaseIterable, Sendable, Codable, Hashable {
     case n, nne, ne, ene, e, ese, se, sse, s, sso, so, oso, o, ono, no, nno
 
     private static let abbreviations = [
@@ -33,5 +33,13 @@ public enum WindDirection: Int, CaseIterable, Sendable {
         let positive = wrapped < 0 ? wrapped + 360 : wrapped
         let index = Int((positive / 22.5).rounded()) % 16
         self = WindDirection(rawValue: index)!
+    }
+
+    /// Match an AEMET direction abbreviation (e.g. "NO", "ONO"). Returns nil for calm ("C") or an
+    /// unrecognised token.
+    public init?(aemet code: String) {
+        let token = code.trimmingCharacters(in: .whitespaces).uppercased()
+        guard let match = Self.allCases.first(where: { $0.abbreviation == token }) else { return nil }
+        self = match
     }
 }

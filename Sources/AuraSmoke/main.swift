@@ -54,6 +54,7 @@ do {
         if let observed { print("  Observado: \(observed.temperature.map { "\($0)°" } ?? "—") en \(observed.stationName ?? "?") (\(observed.fint ?? "?"))") }
         if let alert { print("  ⚠︎ Aviso \(alert.level.rawValue): \(alert.phenomenon ?? alert.event)") }
         print("  Máx \(s.tempMax.map(String.init) ?? "—") / Mín \(s.tempMin.map(String.init) ?? "—")  Humedad \(s.humedadMax.map { "\($0)%" } ?? "—")")
+        print("  Viento: \(s.windSpeed.map { "\($0) km/h" } ?? "—") \(s.windDirection?.abbreviation ?? "")")
         print("  Horas: " + s.hours.map { "\($0.hour)h \($0.temp.map { "\($0)°" } ?? "—") [\($0.sky ?? "?")] \($0.precipProb.map { "\($0)%" } ?? "")" }.joined(separator: " · "))
         print("  Días: " + s.days.map { "\($0.min.map(String.init) ?? "—")/\($0.max.map(String.init) ?? "—")" }.joined(separator: " "))
     } else if args.first == "avisos" {

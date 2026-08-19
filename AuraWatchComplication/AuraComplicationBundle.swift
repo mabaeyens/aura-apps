@@ -1,8 +1,13 @@
 import SwiftUI
 import WidgetKit
 
-/// The Watch complication extension's entry point.
+/// The Watch complication extension's entry point. Each `Widget` is a separate entry in the
+/// watch-face complication gallery.
 @main
 struct AuraComplicationBundle: WidgetBundle {
-    var body: some Widget { AuraComplication() }
+    var body: some Widget {
+        AuraConditionsComplication()
+        AuraSunComplication()
+        AuraWindComplication()
+    }
 }

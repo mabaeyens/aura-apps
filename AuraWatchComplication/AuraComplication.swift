@@ -27,12 +27,14 @@ struct AuraComplicationProvider: TimelineProvider {
     }
 }
 
-/// The complication, in every watch accessory family. All layouts come from AuraKit so they match
-/// the iPhone's Lock Screen widgets exactly.
-struct AuraComplication: Widget {
+// MARK: - Conditions + Temp
+
+/// The main complication: condition + temperature, in every watch accessory family. All layouts come
+/// from AuraKit so they match the iPhone's Lock Screen widgets exactly.
+struct AuraConditionsComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "AuraComplication", provider: AuraComplicationProvider()) { entry in
-            AuraComplicationView(entry: entry)
+        StaticConfiguration(kind: "AuraConditions", provider: AuraComplicationProvider()) { entry in
+            AuraConditionsView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("El tiempo")
@@ -41,7 +43,7 @@ struct AuraComplication: Widget {
     }
 }
 
-struct AuraComplicationView: View {
+struct AuraConditionsView: View {
     @Environment(\.widgetFamily) private var family
     let entry: AuraComplicationEntry
 
@@ -55,6 +57,66 @@ struct AuraComplicationView: View {
                     .widgetLabel(AuraAccessoryCorner(snapshot: snapshot).cornerLabel)
             default: AuraAccessoryCircular(snapshot: snapshot)
             }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+// MARK: - Sunrise / Sunset
+
+/// The next sun event (sunrise or sunset, auto-picked from the time of day). Corner + circular.
+struct AuraSunComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraSun", provider: AuraComplicationProvider()) { entry in
+            AuraSunView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Amanecer/Ocaso")
+        .description("La próxima salida o puesta de sol.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
+}
+
+struct AuraSunView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            switch family {
+            case .accessoryCorner:
+                AuraSunCorner(snapshot: snapshot, now: entry.date)
+                    .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
+            default: AuraSunCircular(snapshot: snapshot, now: entry.date)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+// MARK: - Wind
+
+/// Wind speed + direction as a circular gauge.
+struct AuraWindComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraWind", provider: AuraComplicationProvider()) { entry in
+            AuraWindView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Viento")
+        .description("Velocidad y dirección del viento.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+struct AuraWindView: View {
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            AuraWindCircular(snapshot: snapshot)
         } else {
             AuraAccessoryEmpty()
         }

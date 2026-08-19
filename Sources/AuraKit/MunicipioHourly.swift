@@ -22,6 +22,18 @@ public struct MunicipioHourly: Decodable, Sendable {
         public let estadoCielo: [SkyValue]
         public let humedadRelativa: [HourValue]
         public let probPrecipitacion: [HourValue]
+        /// Wind and peak gust, hour by hour. Mixed entries: wind entries carry `direccion`+`velocidad`
+        /// (single-element string arrays), gust entries only a scalar `value`. Optional — some
+        /// municipal responses omit it.
+        public let vientoAndRachaMax: [WindValue]?
+    }
+
+    /// A wind reading (`direccion`+`velocidad`) or a gust (`value`) at `periodo`.
+    public struct WindValue: Decodable, Sendable {
+        public let periodo: String
+        public let direccion: [String]?
+        public let velocidad: [String]?
+        public let value: String?
     }
 
     /// An hourly (or block) reading: the string `value` at `periodo`.

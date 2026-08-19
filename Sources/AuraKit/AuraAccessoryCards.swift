@@ -1,15 +1,15 @@
 import SwiftUI
 
-// Lock Screen (and, later, Apple Watch) accessory cards. Like the home-screen cards these live in
-// AuraKit so every surface renders identical code, and they stay pure SwiftUI — the widget applies
-// the accessory container background. The Lock Screen renders these in a monochrome/vibrant mode,
-// so they rely on plain symbols and legible text rather than colour.
+// Lock Screen and Apple Watch accessory cards. Like the home-screen cards these live in AuraKit so
+// every surface renders identical code, and they stay pure SwiftUI — the widget applies the accessory
+// container background. The iOS Lock Screen renders these in a monochrome/vibrant mode, so colour is
+// ignored there; on watchOS full-colour faces the temperature tints and multicolour condition icons
+// come through.
 
-// MARK: - Circular
+// MARK: - Circular (Conditions + Temp)
 
-/// `.accessoryCircular`: today's range as a ring with the current temperature in the middle, so a
-/// glance places "now" between the day's low and high. Falls back to icon + temp when the range is
-/// unknown.
+/// `.accessoryCircular`: today's range as a ring, temperature-tinted, with the current temperature in
+/// the middle. Falls back to icon + temp when the range is unknown.
 public struct AuraAccessoryCircular: View {
     let snapshot: WeatherSnapshot
 
@@ -21,14 +21,18 @@ public struct AuraAccessoryCircular: View {
                 Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
             } currentValueLabel: {
                 Text(AccessoryFormat.temp(current))
+                    .foregroundStyle(Palette.temperature(current))
             }
             .gaugeStyle(.accessoryCircular)
+            .tint(Palette.temperature(current))
         } else {
             VStack(spacing: 1) {
                 Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+                    .symbolRenderingMode(.multicolor)
                     .font(.title3)
                 Text(AccessoryFormat.temp(current))
                     .font(.headline)
+                    .foregroundStyle(Palette.temperature(current))
             }
         }
     }
@@ -44,7 +48,7 @@ public struct AuraAccessoryCircular: View {
 
 // MARK: - Rectangular
 
-/// `.accessoryRectangular`: location + condition, the current temperature, and today's range.
+/// `.accessoryRectangular`: location + condition, the current temperature (temp-tinted), today's range.
 public struct AuraAccessoryRectangular: View {
     let snapshot: WeatherSnapshot
 
@@ -56,12 +60,14 @@ public struct AuraAccessoryRectangular: View {
                 Text(snapshot.localidad).fontWeight(.semibold)
             } icon: {
                 Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+                    .symbolRenderingMode(.multicolor)
             }
             .lineLimit(1)
 
             HStack(spacing: 4) {
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.title3).fontWeight(.semibold)
+                    .foregroundStyle(Palette.temperature(snapshot.heroTemp))
                 if let text = snapshot.currentSkyText {
                     Text(text).foregroundStyle(.secondary).lineLimit(1)
                 }
@@ -78,6 +84,7 @@ public struct AuraAccessoryRectangular: View {
 // MARK: - Inline
 
 /// `.accessoryInline`: a single line beside the clock — condition glyph, current temp, condition.
+/// The system tints inline complications, so this stays plain.
 public struct AuraAccessoryInline: View {
     let snapshot: WeatherSnapshot
 
@@ -94,27 +101,26 @@ public struct AuraAccessoryInline: View {
 
 // MARK: - Corner (watchOS)
 
-/// `.accessoryCorner` (Apple Watch): the current temperature tucked in a screen corner. The
-/// complication extension pairs this with a curved `.widgetLabel` (see `cornerLabel`).
+/// `.accessoryCorner` (Apple Watch): the condition icon tucked in a screen corner, with the hero
+/// temperature as the curved bezel label (`cornerLabel`). The complication extension wires the label.
 public struct AuraAccessoryCorner: View {
     let snapshot: WeatherSnapshot
 
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        Text(AccessoryFormat.temp(snapshot.heroTemp))
-            .font(.title3).fontWeight(.semibold)
+        Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+            .symbolRenderingMode(.multicolor)
+            .font(.title2)
     }
 
-    /// Text for the curved label the extension wraps this in — the condition, else today's range.
-    public var cornerLabel: String {
-        snapshot.currentSkyText ?? AccessoryFormat.range(snapshot)
-    }
+    /// The curved label the extension wraps this in — the hero temperature.
+    public var cornerLabel: String { AccessoryFormat.temp(snapshot.heroTemp) }
 }
 
 // MARK: - Empty state
 
-/// Shown on the Lock Screen before the app has cached anything.
+/// Shown before the app has cached anything.
 public struct AuraAccessoryEmpty: View {
     public init() {}
 
