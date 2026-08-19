@@ -35,11 +35,15 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Acerca de") {
-                    LabeledContent("App", value: "Aura")
+                Section {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        Label("Acerca de Aura", systemImage: "info.circle")
+                    }
                     LabeledContent("Versión", value: appVersion)
+                } footer: {
                     Text("Elaborado con datos de AEMET.")
-                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Ajustes")
