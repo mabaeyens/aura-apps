@@ -10,6 +10,14 @@ struct TodayView: View {
     @State private var forecast: MunicipioForecast?
     @State private var isLoading = false
     @State private var errorMessage: String?
+    /// Which location the on-screen `forecast` belongs to, and when it was fetched — so a tab
+    /// re-appearance or app foreground doesn't refetch fresh data and burn through AEMET's rate limit.
+    @State private var loadedINE: String?
+    @State private var loadedAt: Date?
+
+    /// AEMET updates municipal forecasts only a few times a day; don't re-fetch the same location
+    /// more often than this except on an explicit pull-to-refresh.
+    private static let minInterval: TimeInterval = 15 * 60
 
     var body: some View {
         NavigationStack {
@@ -27,7 +35,7 @@ struct TodayView: View {
             .navigationTitle(store.selected?.nombre ?? "Hoy")
             .navigationBarTitleDisplayMode(.large)
         }
-        .task(id: store.selectedINE) { await load() }
+        .task(id: store.selectedINE) { await load(force: false) }
     }
 
     @ViewBuilder
@@ -63,11 +71,17 @@ struct TodayView: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .refreshable { await load() }
+        .refreshable { await load(force: true) }
     }
 
-    private func load() async {
+    private func load(force: Bool) async {
         guard let location = store.selected else { return }
+        // Throttle: if we already show this location's forecast and it's recent, don't hit AEMET
+        // again just because the view re-appeared. Pull-to-refresh (force) always fetches.
+        if !force, forecast != nil, loadedINE == location.ine,
+           let at = loadedAt, Date().timeIntervalSince(at) < Self.minInterval {
+            return
+        }
         guard let client = AEMETService.client() else {
             errorMessage = nil // handled by the key banner
             return
@@ -90,6 +104,8 @@ struct TodayView: View {
             WidgetCenter.shared.reloadAllTimelines()
             // Mirror the on-screen location to the paired Watch's complication.
             WatchSync.shared.send(snapshot)
+            loadedINE = location.ine
+            loadedAt = Date()
         } catch {
             errorMessage = AEMETService.message(for: error)
         }

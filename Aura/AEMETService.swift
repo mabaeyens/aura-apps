@@ -44,7 +44,14 @@ enum AEMETService {
                                                     timeZone: location.timeZone))
             didUpdate = true
         }
-        if didUpdate { WidgetCenter.shared.reloadAllTimelines() }
+        if didUpdate {
+            WidgetCenter.shared.reloadAllTimelines()
+            // Keep the Watch fed even if the user never opens "Hoy": push the primary location.
+            if let primary = locations.first,
+               let snapshot = SharedCache.snapshot(forINE: primary.ine) {
+                WatchSync.shared.send(snapshot)
+            }
+        }
     }
 
     /// The most severe active warning for one location's province, or nil. Best-effort.
