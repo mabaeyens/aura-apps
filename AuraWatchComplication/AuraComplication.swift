@@ -53,12 +53,12 @@ struct AuraConditionsView: View {
             case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot, now: entry.date)
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
-                if AuraAccessoryCorner(snapshot: snapshot).hasRange {
-                    AuraAccessoryCorner(snapshot: snapshot)
-                        .widgetLabel { AuraAccessoryCorner(snapshot: snapshot).cornerGauge }
+                if AuraAccessoryCorner(snapshot: snapshot, now: entry.date).hasRange {
+                    AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                        .widgetLabel { AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerGauge }
                 } else {
-                    AuraAccessoryCorner(snapshot: snapshot)
-                        .widgetLabel(AuraAccessoryCorner(snapshot: snapshot).cornerLabel)
+                    AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                        .widgetLabel(AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerLabel)
                 }
             default: AuraAccessoryCircular(snapshot: snapshot, now: entry.date)
             }

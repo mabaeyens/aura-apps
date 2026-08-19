@@ -94,9 +94,12 @@ private enum SunFormat {
         return f.string(from: date)
     }
 
-    /// Compact time-until, e.g. "2h51" or "43m"; nil once the event has passed.
+    /// Compact time-until, e.g. "2h51" or "43m". The snapshot only carries *today's* sun times, so
+    /// after dark the "next sunrise" date is actually this morning's (already past); sun times barely
+    /// move day to day, so wrap a negative interval by 24h to get tomorrow's event.
     static func remaining(from: Date, to: Date) -> String? {
-        let seconds = Int(to.timeIntervalSince(from))
+        var seconds = Int(to.timeIntervalSince(from))
+        if seconds < 0 { seconds += 24 * 3600 }
         guard seconds > 0 else { return nil }
         let hours = seconds / 3600, minutes = (seconds % 3600) / 60
         return hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))" : "\(minutes)m"

@@ -123,23 +123,29 @@ public struct AuraAccessoryInline: View {
 
 // MARK: - Corner (watchOS)
 
-/// `.accessoryCorner` (Apple Watch): the hero temperature big in the corner, with the day's range as
-/// a temperature-gradient gauge curving along the bezel (Carrot-style) — hi/lo at its ends. The
-/// complication extension wraps `cornerGauge` in `.widgetLabel`; when the range is unknown it falls
-/// back to `cornerLabel` (plain text). Making the number the hero fixes the previously tiny icon.
+/// `.accessoryCorner` (Apple Watch): the condition icon over the hero temperature in the corner, with
+/// the day's range as a temperature-gradient gauge curving along the bezel (Carrot-style) — hi/lo,
+/// each in its own temperature colour, at the ends. The complication extension wraps `cornerGauge` in
+/// `.widgetLabel`; when the range is unknown it falls back to `cornerLabel` (plain text).
 public struct AuraAccessoryCorner: View {
     let snapshot: WeatherSnapshot
+    let now: Date
 
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
 
     public var body: some View {
-        // Oversized font + minimumScaleFactor makes the number scale up to fill the whole corner
-        // region (like Carrot's), instead of sitting small at a fixed title size.
-        Text(AccessoryFormat.temp(snapshot.heroTemp))
-            .font(.system(size: 100, weight: .bold, design: .rounded))
-            .minimumScaleFactor(0.01)
-            .lineLimit(1)
-            .foregroundStyle(Palette.temperature(snapshot.heroTemp))
+        VStack(spacing: 0) {
+            ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
+                .font(.system(size: 13))
+            Text(AccessoryFormat.temp(snapshot.heroTemp))
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .minimumScaleFactor(0.4)
+                .lineLimit(1)
+                .foregroundStyle(.white)
+        }
     }
 
     /// Whether today's low/high are known and ordered, so the bezel gauge can be drawn.
@@ -148,8 +154,8 @@ public struct AuraAccessoryCorner: View {
         return lo < hi
     }
 
-    /// The curved bezel gauge: today's range, hero clamped inside it, temperature-gradient tinted,
-    /// with the low and high as the end labels. Only valid when `hasRange`.
+    /// The curved bezel gauge: today's range, hero clamped inside it, temperature-gradient tinted, with
+    /// the low and high as the end labels — each tinted to its own temperature. Only valid when `hasRange`.
     @ViewBuilder public var cornerGauge: some View {
         if let lo = snapshot.tempMin, let hi = snapshot.tempMax, lo < hi {
             let value = Double(min(max(snapshot.heroTemp ?? lo, lo), hi))
@@ -158,9 +164,9 @@ public struct AuraAccessoryCorner: View {
             } currentValueLabel: {
                 EmptyView()
             } minimumValueLabel: {
-                Text("\(lo)°")
+                Text("\(lo)°").foregroundStyle(Palette.temperature(lo))
             } maximumValueLabel: {
-                Text("\(hi)°")
+                Text("\(hi)°").foregroundStyle(Palette.temperature(hi))
             }
             .tint(Palette.temperatureGradient(min: lo, max: hi))
         }
