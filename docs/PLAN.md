@@ -122,6 +122,13 @@ Lands in Phase 1 (app shell).
 ephemerides. Compute on-device with the NOAA/Meeus solar algorithm (matches OAN to the minute)
 and just show the times. No citation required.
 
+**Widgets & complications:** full spec in `docs/WIDGETS.md`, derived from my two Ultra watch
+faces. Style anchors: Apple Weather (clean/colorful) + new AEMET app (simplicity) + Carrot
+(customizability). **Hard requirement:** Aura replaces my Carrot family subscription, so every
+widget/complication is App-Intent-configurable (location + which metric(s)). Metrics include
+temp gauge with min/max range, hourly strip (icon+temp+precip%), wind rose + bearing, UV gauge,
+precip-probability gauge, sun/daylight-remaining, and avisos banners.
+
 ## Next session (implementation)
 
 Kept separate from this planning session. Start at Phase 0: scaffold `aura-apps` repo, create
