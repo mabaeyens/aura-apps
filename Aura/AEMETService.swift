@@ -34,10 +34,14 @@ enum AEMETService {
         var firstError: String?
         func note(_ error: Error) { if firstError == nil { firstError = message(for: error) } }
 
-        // Locations that need fetching: everything on `force`, otherwise those older than an hour.
+        // Locations that need fetching: everything on `force`, otherwise those older than an hour or
+        // cached by a build before the daily sky/wind fields existed (their days decode with sky == nil,
+        // which is why every day rendered as a generic cloud until the next refresh).
         let stale = force ? locations : locations.filter { location in
             guard let existing = SharedCache.snapshot(forINE: location.ine) else { return true }
-            return Date().timeIntervalSince(existing.updated) >= 3600
+            if Date().timeIntervalSince(existing.updated) >= 3600 { return true }
+            if !existing.days.isEmpty, existing.days.allSatisfy({ $0.sky == nil }) { return true }
+            return false
         }
         guard !stale.isEmpty else { return nil }
 

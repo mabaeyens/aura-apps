@@ -45,6 +45,10 @@ public enum Palette {
     public static let tempRed      = Color(red: 0.90, green: 0.29, blue: 0.24)
     public static let tempPurple   = Color(red: 0.60, green: 0.28, blue: 0.75)
 
+    /// Night moon glyph — a clear cool blue that reads on both a black face and a light complication
+    /// well, rather than the flat pale white multicolour gives.
+    public static let nightMoon    = Color(red: 0.42, green: 0.55, blue: 0.96)
+
     // MARK: Sky condition → gradient
 
     /// Coarse weather category derived from an AEMET `estadoCielo` code (night `n` suffix stripped).

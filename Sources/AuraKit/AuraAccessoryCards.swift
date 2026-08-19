@@ -19,11 +19,10 @@ public struct AuraAccessoryCircular: View {
         self.now = now
     }
 
-    /// Condition glyph resolved to the actual time of day (moon after sunset), rendered in colour so
-    /// it's a yellow sun by day, a pale moon by night, a grey cloud when overcast — not a flat white.
+    /// Condition glyph resolved to the actual time of day — a yellow sun by day, a blue moon after
+    /// sunset, a grey cloud when overcast — not a flat white sun at night.
     private var conditionIcon: some View {
-        Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))
-            .symbolRenderingMode(.multicolor)
+        ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
     }
 
     public var body: some View {
@@ -60,22 +59,26 @@ public struct AuraAccessoryCircular: View {
 /// `.accessoryRectangular`: location + condition, the current temperature (temp-tinted), today's range.
 public struct AuraAccessoryRectangular: View {
     let snapshot: WeatherSnapshot
+    let now: Date
 
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             // Row 1: the condition icon leads the big temperature, with the sky text on the right.
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
-                    .symbolRenderingMode(.multicolor)
+                ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
                     .font(.title3)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(Palette.temperature(snapshot.heroTemp))
                 if let text = snapshot.currentSkyText {
                     Spacer(minLength: 4)
-                    Text(text).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    Text(text).font(.caption2).foregroundStyle(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
                 }
             }
 

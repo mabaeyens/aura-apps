@@ -50,7 +50,7 @@ struct AuraConditionsView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             switch family {
-            case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot)
+            case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot, now: entry.date)
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
                 if AuraAccessoryCorner(snapshot: snapshot).hasRange {

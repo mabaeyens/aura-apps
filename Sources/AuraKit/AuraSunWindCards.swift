@@ -105,48 +105,73 @@ private enum SunFormat {
 
 // MARK: - Wind
 
-/// `.accessoryCircular`: an eight-point wind rose. The petal in the direction the wind is *going*
-/// (a SurOeste wind blows toward the North-East) lights up, tinted by how hard it's blowing, with the
-/// speed in km/h in the centre. AEMET reports the direction the wind comes *from*, so the lit petal is
-/// that bearing turned 180°.
+/// `.accessoryCircular`: a compass wind rose. A light-grey crown of ticks stays legible on any face;
+/// a bright arrowhead points the way the wind is *going* (a SurOeste wind blows toward the North-East),
+/// coloured by strength; the bold speed and the source direction sit in the centre. AEMET reports the
+/// direction the wind comes *from*, so the arrow is that bearing turned 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
 
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
+    private static let radius: CGFloat = 19
+
     public var body: some View {
         ZStack {
+            // Crown: eight uniform light ticks — always readable, independent of the wind.
             ForEach(0..<8, id: \.self) { i in
-                let lit = i == litPetal
                 Capsule()
-                    .fill(lit ? speedColor : Color.secondary.opacity(0.35))
-                    .frame(width: lit ? 5 : 2.5, height: lit ? 11 : 6)
-                    .offset(y: -19)
+                    .fill(Color.primary.opacity(0.30))
+                    .frame(width: 2, height: 5)
+                    .offset(y: -Self.radius - 1)
                     .rotationEffect(.degrees(Double(i) * 45))
             }
+            // Arrowhead in the direction the wind is going, sat on the crown.
+            if let towards = towardsDegrees {
+                WindArrow()
+                    .fill(speedColor)
+                    .frame(width: 10, height: 9)
+                    .offset(y: -Self.radius)
+                    .rotationEffect(.degrees(towards))
+            }
+            // Centre: bold speed, and the source direction (or the unit when direction is unknown).
             VStack(spacing: -1) {
                 Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                    .font(.system(size: 17, weight: .semibold))
-                Text("km/h").font(.system(size: 7)).foregroundStyle(.secondary)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                Text(snapshot.windDirection?.abbreviation ?? "km/h")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
-    /// Index (0 = N, clockwise) of the eight-point petal the wind is blowing toward, or nil if unknown.
-    private var litPetal: Int? {
+    /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.
+    private var towardsDegrees: Double? {
         guard let dir = snapshot.windDirection else { return nil }
-        let towards = (dir.degrees + 180).truncatingRemainder(dividingBy: 360)
-        return Int((towards / 45).rounded()) % 8
+        return (dir.degrees + 180).truncatingRemainder(dividingBy: 360)
     }
 
-    /// Petal colour by wind speed, teal (calm) through to red (gale).
+    /// Arrow colour by wind speed — teal (light) through green and orange to red (gale). No pale
+    /// yellow, which washes out on a black face.
     private var speedColor: Color {
         switch snapshot.windSpeed ?? 0 {
-        case ..<10:    return Palette.tempTeal
-        case 10..<20:  return Palette.tempGreen
-        case 20..<30:  return Palette.tempYellow
+        case ..<15:    return Palette.tempTeal
+        case 15..<30:  return Palette.tempGreen
         case 30..<45:  return Palette.tempOrange
         default:       return Palette.tempRed
         }
+    }
+}
+
+/// A small upward-pointing (outward, once rotated) arrowhead for the wind rose.
+private struct WindArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY - rect.height * 0.3))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
