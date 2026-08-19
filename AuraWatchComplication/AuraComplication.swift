@@ -91,13 +91,8 @@ struct AuraSunView: View {
         if let snapshot = entry.snapshot {
             switch family {
             case .accessoryCorner:
-                if AuraSunCorner(snapshot: snapshot, now: entry.date).hasProgress {
-                    AuraSunCorner(snapshot: snapshot, now: entry.date)
-                        .widgetLabel { AuraSunCorner(snapshot: snapshot, now: entry.date).cornerGauge }
-                } else {
-                    AuraSunCorner(snapshot: snapshot, now: entry.date)
-                        .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
-                }
+                AuraSunCorner(snapshot: snapshot, now: entry.date)
+                    .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
             default: AuraSunCircular(snapshot: snapshot, now: entry.date)
             }
         } else {

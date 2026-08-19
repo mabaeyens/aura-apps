@@ -28,6 +28,14 @@ public enum Palette {
         tempDeepBlue, tempBlue, tempTeal, tempGreen, tempYellow, tempOrange, tempRed, tempPurple,
     ])
 
+    /// The temperature scale sampled across just `[lo, hi]`, so a range bar shows the colours that
+    /// actually apply — e.g. 24°→34° runs yellow→orange→red, not the whole blue→purple palette. One
+    /// stop per degree keeps each colour aligned to its position along the bar.
+    public static func temperatureGradient(min lo: Int, max hi: Int) -> Gradient {
+        guard lo < hi else { return Gradient(colors: [temperature(lo)]) }
+        return Gradient(colors: stride(from: lo, through: hi, by: 1).map { temperature($0) })
+    }
+
     public static let tempDeepBlue = Color(red: 0.16, green: 0.28, blue: 0.78)
     public static let tempBlue     = Color(red: 0.25, green: 0.52, blue: 0.93)
     public static let tempTeal     = Color(red: 0.20, green: 0.74, blue: 0.80)
@@ -122,16 +130,6 @@ public enum Palette {
         case .fog:               return Color(red: 0.60, green: 0.63, blue: 0.66)
         case .unknown:           return tempBlue
         }
-    }
-
-    // MARK: Sun period → gauge tint
-
-    /// The tint for the sunrise/sunset progress gauge: warm amber while the sun is up, cool
-    /// indigo→violet overnight (the "aura" glow of dusk).
-    public static func sunGauge(isDaytime: Bool) -> Gradient {
-        isDaytime
-            ? Gradient(colors: [tempOrange, tempYellow])
-            : Gradient(colors: [tempBlue, tempPurple])
     }
 
     // MARK: Alert level → colour

@@ -55,36 +55,38 @@ public struct AuraAccessoryRectangular: View {
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label {
-                Text(snapshot.localidad).fontWeight(.semibold)
-            } icon: {
+        VStack(alignment: .leading, spacing: 0) {
+            // Row 1: place name, then the condition icon sitting just above the big number.
+            HStack(spacing: 4) {
+                Text(snapshot.localidad)
+                    .font(.caption).fontWeight(.semibold).lineLimit(1)
                 Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
                     .symbolRenderingMode(.multicolor)
+                    .font(.footnote)
             }
-            .lineLimit(1)
 
-            HStack(spacing: 4) {
+            // Row 2: the hero temperature, big and temperature-tinted, with the sky text beside it.
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.title3).fontWeight(.semibold)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(Palette.temperature(snapshot.heroTemp))
                 if let text = snapshot.currentSkyText {
-                    Text(text).foregroundStyle(.secondary).lineLimit(1)
+                    Text(text).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
 
-            HStack(spacing: 8) {
-                HStack(spacing: 3) {
-                    Text(AccessoryFormat.temp(snapshot.tempMax))
-                        .foregroundStyle(Palette.temperature(snapshot.tempMax))
-                    Text(AccessoryFormat.temp(snapshot.tempMin))
-                        .foregroundStyle(Palette.temperature(snapshot.tempMin))
-                }
+            // Row 3: today's range and wind, aligned right so nothing crowds the number.
+            HStack(spacing: 6) {
+                Text(AccessoryFormat.temp(snapshot.tempMax))
+                    .foregroundStyle(Palette.temperature(snapshot.tempMax))
+                Text(AccessoryFormat.temp(snapshot.tempMin))
+                    .foregroundStyle(Palette.temperature(snapshot.tempMin))
                 if let wind = snapshot.windSpeed {
                     Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
                 }
             }
-            .font(.caption)
+            .font(.caption2)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -145,7 +147,7 @@ public struct AuraAccessoryCorner: View {
             } maximumValueLabel: {
                 Text("\(hi)°")
             }
-            .tint(Palette.temperatureGradient)
+            .tint(Palette.temperatureGradient(min: lo, max: hi))
         }
     }
 

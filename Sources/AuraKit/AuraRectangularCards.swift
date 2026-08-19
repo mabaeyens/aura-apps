@@ -20,14 +20,14 @@ public struct AuraRectHours: View {
         } else {
             HStack(spacing: 0) {
                 ForEach(hours) { h in
-                    VStack(spacing: 1) {
+                    VStack(spacing: 3) {
                         Text("\(h.hour)")
-                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .font(.system(size: 14)).foregroundStyle(.secondary)
                         Image(systemName: WeatherIcon.symbol(forSky: h.sky))
                             .symbolRenderingMode(.multicolor)
-                            .font(.footnote)
+                            .font(.title3)
                         Text(h.temp.map { "\($0)°" } ?? "—")
-                            .font(.caption2).fontWeight(.medium)
+                            .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(Palette.temperature(h.temp))
                     }
                     .frame(maxWidth: .infinity)
@@ -53,14 +53,14 @@ public struct AuraRectDays: View {
         } else {
             HStack(spacing: 0) {
                 ForEach(days) { d in
-                    VStack(spacing: 1) {
+                    VStack(spacing: 3) {
                         Text(Self.weekday(d.date))
-                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .font(.system(size: 14)).foregroundStyle(.secondary)
                         Text(d.max.map { "\($0)°" } ?? "—")
-                            .font(.caption).fontWeight(.semibold)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Palette.temperature(d.max))
                         Text(d.min.map { "\($0)°" } ?? "—")
-                            .font(.caption2)
+                            .font(.system(size: 15))
                             .foregroundStyle(Palette.temperature(d.min))
                     }
                     .frame(maxWidth: .infinity)
