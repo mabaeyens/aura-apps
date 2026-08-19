@@ -11,8 +11,8 @@
 		AE00000000000000000000DB /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000DA /* AuraKit */; };
 		AE00000000000000000000DC /* AuraWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000D2 /* AuraWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AE00000000000000000000EB /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000EA /* AuraKit */; };
-		AE00000000000000000000F7 /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000F6 /* AuraKit */; };
 		AE00000000000000000000ED /* AuraWatchComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000F1 /* AuraWatchComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AE00000000000000000000F7 /* AuraKit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000000F6 /* AuraKit */; };
 		AE00000000000000000000FC /* AuraWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AE00000000000000000000E5 /* AuraWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -83,6 +83,16 @@
 		AE00000000000000000000F1 /* AuraWatchComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AuraWatchComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AE00000000000000000000E0 /* Exceptions for "AuraWidgets" folder in "AuraWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AE00000000000000000000A9 /* Aura */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -92,52 +102,22 @@
 		AE00000000000000000000D6 /* AuraWidgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				AE00000000000000000000E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				AE00000000000000000000E0 /* Exceptions for "AuraWidgets" folder in "AuraWidgetsExtension" target */,
 			);
 			path = AuraWidgets;
 			sourceTree = "<group>";
 		};
 		AE00000000000000000000E6 /* AuraWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AE00000000000000000000EC /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
 			path = AuraWatch;
 			sourceTree = "<group>";
 		};
 		AE00000000000000000000F2 /* AuraWatchComplication */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AE00000000000000000000F8 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
-			);
 			path = AuraWatchComplication;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		AE00000000000000000000E0 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
-		};
-		AE00000000000000000000EC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = AE00000000000000000000E1 /* AuraWatch */;
-		};
-		AE00000000000000000000F8 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = AE00000000000000000000EE /* AuraWatchComplication */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AE00000000000000000000A7 /* Frameworks */ = {
@@ -503,8 +483,8 @@
 				CODE_SIGN_ENTITLEMENTS = Aura/Aura.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_LANGUAGE = es;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_LANGUAGE = es;
 				DEVELOPMENT_TEAM = HTVGRBVW58;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -538,8 +518,8 @@
 				CODE_SIGN_ENTITLEMENTS = Aura/Aura.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_LANGUAGE = es;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_LANGUAGE = es;
 				DEVELOPMENT_TEAM = HTVGRBVW58;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -572,15 +552,18 @@
 				CODE_SIGN_ENTITLEMENTS = AuraWidgets/AuraWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_LANGUAGE = es;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_LANGUAGE = es;
 				DEVELOPMENT_TEAM = HTVGRBVW58;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AuraWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Aura;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.Widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -602,15 +585,18 @@
 				CODE_SIGN_ENTITLEMENTS = AuraWidgets/AuraWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_LANGUAGE = es;
 				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_LANGUAGE = es;
 				DEVELOPMENT_TEAM = HTVGRBVW58;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AuraWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Aura;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.Widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -694,9 +680,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AuraWatchComplication/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Aura;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -721,9 +710,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AuraWatchComplication/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Aura;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks @executable_path/../../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mab.Aura.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
