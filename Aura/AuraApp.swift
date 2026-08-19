@@ -18,9 +18,8 @@ struct AuraApp: App {
                 // Cache every saved location at launch so widgets have data whichever one is picked.
                 .task { await AEMETService.refreshAllForWidgets(store.favorites) }
                 .onChange(of: scenePhase) { _, phase in
+                    // Refresh widget data whenever the app comes to the foreground.
                     if phase == .active {
-                        // Match the app icon to the season, then refresh widget data.
-                        AppIconManager.updateForSeason()
                         Task { await AEMETService.refreshAllForWidgets(store.favorites) }
                     }
                 }
