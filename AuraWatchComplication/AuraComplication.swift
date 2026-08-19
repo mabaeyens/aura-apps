@@ -53,8 +53,13 @@ struct AuraConditionsView: View {
             case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot)
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
-                AuraAccessoryCorner(snapshot: snapshot)
-                    .widgetLabel(AuraAccessoryCorner(snapshot: snapshot).cornerLabel)
+                if AuraAccessoryCorner(snapshot: snapshot).hasRange {
+                    AuraAccessoryCorner(snapshot: snapshot)
+                        .widgetLabel { AuraAccessoryCorner(snapshot: snapshot).cornerGauge }
+                } else {
+                    AuraAccessoryCorner(snapshot: snapshot)
+                        .widgetLabel(AuraAccessoryCorner(snapshot: snapshot).cornerLabel)
+                }
             default: AuraAccessoryCircular(snapshot: snapshot)
             }
         } else {
@@ -86,8 +91,13 @@ struct AuraSunView: View {
         if let snapshot = entry.snapshot {
             switch family {
             case .accessoryCorner:
-                AuraSunCorner(snapshot: snapshot, now: entry.date)
-                    .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
+                if AuraSunCorner(snapshot: snapshot, now: entry.date).hasProgress {
+                    AuraSunCorner(snapshot: snapshot, now: entry.date)
+                        .widgetLabel { AuraSunCorner(snapshot: snapshot, now: entry.date).cornerGauge }
+                } else {
+                    AuraSunCorner(snapshot: snapshot, now: entry.date)
+                        .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
+                }
             default: AuraSunCircular(snapshot: snapshot, now: entry.date)
             }
         } else {

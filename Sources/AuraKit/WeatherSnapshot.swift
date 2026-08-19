@@ -105,6 +105,38 @@ public extension WeatherSnapshot {
         if let sr = sunrise { return .sunrise(sr) }
         return sunset.map { .sunset($0) }
     }
+
+    /// Progress through the current sun period, for the sunrise/sunset gauge. `fractionRemaining`
+    /// runs from 1 at the period's start to 0 at its end (so the bar depletes toward the event);
+    /// `isDaytime` picks the warm-day vs cool-night tint; `event` is the event the period ends on.
+    /// Sun times barely move day to day, so ±24 h stands in for the adjacent day's sunrise/sunset.
+    struct SunProgress: Sendable, Hashable {
+        public let fractionRemaining: Double   // 0…1
+        public let isDaytime: Bool
+        public let event: SunEvent
+    }
+
+    func sunProgress(now: Date = Date()) -> SunProgress? {
+        guard let sr = sunrise, let ss = sunset else { return nil }
+        let day: TimeInterval = 24 * 3600
+        if now < sr {                                   // before dawn — night, ends at sunrise
+            return Self.progress(from: ss.addingTimeInterval(-day), to: sr, now: now,
+                                 isDay: false, event: .sunrise(sr))
+        } else if now < ss {                            // daytime — ends at sunset
+            return Self.progress(from: sr, to: ss, now: now, isDay: true, event: .sunset(ss))
+        } else {                                        // after dusk — night, ends at tomorrow's sunrise
+            let next = sr.addingTimeInterval(day)
+            return Self.progress(from: ss, to: next, now: now, isDay: false, event: .sunrise(next))
+        }
+    }
+
+    private static func progress(from start: Date, to end: Date, now: Date,
+                                 isDay: Bool, event: SunEvent) -> SunProgress? {
+        let span = end.timeIntervalSince(start)
+        guard span > 0 else { return nil }
+        let remaining = end.timeIntervalSince(now) / span
+        return SunProgress(fractionRemaining: min(max(remaining, 0), 1), isDaytime: isDay, event: event)
+    }
 }
 
 /// One hour of the hourly strip: the hour of day, its forecast temperature, sky code, and the

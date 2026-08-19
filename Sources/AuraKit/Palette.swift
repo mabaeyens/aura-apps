@@ -124,6 +124,16 @@ public enum Palette {
         }
     }
 
+    // MARK: Sun period → gauge tint
+
+    /// The tint for the sunrise/sunset progress gauge: warm amber while the sun is up, cool
+    /// indigo→violet overnight (the "aura" glow of dusk).
+    public static func sunGauge(isDaytime: Bool) -> Gradient {
+        isDaytime
+            ? Gradient(colors: [tempOrange, tempYellow])
+            : Gradient(colors: [tempBlue, tempPurple])
+    }
+
     // MARK: Alert level → colour
 
     /// The colour for an avisos severity level (verde/amarillo/naranja/rojo).

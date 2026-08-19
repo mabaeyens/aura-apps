@@ -101,20 +101,46 @@ public struct AuraAccessoryInline: View {
 
 // MARK: - Corner (watchOS)
 
-/// `.accessoryCorner` (Apple Watch): the condition icon tucked in a screen corner, with the hero
-/// temperature as the curved bezel label (`cornerLabel`). The complication extension wires the label.
+/// `.accessoryCorner` (Apple Watch): the hero temperature big in the corner, with the day's range as
+/// a temperature-gradient gauge curving along the bezel (Carrot-style) — hi/lo at its ends. The
+/// complication extension wraps `cornerGauge` in `.widgetLabel`; when the range is unknown it falls
+/// back to `cornerLabel` (plain text). Making the number the hero fixes the previously tiny icon.
 public struct AuraAccessoryCorner: View {
     let snapshot: WeatherSnapshot
 
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
-            .symbolRenderingMode(.multicolor)
-            .font(.title2)
+        Text(AccessoryFormat.temp(snapshot.heroTemp))
+            .font(.system(.title2, design: .rounded).weight(.semibold))
+            .foregroundStyle(Palette.temperature(snapshot.heroTemp))
     }
 
-    /// The curved label the extension wraps this in — the hero temperature.
+    /// Whether today's low/high are known and ordered, so the bezel gauge can be drawn.
+    public var hasRange: Bool {
+        guard let lo = snapshot.tempMin, let hi = snapshot.tempMax else { return false }
+        return lo < hi
+    }
+
+    /// The curved bezel gauge: today's range, hero clamped inside it, temperature-gradient tinted,
+    /// with the low and high as the end labels. Only valid when `hasRange`.
+    @ViewBuilder public var cornerGauge: some View {
+        if let lo = snapshot.tempMin, let hi = snapshot.tempMax, lo < hi {
+            let value = Double(min(max(snapshot.heroTemp ?? lo, lo), hi))
+            Gauge(value: value, in: Double(lo)...Double(hi)) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            } minimumValueLabel: {
+                Text("\(lo)°")
+            } maximumValueLabel: {
+                Text("\(hi)°")
+            }
+            .tint(Palette.temperatureGradient)
+        }
+    }
+
+    /// Fallback curved label when the range is unknown — the hero temperature.
     public var cornerLabel: String { AccessoryFormat.temp(snapshot.heroTemp) }
 }
 

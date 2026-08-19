@@ -7,8 +7,9 @@ import SwiftUI
 
 // MARK: - Sunrise / Sunset
 
-/// `.accessoryCircular`: the next sun event — its icon and time. At dawn it shows sunrise, during the
-/// day sunset, after dark the next sunrise.
+/// `.accessoryCircular`: a ring that depletes toward the next sun event — full at the start of the
+/// current daylight (or night) period, empty at its end — the sun/moon icon in the middle. Warm
+/// amber by day, cool indigo overnight. Falls back to icon + time when sun times are unknown.
 public struct AuraSunCircular: View {
     let snapshot: WeatherSnapshot
     let now: Date
@@ -19,21 +20,31 @@ public struct AuraSunCircular: View {
     }
 
     public var body: some View {
-        VStack(spacing: 1) {
-            Image(systemName: SunFormat.icon(snapshot.nextSunEvent(now: now)))
-                .symbolRenderingMode(.multicolor)
-                .font(.title3)
-            if let date = SunFormat.date(snapshot.nextSunEvent(now: now)) {
-                Text(date, style: .time)
+        let event = snapshot.nextSunEvent(now: now)
+        if let progress = snapshot.sunProgress(now: now) {
+            Gauge(value: progress.fractionRemaining) {
+                EmptyView()
+            } currentValueLabel: {
+                Image(systemName: SunFormat.icon(event))
+                    .symbolRenderingMode(.multicolor)
+            }
+            .gaugeStyle(.accessoryCircular)
+            .tint(Palette.sunGauge(isDaytime: progress.isDaytime))
+        } else {
+            VStack(spacing: 1) {
+                Image(systemName: SunFormat.icon(event))
+                    .symbolRenderingMode(.multicolor)
+                    .font(.title3)
+                Text(SunFormat.date(event).map { SunFormat.hhmm($0) } ?? "—")
                     .font(.caption).fontWeight(.semibold)
-            } else {
-                Text("—").font(.caption)
             }
         }
     }
 }
 
-/// `.accessoryCorner` (Apple Watch): the sun icon in the corner, its time as the curved bezel label.
+/// `.accessoryCorner` (Apple Watch): the sun/moon icon in the corner, with a bezel gauge that
+/// depletes toward the next event (warm by day, cool by night). Falls back to the event time as a
+/// plain curved label when sun times are unknown.
 public struct AuraSunCorner: View {
     let snapshot: WeatherSnapshot
     let now: Date
@@ -49,7 +60,19 @@ public struct AuraSunCorner: View {
             .font(.title2)
     }
 
-    /// The curved label: the event time, e.g. "21:06".
+    /// Whether the depleting bezel gauge can be drawn (sun times known).
+    public var hasProgress: Bool { snapshot.sunProgress(now: now) != nil }
+
+    /// The bezel gauge: fraction of the current period remaining, day/night tinted. Only valid when
+    /// `hasProgress`.
+    @ViewBuilder public var cornerGauge: some View {
+        if let progress = snapshot.sunProgress(now: now) {
+            Gauge(value: progress.fractionRemaining) { EmptyView() }
+                .tint(Palette.sunGauge(isDaytime: progress.isDaytime))
+        }
+    }
+
+    /// Fallback curved label: the event time, e.g. "21:06".
     public var cornerLabel: String {
         SunFormat.date(snapshot.nextSunEvent(now: now)).map(SunFormat.hhmm) ?? "—"
     }
