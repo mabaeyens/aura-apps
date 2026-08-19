@@ -1,22 +1,22 @@
 import AuraKit
 import SwiftUI
-import WidgetKit
 
 /// "Hoy" — the numeric daily forecast for the selected location, plus locally computed
-/// sunrise/sunset. This is the screen that proves clean AEMET data reaches the UI.
+/// sunrise/sunset. It renders straight from the shared App Group cache: it asks the one coalesced
+/// `AEMETService.refreshAllForWidgets` to fill the cache, then reads the snapshot — it never calls
+/// AEMET directly, so it can't duplicate the launch refresh's requests.
 struct TodayView: View {
     @EnvironmentObject private var store: LocationStore
 
-    @State private var forecast: MunicipioForecast?
     @State private var snapshot: WeatherSnapshot?
     @State private var isLoading = false
     @State private var errorMessage: String?
-    /// Which location the on-screen `forecast` belongs to, and when it was fetched — so a tab
-    /// re-appearance or app foreground doesn't refetch fresh data and burn through AEMET's rate limit.
+    /// Which location `snapshot` belongs to, and when it was read — so a tab re-appearance or app
+    /// foreground doesn't trigger a refresh when the on-screen data is already recent.
     @State private var loadedINE: String?
     @State private var loadedAt: Date?
 
-    /// AEMET updates municipal forecasts only a few times a day; don't re-fetch the same location
+    /// AEMET updates municipal forecasts only a few times a day; don't refresh the same location
     /// more often than this except on an explicit pull-to-refresh.
     private static let minInterval: TimeInterval = 15 * 60
 
@@ -69,10 +69,10 @@ struct TodayView: View {
                 SunTimesRow(location: location)
             }
 
-            if let forecast {
+            if let snapshot, !snapshot.days.isEmpty {
                 Section("Predicción diaria") {
-                    ForEach(forecast.prediccion.dia.prefix(5), id: \.fecha) { dia in
-                        DayRow(dia: dia)
+                    ForEach(snapshot.days) { day in
+                        DayRow(day: day)
                     }
                 }
             } else if isLoading {
@@ -92,43 +92,31 @@ struct TodayView: View {
 
     private func load(force: Bool) async {
         guard let location = store.selected else { return }
-        // Throttle: if we already show this location's forecast and it's recent, don't hit AEMET
-        // again just because the view re-appeared. Pull-to-refresh (force) always fetches.
-        if !force, forecast != nil, loadedINE == location.ine,
+        // Throttle: if we already show this location's data and it's recent, don't trigger a refresh
+        // just because the view re-appeared. Pull-to-refresh (force) always refreshes.
+        if !force, snapshot?.ine == location.ine, loadedINE == location.ine,
            let at = loadedAt, Date().timeIntervalSince(at) < Self.minInterval {
             return
         }
-        guard let client = AEMETService.client() else {
+        guard store.apiKeyPresent else {
             errorMessage = nil // handled by the key banner
             return
         }
         isLoading = true
         errorMessage = nil
-        do {
-            let fetched = try await client.municipioDiaria(location.ine)
-            forecast = fetched
-            // Hourly and the observed temperature are best-effort: the snapshot still works
-            // (min/max, sun) without them.
-            let hourly = try? await client.municipioHoraria(location.ine)
-            let observed = try? await client.observacionTodas().nearest(to: location)
-            let alert = await AEMETService.topAlert(for: location, using: client)
-            var bulletin: ForecastBulletin?
-            if let comunidad = location.comunidad {
-                bulletin = try? await client.comunidadBulletin(comunidad)
-            }
-            // Feed the App Group cache the widgets read, then ask them to re-render.
-            let snapshot = WeatherSnapshot.make(location: location, daily: fetched, hourly: hourly,
-                                                observed: observed, alert: alert, bulletin: bulletin,
-                                                timeZone: location.timeZone)
-            self.snapshot = snapshot
-            SharedCache.upsert(snapshot)
-            WidgetCenter.shared.reloadAllTimelines()
-            // Mirror the on-screen location to the paired Watch's complication.
-            WatchSync.shared.send(snapshot)
+        // The one coalesced refresh fills the shared cache (fetching every favourite once, plus a
+        // single national observations call); read this location's snapshot back out of it.
+        let refreshError = await AEMETService.refreshAllForWidgets(store.favorites, force: force)
+        if let snap = SharedCache.snapshot(forINE: location.ine) {
+            snapshot = snap
             loadedINE = location.ine
             loadedAt = Date()
-        } catch {
-            errorMessage = AEMETService.message(for: error)
+            // Mirror the on-screen location to the paired Watch's complication.
+            WatchSync.shared.send(snap)
+            errorMessage = nil
+        } else {
+            // Nothing cached yet and the refresh couldn't fill it — surface why, if we know.
+            errorMessage = refreshError ?? "No se pudieron obtener los datos."
         }
         isLoading = false
     }
@@ -223,17 +211,18 @@ private struct SunTimesRow: View {
     }
 }
 
-/// One day of the daily forecast: date, min/max temperature, humidity range.
+/// One day of the daily forecast: date, min/max temperature, peak humidity. Renders from the cached
+/// `DaySnapshot`.
 private struct DayRow: View {
-    let dia: MunicipioForecast.Dia
+    let day: DaySnapshot
 
     var body: some View {
         HStack {
-            Text(Self.dayLabel(dia.fecha))
+            Text(Self.dayLabel(day.date))
                 .frame(width: 96, alignment: .leading)
             Spacer()
-            if let hum = dia.humedadRelativa, let max = hum.maxima {
-                Label("\(max)%", systemImage: "humidity")
+            if let hum = day.humidityMax {
+                Label("\(hum)%", systemImage: "humidity")
                     .font(.subheadline)
                     .foregroundStyle(.blue)
                 Spacer().frame(width: 12)
@@ -244,24 +233,14 @@ private struct DayRow: View {
     }
 
     private var minMax: some View {
-        let min = dia.temperatura?.minima
-        let max = dia.temperatura?.maxima
-        return HStack(spacing: 4) {
-            Text(min.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(min))
+        HStack(spacing: 4) {
+            Text(day.min.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(day.min))
             Text("/").foregroundStyle(.tertiary)
-            Text(max.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(max))
+            Text(day.max.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(day.max))
         }
     }
 
-    private static func dayLabel(_ fecha: String) -> String {
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "es_ES")
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        guard let date = parser.date(from: fecha) ?? {
-            parser.dateFormat = "yyyy-MM-dd"
-            return parser.date(from: fecha)
-        }() else { return fecha }
-
+    private static func dayLabel(_ date: Date) -> String {
         let out = DateFormatter()
         out.locale = Locale(identifier: "es_ES")
         out.dateFormat = "EEE d MMM"

@@ -125,18 +125,22 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
-/// One day of the multi-day forecast, as a widget needs it.
+/// One day of the multi-day forecast, as a widget or the "Hoy" list needs it.
 public struct DaySnapshot: Codable, Sendable, Hashable, Identifiable {
     public let date: Date
     public let min: Int?
     public let max: Int?
+    /// Peak relative humidity for the day, %. Lets "Hoy" render the daily list straight from the
+    /// cached snapshot instead of re-fetching the forecast.
+    public let humidityMax: Int?
 
     public var id: Date { date }
 
-    public init(date: Date, min: Int?, max: Int?) {
+    public init(date: Date, min: Int?, max: Int?, humidityMax: Int? = nil) {
         self.date = date
         self.min = min
         self.max = max
+        self.humidityMax = humidityMax
     }
 }
 
@@ -156,7 +160,8 @@ public extension WeatherSnapshot {
         let sun = SolarTimes(date: now, latitude: location.latitude, longitude: location.longitude)
         let days = daily.prediccion.dia.prefix(5).compactMap { dia -> DaySnapshot? in
             guard let date = Self.parseDay(dia.fecha) else { return nil }
-            return DaySnapshot(date: date, min: dia.temperatura?.minima, max: dia.temperatura?.maxima)
+            return DaySnapshot(date: date, min: dia.temperatura?.minima, max: dia.temperatura?.maxima,
+                               humidityMax: dia.humedadRelativa?.maxima)
         }
 
         let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }

@@ -2,8 +2,15 @@ import AuraKit
 import Foundation
 import WidgetKit
 
-/// Bridges the app to `AEMETClient`: builds a client from the stored key and turns
-/// low-level client errors into Spanish, user-facing messages.
+/// Bridges the app to `AEMETClient`: builds a client from the stored key, runs the one shared refresh
+/// that feeds the App Group cache, and turns low-level client errors into Spanish messages.
+///
+/// There is a single fetch path — `refreshAllForWidgets` — and it is *coalesced*: if a refresh is
+/// already running, every other caller (the launch task, the scene-active handler, the "Hoy" screen)
+/// awaits that same run instead of starting its own. That's what keeps a cold rebuild from firing two
+/// or three overlapping bursts of AEMET requests and tripping the rate limit. AEMET has no bulk
+/// municipal-forecast endpoint, so each location is still its own call; the national observations,
+/// though, are fetched once and sliced locally.
 enum AEMETService {
     /// A client built from the Keychain key, or nil if no key has been entered yet.
     static func client() -> AEMETClient? {
@@ -11,34 +18,54 @@ enum AEMETService {
         return AEMETClient(apiKey: key)
     }
 
-    /// Fetch and cache a snapshot for every saved location so any widget-selected location has
-    /// data, then reload the widgets. Locations cached within the last hour are skipped to stay
-    /// well under AEMET's rate limit; a single failure never aborts the rest.
-    static func refreshAllForWidgets(_ locations: [Location]) async {
-        guard let client = client() else { return }
-        // One national observation fetch serves every location; nearest station is resolved locally.
-        let stale = locations.filter { location in
+    private static let refreshGate = RefreshGate()
+
+    /// Refresh and cache a snapshot for every saved location, then reload widgets and push the primary
+    /// to the Watch. Coalesced (see the type note) and, unless `force`, skips locations cached within
+    /// the last hour to stay well under AEMET's rate limit. Returns a Spanish error message if the
+    /// refresh hit a problem worth showing (e.g. rate-limited, offline), else nil.
+    @discardableResult
+    static func refreshAllForWidgets(_ locations: [Location], force: Bool = false) async -> String? {
+        await refreshGate.run { await performRefresh(locations, force: force) }
+    }
+
+    private static func performRefresh(_ locations: [Location], force: Bool) async -> String? {
+        guard let client = client() else { return nil }
+        var firstError: String?
+        func note(_ error: Error) { if firstError == nil { firstError = message(for: error) } }
+
+        // Locations that need fetching: everything on `force`, otherwise those older than an hour.
+        let stale = force ? locations : locations.filter { location in
             guard let existing = SharedCache.snapshot(forINE: location.ine) else { return true }
             return Date().timeIntervalSince(existing.updated) >= 3600
         }
-        guard !stale.isEmpty else { return }
-        let observations = (try? await client.observacionTodas()) ?? []
+        guard !stale.isEmpty else { return nil }
+
+        // One national observation fetch serves every location; nearest station is resolved locally.
+        var observations: [StationObservation] = []
+        do { observations = try await client.observacionTodas() } catch { note(error) }
+
         // Fetch each distinct avisos area at most once, then resolve per location by province.
         let areas = Set(stale.compactMap { AvisoArea.forProvincia($0.provinciaCode) })
         var alertsByArea: [String: [WeatherAlert]] = [:]
         for area in areas {
-            alertsByArea[area] = (try? await client.avisos(area: area)) ?? []
+            do { alertsByArea[area] = try await client.avisos(area: area) }
+            catch { note(error); alertsByArea[area] = [] }
         }
+
         // The Watch shows the primary location, so fetch its community bulletin once and attach it
         // there (only that snapshot carries the narrative — it's what the Watch renders).
         let primary = locations.first
         var primaryBulletin: ForecastBulletin?
         if let primary, stale.contains(where: { $0.ine == primary.ine }), let comunidad = primary.comunidad {
-            primaryBulletin = try? await client.comunidadBulletin(comunidad)
+            do { primaryBulletin = try await client.comunidadBulletin(comunidad) } catch { note(error) }
         }
+
         var didUpdate = false
         for location in stale {
-            guard let daily = try? await client.municipioDiaria(location.ine) else { continue }
+            let daily: MunicipioForecast
+            do { daily = try await client.municipioDiaria(location.ine) }
+            catch { note(error); continue }
             let hourly = try? await client.municipioHoraria(location.ine)
             let observed = StationObservation.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
@@ -52,21 +79,15 @@ enum AEMETService {
                                                     timeZone: location.timeZone))
             didUpdate = true
         }
+
         if didUpdate {
             WidgetCenter.shared.reloadAllTimelines()
             // Keep the Watch fed even if the user never opens "Hoy": push the primary location.
-            if let primary = locations.first,
-               let snapshot = SharedCache.snapshot(forINE: primary.ine) {
+            if let primary, let snapshot = SharedCache.snapshot(forINE: primary.ine) {
                 WatchSync.shared.send(snapshot)
             }
         }
-    }
-
-    /// The most severe active warning for one location's province, or nil. Best-effort.
-    static func topAlert(for location: Location, using client: AEMETClient) async -> WeatherAlert? {
-        guard let area = AvisoArea.forProvincia(location.provinciaCode),
-              let alerts = try? await client.avisos(area: area) else { return nil }
-        return alerts.topActive(forProvince: location.provinciaCode)
+        return firstError
     }
 
     /// Spanish message for any error surfaced while talking to AEMET.
@@ -87,5 +108,20 @@ enum AEMETService {
         default:
             return "No se pudo obtener la información."
         }
+    }
+}
+
+/// Serializes refreshes: the first caller runs the work; concurrent callers await that same run and
+/// share its result, so overlapping triggers never fan out into duplicate AEMET requests.
+private actor RefreshGate {
+    private var current: Task<String?, Never>?
+
+    func run(_ operation: @Sendable @escaping () async -> String?) async -> String? {
+        if let current { return await current.value }
+        let task = Task { await operation() }
+        current = task
+        let result = await task.value
+        current = nil
+        return result
     }
 }
