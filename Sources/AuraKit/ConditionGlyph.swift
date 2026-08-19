@@ -17,8 +17,10 @@ public struct ConditionGlyph: View {
     public var body: some View {
         let name = WeatherIcon.symbol(forSky: sky, isNight: isNight)
         if isNight, name == "moon.stars.fill" {
-            // A single cool-blue tint — unambiguously the moon, and visible on any background.
-            Image(systemName: name).foregroundStyle(Palette.nightMoon)
+            // A blue moon with white stars — unambiguously night, and visible on any background.
+            Image(systemName: name)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(Palette.nightMoon, .white)
         } else {
             Image(systemName: name).symbolRenderingMode(.multicolor)
         }
