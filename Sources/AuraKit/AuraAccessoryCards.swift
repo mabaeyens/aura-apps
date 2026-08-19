@@ -92,6 +92,26 @@ public struct AuraAccessoryInline: View {
     }
 }
 
+// MARK: - Corner (watchOS)
+
+/// `.accessoryCorner` (Apple Watch): the current temperature tucked in a screen corner. The
+/// complication extension pairs this with a curved `.widgetLabel` (see `cornerLabel`).
+public struct AuraAccessoryCorner: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    public var body: some View {
+        Text(AccessoryFormat.temp(snapshot.heroTemp))
+            .font(.title3).fontWeight(.semibold)
+    }
+
+    /// Text for the curved label the extension wraps this in — the condition, else today's range.
+    public var cornerLabel: String {
+        snapshot.currentSkyText ?? AccessoryFormat.range(snapshot)
+    }
+}
+
 // MARK: - Empty state
 
 /// Shown on the Lock Screen before the app has cached anything.

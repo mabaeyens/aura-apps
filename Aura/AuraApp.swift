@@ -1,9 +1,15 @@
+import AuraKit
 import SwiftUI
 
 @main
 struct AuraApp: App {
     @StateObject private var store = LocationStore()
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        // Open the WatchConnectivity session so we can push snapshots to the paired Watch.
+        WatchSync.shared.activate()
+    }
 
     var body: some Scene {
         WindowGroup {

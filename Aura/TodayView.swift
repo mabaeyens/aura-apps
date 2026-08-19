@@ -83,10 +83,13 @@ struct TodayView: View {
             let observed = try? await client.observacionTodas().nearest(to: location)
             let alert = await AEMETService.topAlert(for: location, using: client)
             // Feed the App Group cache the widgets read, then ask them to re-render.
-            SharedCache.upsert(WeatherSnapshot.make(location: location, daily: fetched, hourly: hourly,
-                                                    observed: observed, alert: alert,
-                                                    timeZone: location.timeZone))
+            let snapshot = WeatherSnapshot.make(location: location, daily: fetched, hourly: hourly,
+                                                observed: observed, alert: alert,
+                                                timeZone: location.timeZone)
+            SharedCache.upsert(snapshot)
             WidgetCenter.shared.reloadAllTimelines()
+            // Mirror the on-screen location to the paired Watch's complication.
+            WatchSync.shared.send(snapshot)
         } catch {
             errorMessage = AEMETService.message(for: error)
         }

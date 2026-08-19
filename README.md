@@ -30,8 +30,10 @@ A thin shell over `AuraKit`, Spanish-only, four tabs:
 The app is the fetch hub: it caches every saved location's `WeatherSnapshot` to the App Group and
 mirrors the favourites list so the **widgets** can render any of them. Home-screen (small / medium /
 large) and Lock Screen (circular / rectangular / inline) families are supported, and each widget
-instance is **configurable to a specific location** via App Intents. Open `Aura.xcodeproj`, or build
-from the command line:
+instance is **configurable to a specific location** via App Intents. An Apple Watch app and
+complication share the same layouts — the code is in `AuraWatch/` and `AuraWatchComplication/`; see
+[`docs/WATCHOS.md`](docs/WATCHOS.md) for adding the two Watch targets. Open `Aura.xcodeproj`, or
+build from the command line:
 
 ```bash
 xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
@@ -61,6 +63,10 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
   widget extension reads them. No backend — the device is the hub.
 - **`SharedLocations`** — the favourites list mirrored to the same App Group, so the widget's
   configuration picker lists exactly the user's saved locations.
+- **`WatchSync`** — the iPhone↔Apple Watch bridge (WatchConnectivity): the phone pushes the current
+  snapshot, the Watch caches it for its complication. Guarded so the package still builds on macOS.
+- **`AuraAccessoryCircular/Rectangular/Inline/Corner`** — the Lock Screen and Watch complication
+  layouts, shared so every small surface renders identical code.
 - **`WeatherIcon`** — maps AEMET `estadoCielo` codes to SF Symbols, honouring the `n` night suffix.
 - **`StationObservation`** — decodes `/observacion/convencional/todas` and resolves the nearest
   recent station to a location (haversine, within 3h and 35km) for a real observed temperature.
