@@ -8,6 +8,7 @@ struct TodayView: View {
     @EnvironmentObject private var store: LocationStore
 
     @State private var forecast: MunicipioForecast?
+    @State private var snapshot: WeatherSnapshot?
     @State private var isLoading = false
     @State private var errorMessage: String?
     /// Which location the on-screen `forecast` belongs to, and when it was fetched — so a tab
@@ -46,6 +47,21 @@ struct TodayView: View {
                     Label("Añade tu clave de AEMET en Ajustes para ver los datos.",
                           systemImage: "key")
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if let snapshot {
+                Section {
+                    CurrentConditionsHeader(snapshot: snapshot)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
+                if let alert = snapshot.alert {
+                    Section {
+                        AlertBanner(alert: alert)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
                 }
             }
 
@@ -104,6 +120,7 @@ struct TodayView: View {
             let snapshot = WeatherSnapshot.make(location: location, daily: fetched, hourly: hourly,
                                                 observed: observed, alert: alert, bulletin: bulletin,
                                                 timeZone: location.timeZone)
+            self.snapshot = snapshot
             SharedCache.upsert(snapshot)
             WidgetCenter.shared.reloadAllTimelines()
             // Mirror the on-screen location to the paired Watch's complication.
@@ -114,6 +131,63 @@ struct TodayView: View {
             errorMessage = AEMETService.message(for: error)
         }
         isLoading = false
+    }
+}
+
+/// The current conditions at a glance: condition icon, temperature-tinted hero number, sky text,
+/// and today's Máx/Mín — over a soft sky-gradient card. Aura's splash of colour on the phone.
+private struct CurrentConditionsHeader: View {
+    let snapshot: WeatherSnapshot
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+                .symbolRenderingMode(.multicolor)
+                .font(.system(size: 40))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
+                    .font(.system(size: 46, weight: .bold, design: .rounded))
+                    .foregroundStyle(Palette.temperature(snapshot.heroTemp))
+                if let sky = snapshot.currentSkyText {
+                    Text(sky).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("Máx \(fmt(snapshot.tempMax))")
+                    .foregroundStyle(Palette.temperature(snapshot.tempMax))
+                Text("Mín \(fmt(snapshot.tempMin))")
+                    .foregroundStyle(Palette.temperature(snapshot.tempMin))
+                if snapshot.heroIsObserved, let station = snapshot.observedStation {
+                    Text("Observado · \(station)")
+                        .font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                }
+            }
+            .font(.subheadline.weight(.medium))
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Palette.skyGradient(forCode: snapshot.currentSky).opacity(0.5),
+                    in: RoundedRectangle(cornerRadius: 18))
+        .padding(.vertical, 4)
+    }
+
+    private func fmt(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—" }
+}
+
+/// A tinted avisos banner matching AEMET's warning level colour.
+private struct AlertBanner: View {
+    let alert: WeatherAlert
+
+    var body: some View {
+        Label(alert.phenomenon ?? alert.event, systemImage: "exclamationmark.triangle.fill")
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(Palette.alert(alert.level))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Palette.alert(alert.level).opacity(0.16),
+                        in: RoundedRectangle(cornerRadius: 14))
+            .padding(.vertical, 4)
     }
 }
 
@@ -164,15 +238,19 @@ private struct DayRow: View {
                     .foregroundStyle(.blue)
                 Spacer().frame(width: 12)
             }
-            Text(temperatureText)
+            minMax
                 .font(.headline.monospacedDigit())
         }
     }
 
-    private var temperatureText: String {
-        let min = dia.temperatura?.minima.map { "\($0)°" } ?? "—"
-        let max = dia.temperatura?.maxima.map { "\($0)°" } ?? "—"
-        return "\(min) / \(max)"
+    private var minMax: some View {
+        let min = dia.temperatura?.minima
+        let max = dia.temperatura?.maxima
+        return HStack(spacing: 4) {
+            Text(min.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(min))
+            Text("/").foregroundStyle(.tertiary)
+            Text(max.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(max))
+        }
     }
 
     private static func dayLabel(_ fecha: String) -> String {
