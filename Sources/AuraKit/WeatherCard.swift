@@ -1,14 +1,18 @@
-import AuraKit
 import SwiftUI
-import WidgetKit
+
+// These SwiftUI cards live in AuraKit so the app and the widget extension render from identical
+// code (per the plan). They take a plain `WeatherSnapshot` and know nothing about WidgetKit; the
+// extension wraps them in the widget families, and the app can preview them directly.
 
 // MARK: - Small
 
 /// systemSmall: location, today's high as the hero, low, and next sun event.
-struct AuraCardSmall: View {
+public struct AuraCardSmall: View {
     let snapshot: WeatherSnapshot
 
-    var body: some View {
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(snapshot.localidad)
                 .font(.caption).fontWeight(.medium)
@@ -36,10 +40,12 @@ struct AuraCardSmall: View {
 // MARK: - Medium
 
 /// systemMedium: hero on the left, today's details stacked on the right.
-struct AuraCardMedium: View {
+public struct AuraCardMedium: View {
     let snapshot: WeatherSnapshot
 
-    var body: some View {
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    public var body: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(snapshot.localidad)
@@ -75,10 +81,12 @@ struct AuraCardMedium: View {
 // MARK: - Large
 
 /// systemLarge: header, hero row, then a multi-day list. (Avisos banner lands in Phase 2.5.)
-struct AuraCardLarge: View {
+public struct AuraCardLarge: View {
     let snapshot: WeatherSnapshot
 
-    var body: some View {
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(snapshot.localidad)
@@ -135,8 +143,10 @@ struct AuraCardLarge: View {
 // MARK: - Empty state
 
 /// Shown before the app has cached anything.
-struct AuraCardEmpty: View {
-    var body: some View {
+public struct AuraCardEmpty: View {
+    public init() {}
+
+    public var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "cloud.sun")
                 .font(.title).foregroundStyle(.secondary)
@@ -204,7 +214,7 @@ enum WidgetFormat {
     }
 }
 
-extension WeatherSnapshot {
+public extension WeatherSnapshot {
     /// Sample data for previews and the placeholder.
     static var preview: WeatherSnapshot {
         let cal = Calendar(identifier: .gregorian)
