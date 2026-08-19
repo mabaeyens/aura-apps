@@ -71,13 +71,15 @@ own widget / complication instance.
   data end-to-end. ✅ *Done:* `Aura.xcodeproj` (iOS target, links the local AuraKit package),
   four Spanish tabs (Hoy / Predicción / Ubicaciones / Ajustes), Keychain key entry, favorites
   seeded from the 50 provincial capitals, GPS→nearest-city, on-device sun times, and the official
-  community forecast-text screen with its issue date. All screens verified live (Madrid, A Coruña,
-  Galicia). *Text-source decision:* OpenData's text products are stale for many regions (A Coruña
-  province frozen at 2022, Galicia CCAA ~2 months old), so the narrative comes from AEMET's
-  internal website API (`AEMETBulletinClient`, keyless, fresh for every region); OpenData CCAA
-  text kept as a fallback. See the `aemet-text-forecast-source` memory. *Deferred to later
-  phases:* the full ~8k-municipality table (Phase 1 bundles capitals only), App Group cache,
-  macOS/watchOS targets.
+  community forecast-text screen with its issue date. All screens verified live (Madrid, Galicia,
+  Canarias, Andalucía, Cataluña). *Text-source decision:* the narrative comes from the official
+  OpenData normalized-text products. The catch is that AEMET's `hoy` product is *amendment-only*
+  (re-issued only on significant intraday change), so a naive `hoy` fetch can return a bulletin
+  dated days/months back — the forecast that actually covers today was issued yesterday as the
+  daily `manana` product. `AEMETClient.comunidadBulletin` resolves this: prefer today's `hoy` when
+  valid-for-today, else read yesterday's `manana` from the archive. See the
+  `aemet-text-forecast-source` memory. *Deferred to later phases:* the full ~8k-municipality table
+  (Phase 1 bundles capitals only), App Group cache, macOS/watchOS targets.
 - **Phase 2 — Widgets (iOS / iPadOS / Mac):** full set — Lock Screen, Home Screen, StandBy, Mac.
 - **Phase 3 — Watch app + complications:** the marquee feature, all complication families.
 - **Phase 4 — Polish:** glyphs, sun-arc rendering, dark mode, refresh tuning.

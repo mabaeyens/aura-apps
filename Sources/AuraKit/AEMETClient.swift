@@ -108,16 +108,17 @@ public extension AEMETClient {
         return first
     }
 
-    /// Official human-written forecast bulletin AEMET issues for an autonomous community, today.
-    /// `ccaa` is AEMET's community code (e.g. "mad", "gal"); see `Comunidad`. This is the
-    /// actively maintained text product — prefer it over the per-province one.
+    /// Raw text of the community `hoy` product. `ccaa` is AEMET's community code (e.g. "mad").
+    /// Note: `hoy` is amendment-only (re-issued only on significant intraday change), so this can
+    /// return a bulletin dated days back. For a bulletin that always covers today, use
+    /// `comunidadBulletin(_:)`. Kept for diagnostics.
     func prediccionCCAAHoy(_ ccaa: String) async throws -> String {
         try await fetchText("/prediccion/ccaa/hoy/\(ccaa)")
     }
 
-    /// Official forecast bulletin for a province, today. `provincia` is the 2-digit INE province
-    /// code (`Location.provinciaCode`). Note: AEMET no longer updates this product for several
-    /// provinces (it can return a years-old file), so `prediccionCCAAHoy` is preferred.
+    /// Raw text of the per-province `hoy` product. `provincia` is the 2-digit INE province code
+    /// (`Location.provinciaCode`). Same amendment-only caveat as `prediccionCCAAHoy`, and AEMET
+    /// maintains it even less consistently. Kept for diagnostics.
     func prediccionProvinciaHoy(_ provincia: String) async throws -> String {
         try await fetchText("/prediccion/provincia/hoy/\(provincia)")
     }

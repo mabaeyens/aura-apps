@@ -2,9 +2,9 @@ import AuraKit
 import SwiftUI
 
 /// "Predicción" — the official, human-written forecast bulletin AEMET issues for the selected
-/// location's autonomous community. Read from AEMET's website API (`AEMETBulletinClient`), which
-/// stays current for every region; no API key needed. The issue date is always shown so the
-/// reader can see how fresh it is.
+/// location's autonomous community. Read from AEMET's OpenData normalized-text products
+/// (`AEMETClient.comunidadBulletin`), which resolve to the bulletin that covers today. The issue
+/// date is always shown so the reader can see how fresh it is. Needs the API key (Ajustes).
 struct ForecastTextView: View {
     @EnvironmentObject private var store: LocationStore
 
@@ -79,10 +79,15 @@ struct ForecastTextView: View {
 
     private func load() async {
         guard let comunidad else { return }
+        guard let client = AEMETService.client() else {
+            bulletin = nil
+            errorMessage = "Falta la clave de AEMET. Añádela en Ajustes."
+            return
+        }
         isLoading = true
         errorMessage = nil
         do {
-            bulletin = try await AEMETBulletinClient().comunidad(comunidad)
+            bulletin = try await client.comunidadBulletin(comunidad)
         } catch {
             errorMessage = AEMETService.message(for: error)
         }

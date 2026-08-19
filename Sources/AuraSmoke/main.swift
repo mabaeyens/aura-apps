@@ -6,26 +6,6 @@ import Foundation
 
 let args = Array(CommandLine.arguments.dropFirst())
 
-do {
-    // The community narrative bulletin uses AEMET's website API — no key needed.
-    //   swift run aura-smoke boletin [provincia]                  (default: 28 = Madrid → mad)
-    if args.first == "boletin" {
-        let provincia = args.dropFirst().first ?? "28"
-        guard let comunidad = Comunidad.forProvincia(provincia) else {
-            FileHandle.standardError.write(Data("Unknown province \(provincia)\n".utf8))
-            exit(1)
-        }
-        let bulletin = try await AEMETBulletinClient().comunidad(comunidad)
-        print("\(comunidad.nombre) — bulletin (elaborado \(bulletin.elaborado.map(String.init(describing:)) ?? "?")):\n")
-        if let f = bulletin.fenomenoSignificativo { print("⚠︎ \(f)\n") }
-        print(bulletin.texto)
-        exit(0)
-    }
-} catch {
-    FileHandle.standardError.write(Data("Smoke failed: \(error)\n".utf8))
-    exit(1)
-}
-
 let key = ProcessInfo.processInfo.environment["AEMET_API_KEY"] ?? ""
 guard !key.isEmpty else {
     FileHandle.standardError.write(Data("Set AEMET_API_KEY to run the smoke test.\n".utf8))
@@ -35,12 +15,32 @@ guard !key.isEmpty else {
 let client = AEMETClient(apiKey: key)
 
 do {
-    if args.first == "ccaa" {
+    if args.first == "boletin" {
+        // The community narrative that covers today, resolved from OpenData (hoy-or-manana-archive).
+        //   AEMET_API_KEY=... swift run aura-smoke boletin [provincia]   (default: 28 = Madrid → mad)
+        let provincia = args.dropFirst().first ?? "28"
+        guard let comunidad = Comunidad.forProvincia(provincia) else {
+            FileHandle.standardError.write(Data("Unknown province \(provincia)\n".utf8))
+            exit(1)
+        }
+        let bulletin = try await client.comunidadBulletin(comunidad)
+        let issued = bulletin.elaborado.map(String.init(describing:)) ?? "?"
+        print("\(comunidad.nombre) — bulletin (elaborado \(issued)):\n")
+        if let f = bulletin.fenomenoSignificativo { print("⚠︎ \(f)\n") }
+        print(bulletin.texto)
+    } else if args.first == "ccaa" {
         // Verify the official CCAA forecast-text endpoint (the maintained product).
         //   AEMET_API_KEY=... swift run aura-smoke ccaa [code]          (default: mad)
         let ccaa = args.dropFirst().first ?? "mad"
         let bulletin = try await client.prediccionCCAAHoy(ccaa)
         print("CCAA \(ccaa) — official text bulletin:\n")
+        print(bulletin)
+    } else if args.first == "raw" {
+        // Probe any normalized-text endpoint verbatim, e.g.
+        //   AEMET_API_KEY=... swift run aura-smoke raw /prediccion/ccaa/manana/gal
+        let path = args.dropFirst().first ?? "/prediccion/ccaa/hoy/mad"
+        let bulletin = try await client.fetchText(path)
+        print("GET \(path)\n")
         print(bulletin)
     } else if args.first == "texto" || args.first == "text" {
         // The (deprecated) per-province forecast-text endpoint.

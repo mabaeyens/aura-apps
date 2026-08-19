@@ -1,123 +1,183 @@
 import Foundation
 
-/// The official narrative forecast for an area, as issued by an AEMET forecaster.
+/// The official narrative forecast for an autonomous community, as issued by an AEMET
+/// forecaster and served from the OpenData normalized-text products (`ascii/txt`).
 public struct ForecastBulletin: Sendable {
-    /// When AEMET produced this bulletin.
+    /// When AEMET produced this bulletin (from the "DÍA … A LAS … HORA OFICIAL" header).
     public let elaborado: Date?
-    /// Start of the validity window.
+    /// The day the bulletin is valid for (from the "PREDICCIÓN VÁLIDA PARA …" header).
     public let validezInicio: Date?
-    /// End of the validity window.
+    /// End of the validity window. AEMET's daily bulletins cover a single day, so this is nil.
     public let validezFin: Date?
-    /// Highlighted significant phenomena (`fenom_sign`), if any.
+    /// Significant phenomena (section "A.- FENÓMENOS SIGNIFICATIVOS"), or nil when none are expected.
     public let fenomenoSignificativo: String?
-    /// The main narrative text (`txt_prediccion`).
+    /// The main narrative text (section "B.- PREDICCIÓN"), hard wraps unfolded into paragraphs.
     public let texto: String
 }
 
-/// Fetches community-level narrative forecasts from AEMET's website API
-/// (`www.aemet.es/es/api-eltiempo`). No API key; this is the source that stays current for
-/// every region, unlike the OpenData text products. Undocumented — see `Comunidad` for the
-/// area-id mapping and how to re-harvest it if AEMET changes its scheme.
-public struct AEMETBulletinClient: Sendable {
+public extension AEMETClient {
+    /// The official community narrative that covers *today*, from AEMET's OpenData text products.
+    ///
+    /// AEMET's `hoy` product is an *amendment* channel — it is only re-issued when conditions
+    /// change significantly intraday, so on a quiet day it can name a date days back. The forecast
+    /// that actually covers today was issued *yesterday* as the daily `manana` product. So this
+    /// prefers today's `hoy` when AEMET issued one valid for today, and otherwise reads yesterday's
+    /// `manana` from the archive (`…/elaboracion/{ayer}`), which is guaranteed to cover today.
+    ///
+    /// `comunidad.code` is AEMET's community code (e.g. "mad", "gal"). `date` defaults to now,
+    /// interpreted in Spanish peninsular civil time (the reference AEMET stamps its bulletins in).
+    func comunidadBulletin(_ comunidad: Comunidad, on date: Date = Date()) async throws -> ForecastBulletin {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = AEMETBulletinParser.madrid
+        let today = calendar.startOfDay(for: date)
 
-    public enum BulletinError: Error, Sendable {
-        case http(Int)
-        case parsing
-    }
+        // 1. Prefer an intraday `hoy` amendment, but only if it is actually valid for today.
+        if let text = try? await fetchText("/prediccion/ccaa/hoy/\(comunidad.code)"),
+           let hoy = AEMETBulletinParser.parse(text),
+           let validez = hoy.validezInicio, calendar.isDate(validez, inSameDayAs: today) {
+            return hoy
+        }
 
-    private let session: URLSession
-    private let base = "https://www.aemet.es/es/api-eltiempo/prediccion"
-
-    public init(session: URLSession = .shared) {
-        self.session = session
-    }
-
-    /// The narrative bulletin for a community, for the day containing `date` (default: now),
-    /// interpreted in Spanish civil time.
-    public func comunidad(_ comunidad: Comunidad, on date: Date = Date()) async throws -> ForecastBulletin {
-        let day = Self.dayFormatter.string(from: date)
-
-        let path = "\(base)/\(day)/PB/\(comunidad.webZoom)/\(comunidad.webID)"
-        guard let url = URL(string: path) else { throw BulletinError.parsing }
-
-        let (data, response) = try await session.data(from: url)
-        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard code == 200 else { throw BulletinError.http(code) }
-
-        let parser = BulletinXMLParser()
-        guard let bulletin = parser.parse(data) else { throw BulletinError.parsing }
+        // 2. Otherwise, yesterday's `manana` is today's forecast.
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        let elaboracion = Self.archiveDayFormatter.string(from: yesterday)
+        let text = try await fetchText("/prediccion/ccaa/manana/\(comunidad.code)/elaboracion/\(elaboracion)")
+        guard let bulletin = AEMETBulletinParser.parse(text) else {
+            throw ClientError.decoding("community bulletin text was not in the expected format")
+        }
         return bulletin
     }
 
-    /// `yyyy-MM-dd` in Spanish civil time, for the URL path.
-    private static let dayFormatter: DateFormatter = {
+    /// `yyyy-MM-dd` in Spanish peninsular time, for the archive endpoint's `elaboracion` segment.
+    private static let archiveDayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone(identifier: "Europe/Madrid") ?? .current
+        f.timeZone = AEMETBulletinParser.madrid
         f.dateFormat = "yyyy-MM-dd"
         return f
     }()
 }
 
-/// Parses the small `<root><elaborado/><validez_ini/>…<txt_prediccion/></root>` document.
-/// The XML declares its own encoding (ISO-8859-15); `XMLParser` honours it from the raw bytes.
-private final class BulletinXMLParser: NSObject, XMLParserDelegate {
-    private var section: String?
-    private var elaborado = "", validezIni = "", validezFin = "", fenom = "", texto = ""
+/// Parses AEMET's normalized-text community bulletin (a small fixed-layout `ascii/txt` document):
+///
+///     AGENCIA ESTATAL DE METEOROLOGÍA
+///     PREDICCIÓN GENERAL PARA LA COMUNIDAD DE …
+///     DÍA 18 DE AGOSTO DE 2026 A LAS 12:38 HORA OFICIAL
+///     PREDICCIÓN VÁLIDA PARA EL MIÉRCOLES 19
+///
+///     A.- FENÓMENOS SIGNIFICATIVOS
+///     …
+///
+///     B.- PREDICCIÓN
+///     …
+///
+/// Lines are hard-wrapped to a narrow column; each section's wraps are unfolded back into flowing
+/// paragraphs (blank lines separate paragraphs; single newlines are wraps).
+enum AEMETBulletinParser {
+    static let madrid = TimeZone(identifier: "Europe/Madrid") ?? .current
 
-    func parse(_ data: Data) -> ForecastBulletin? {
-        let parser = XMLParser(data: data)
-        parser.delegate = self
-        guard parser.parse() else { return nil }
+    static func parse(_ raw: String) -> ForecastBulletin? {
+        let lines = raw.replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
 
-        let fenomTrimmed = fenom.trimmingCharacters(in: .whitespacesAndNewlines)
+        let issueLine = lines.first { $0.uppercased().contains("HORA OFICIAL") }
+        let validezLine = lines.first { $0.uppercased().hasPrefix("PREDICCIÓN VÁLIDA") }
+
+        // Split the body into the "A.-" and "B.-" sections.
+        guard let aIndex = lines.firstIndex(where: { $0.hasPrefix("A.-") }) else { return nil }
+        let bIndex = lines.firstIndex(where: { $0.hasPrefix("B.-") })
+
+        let aBody = bIndex.map { Array(lines[(aIndex + 1)..<$0]) } ?? Array(lines[(aIndex + 1)...])
+        let bBody = bIndex.map { Array(lines[($0 + 1)...]) } ?? []
+
+        let elaborado = issueLine.flatMap(issueDate(from:))
+        let validez = validezLine.flatMap { validezDate(from: $0, reference: elaborado) }
+
+        let fenomeno = unfold(aBody)
+        let texto = unfold(bBody)
+        guard !texto.isEmpty else { return nil }
+
         return ForecastBulletin(
-            elaborado: Self.date(elaborado),
-            validezInicio: Self.date(validezIni),
-            validezFin: Self.date(validezFin),
-            fenomenoSignificativo: fenomTrimmed.isEmpty ? nil : fenomTrimmed,
-            texto: texto.trimmingCharacters(in: .whitespacesAndNewlines)
+            elaborado: elaborado,
+            validezInicio: validez,
+            validezFin: nil,
+            fenomenoSignificativo: isNoPhenomena(fenomeno) ? nil : fenomeno,
+            texto: texto
         )
     }
 
-    func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?,
-                qualifiedName: String?, attributes: [String: String] = [:]) {
-        switch name {
-        case "elaborado", "validez_ini", "validez_fin", "fenom_sign", "txt_prediccion":
-            section = name
-        default:
-            break
+    /// Unfold hard-wrapped lines: blank lines delimit paragraphs; within a paragraph the wraps
+    /// are joined with spaces. Paragraphs are rejoined with a blank line.
+    private static func unfold(_ lines: [String]) -> String {
+        var paragraphs: [String] = []
+        var current: [String] = []
+        for line in lines {
+            if line.isEmpty {
+                if !current.isEmpty { paragraphs.append(current.joined(separator: " ")); current = [] }
+            } else {
+                current.append(line)
+            }
         }
+        if !current.isEmpty { paragraphs.append(current.joined(separator: " ")) }
+        return paragraphs.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func parser(_ parser: XMLParser, foundCharacters string: String) {
-        switch section {
-        case "elaborado": elaborado += string
-        case "validez_ini": validezIni += string
-        case "validez_fin": validezFin += string
-        case "fenom_sign": fenom += string
-        case "txt_prediccion": texto += string
-        default: break
-        }
+    /// True when section A says there are no significant phenomena (e.g. "No se esperan.").
+    private static func isNoPhenomena(_ text: String) -> Bool {
+        let low = text.lowercased()
+        if low.isEmpty { return true }
+        return low.hasPrefix("no se esperan")
+            || low.contains("sin fenómenos")
+            || low.contains("no hay fenómenos")
+            || low.contains("ningún fenómeno")
     }
 
-    func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?,
-                qualifiedName: String?) {
-        // Paragraph breaks inside the narrative sections.
-        if name == "p" {
-            if section == "fenom_sign" { fenom += "\n" }
-            if section == "txt_prediccion" { texto += "\n" }
-        }
-        if name == section { section = nil }
+    private static let months: [String: Int] = [
+        "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
+        "julio": 7, "agosto": 8, "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
+    ]
+
+    /// Parse "DÍA 18 DE AGOSTO DE 2026 A LAS 12:38 HORA OFICIAL".
+    private static func issueDate(from line: String) -> Date? {
+        guard let match = line.firstMatch(of:
+            /D[IÍ]A\s+(\d{1,2})\s+DE\s+(\p{L}+)\s+DE\s+(\d{4})\s+A\s+LAS\s+(\d{1,2}):(\d{2})/
+                .ignoresCase()
+        ) else { return nil }
+
+        guard let day = Int(match.1),
+              let month = months[String(match.2).lowercased()],
+              let year = Int(match.3),
+              let hour = Int(match.4),
+              let minute = Int(match.5) else { return nil }
+
+        return date(year: year, month: month, day: day, hour: hour, minute: minute)
     }
 
-    private static func date(_ raw: String) -> Date? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone(identifier: "Europe/Madrid") ?? .current
-        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return f.date(from: trimmed)
+    /// Parse the validity day from "PREDICCIÓN VÁLIDA PARA EL MIÉRCOLES 19"; the month/year come
+    /// from the issue date (rolling to the next month when the validity day precedes the issue day).
+    private static func validezDate(from line: String, reference: Date?) -> Date? {
+        guard let reference,
+              let match = line.firstMatch(of: /(\d{1,2})\s*$/),
+              let validDay = Int(match.1) else { return nil }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = madrid
+        let parts = calendar.dateComponents([.year, .month, .day], from: reference)
+        guard var year = parts.year, var month = parts.month, let issueDay = parts.day else { return nil }
+        if validDay < issueDay { // crossed into the next month
+            month += 1
+            if month > 12 { month = 1; year += 1 }
+        }
+        return date(year: year, month: month, day: validDay, hour: 0, minute: 0)
+    }
+
+    private static func date(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> Date? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = madrid
+        var comps = DateComponents()
+        comps.year = year; comps.month = month; comps.day = day
+        comps.hour = hour; comps.minute = minute
+        return calendar.date(from: comps)
     }
 }

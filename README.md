@@ -20,8 +20,9 @@ A thin shell over `AuraKit`, Spanish-only, four tabs:
 - **Hoy** — the numeric daily forecast (min/max temperature, humidity) for the selected
   municipality, plus on-device sunrise/sunset.
 - **Predicción** — the official, human-written forecast bulletin AEMET issues for the
-  autonomous community, with its issue date. Read from AEMET's website API, which stays current
-  for every region (the OpenData text products are frozen for several); needs no key.
+  autonomous community, with its issue date. Read from AEMET's OpenData normalized-text products,
+  resolved to the bulletin that covers today (AEMET's `hoy` product is amendment-only, so this
+  falls back to the daily `manana` archive — see `AEMETClient.comunidadBulletin`).
 - **Ubicaciones** — favorites: pick the active location, add from the bundled list of provincial
   capitals, use the current GPS location (nearest bundled city), reorder, delete.
 - **Ajustes** — enter the AEMET API key (stored in the Keychain) and attribution.
@@ -37,13 +38,14 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
 ## AuraKit
 
 - **`AEMETClient`** — handles AEMET's OpenData two-call model (envelope → temporary `datos` URL →
-  payload), the UTF-8 payload encoding, JSON forecasts and plain-text bulletins.
-- **`AEMETBulletinClient`** / **`ForecastBulletin`** — the narrative community forecast from AEMET's
-  website API (keyless), parsed from its XML with issue/validity dates and significant phenomena.
+  payload), the UTF-8 payload encoding, JSON forecasts and plain-text bulletins. Its
+  `comunidadBulletin` resolves the community narrative that covers today (`hoy` amendment if AEMET
+  issued one, else yesterday's `manana` from the archive).
+- **`ForecastBulletin`** / **`AEMETBulletinParser`** — the parsed community narrative from AEMET's
+  OpenData text product, with issue/validity dates and significant phenomena, hard wraps unfolded.
 - **`Location`** / **`Location.seedCities`** — a Spanish municipality (INE code + coordinates) and a
   bundled seed of the 50 provincial capitals plus Ceuta, Melilla, Vigo and Gijón.
-- **`Comunidad`** — maps INE province code → autonomous community, with both AEMET's OpenData code
-  and the website API's area id.
+- **`Comunidad`** — maps INE province code → autonomous community, carrying AEMET's OpenData code.
 - **`AuraKeychain`** — Keychain storage for the AEMET API key; never in the binary or the repo.
 - **`WindDirection`** — 16-point Spanish compass rose (`N`, `NNE`, … , `NNO`) with names and bearings.
 - **`SolarTimes`** — sunrise / sunset via the NOAA solar equations; offline and deterministic,
@@ -52,14 +54,14 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
 ### Smoke test
 
 ```bash
-AEMET_API_KEY=your-key swift run aura-smoke 28079        # numeric daily forecast (INE code)
-swift run aura-smoke boletin 28                          # community narrative (province code; no key)
-AEMET_API_KEY=your-key swift run aura-smoke ccaa mad     # OpenData community text (fallback)
+AEMET_API_KEY=your-key swift run aura-smoke 28079           # numeric daily forecast (INE code)
+AEMET_API_KEY=your-key swift run aura-smoke boletin 28      # community narrative (province code)
+AEMET_API_KEY=your-key swift run aura-smoke raw /prediccion/ccaa/manana/gal  # any text endpoint
 ```
 
-The numeric forecast reads the key from the environment (never stored in the repo). The `boletin`
-mode hits AEMET's website API and needs no key; the `ccaa`/`texto` modes exercise the OpenData
-text products kept as a fallback.
+Every mode reads the key from the environment (never stored in the repo). `boletin` resolves the
+narrative that covers today; `raw` fetches any normalized-text endpoint verbatim, handy for
+inspecting freshness across the `hoy`/`manana`/`pasadomanana`/`medioplazo` horizons.
 
 ### Build & test
 

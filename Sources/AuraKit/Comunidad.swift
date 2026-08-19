@@ -1,52 +1,42 @@
 import Foundation
 
-/// A Spanish autonomous community, with both the code AEMET's OpenData API uses (e.g. "mad")
-/// and the area id its website's internal forecast API uses (`webZoom`/`webID`).
+/// A Spanish autonomous community, carrying the code AEMET's OpenData API uses (e.g. "mad").
 ///
-/// Aura reads the community narrative from the internal API (`AEMETBulletinClient`): it is the
-/// only source that stays current for every region. OpenData's text products are unevenly
-/// maintained — the per-province files are frozen for several provinces (A Coruña sits at 2022)
-/// and the CCAA files can lag weeks to months (Galicia was ~2 months stale). The mapping below
-/// was harvested from aemet.es (`prediccion/espana?k=<code>`, hidden `initZoom`/`initLocation`);
-/// re-harvest there if AEMET ever renumbers its areas.
+/// Aura reads the community narrative from OpenData's normalized-text products, keyed by this
+/// `code` (see `AEMETClient.comunidadBulletin`). The `hoy` product is amendment-only, so the
+/// fetch resolves "today" from the daily `manana` archive — see that method for the details.
 public struct Comunidad: Sendable, Hashable {
     /// AEMET OpenData area code, e.g. "mad".
     public let code: String
     /// Display name, e.g. "Comunidad de Madrid".
     public let nombre: String
-    /// Zoom segment of the internal API path (`.../PB/{webZoom}/{webID}`).
-    public let webZoom: Int
-    /// Area id in the internal API path.
-    public let webID: Int
 
-    public init(code: String, nombre: String, webZoom: Int, webID: Int) {
+    public init(code: String, nombre: String) {
         self.code = code
         self.nombre = nombre
-        self.webZoom = webZoom
-        self.webID = webID
     }
 
     /// All 17 communities plus Ceuta and Melilla, keyed by AEMET code.
     private static let byCode: [String: Comunidad] = [
-        "and": Comunidad(code: "and", nombre: "Andalucía", webZoom: 7, webID: 61),
-        "arn": Comunidad(code: "arn", nombre: "Aragón", webZoom: 7, webID: 62),
-        "ast": Comunidad(code: "ast", nombre: "Principado de Asturias", webZoom: 8, webID: 6333),
-        "bal": Comunidad(code: "bal", nombre: "Illes Balears", webZoom: 7, webID: 64),
-        "can": Comunidad(code: "can", nombre: "Cantabria", webZoom: 9, webID: 6639),
-        "cat": Comunidad(code: "cat", nombre: "Cataluña", webZoom: 7, webID: 69),
-        "ceu": Comunidad(code: "ceu", nombre: "Ciudad de Ceuta", webZoom: 10, webID: 7851),
-        "cle": Comunidad(code: "cle", nombre: "Castilla y León", webZoom: 7, webID: 67),
-        "clm": Comunidad(code: "clm", nombre: "Castilla-La Mancha", webZoom: 7, webID: 68),
-        "coo": Comunidad(code: "coo", nombre: "Canarias", webZoom: 7, webID: 65),
-        "ext": Comunidad(code: "ext", nombre: "Extremadura", webZoom: 7, webID: 70),
-        "gal": Comunidad(code: "gal", nombre: "Galicia", webZoom: 7, webID: 71),
-        "mad": Comunidad(code: "mad", nombre: "Comunidad de Madrid", webZoom: 8, webID: 7228),
-        "mel": Comunidad(code: "mel", nombre: "Ciudad de Melilla", webZoom: 10, webID: 7952),
-        "mur": Comunidad(code: "mur", nombre: "Región de Murcia", webZoom: 8, webID: 7330),
-        "nav": Comunidad(code: "nav", nombre: "Comunidad Foral de Navarra", webZoom: 8, webID: 7431),
-        "pva": Comunidad(code: "pva", nombre: "País Vasco", webZoom: 7, webID: 75),
-        "rio": Comunidad(code: "rio", nombre: "La Rioja", webZoom: 9, webID: 7626),
-        "val": Comunidad(code: "val", nombre: "Comunitat Valenciana", webZoom: 7, webID: 77),
+        "and": Comunidad(code: "and", nombre: "Andalucía"),
+        "arn": Comunidad(code: "arn", nombre: "Aragón"),
+        "ast": Comunidad(code: "ast", nombre: "Principado de Asturias"),
+        "bal": Comunidad(code: "bal", nombre: "Illes Balears"),
+        "can": Comunidad(code: "can", nombre: "Cantabria"),
+        "cat": Comunidad(code: "cat", nombre: "Cataluña"),
+        "ceu": Comunidad(code: "ceu", nombre: "Ciudad de Ceuta"),
+        "cle": Comunidad(code: "cle", nombre: "Castilla y León"),
+        "clm": Comunidad(code: "clm", nombre: "Castilla-La Mancha"),
+        "coo": Comunidad(code: "coo", nombre: "Canarias"),
+        "ext": Comunidad(code: "ext", nombre: "Extremadura"),
+        "gal": Comunidad(code: "gal", nombre: "Galicia"),
+        "mad": Comunidad(code: "mad", nombre: "Comunidad de Madrid"),
+        "mel": Comunidad(code: "mel", nombre: "Ciudad de Melilla"),
+        "mur": Comunidad(code: "mur", nombre: "Región de Murcia"),
+        "nav": Comunidad(code: "nav", nombre: "Comunidad Foral de Navarra"),
+        "pva": Comunidad(code: "pva", nombre: "País Vasco"),
+        "rio": Comunidad(code: "rio", nombre: "La Rioja"),
+        "val": Comunidad(code: "val", nombre: "Comunitat Valenciana"),
     ]
 
     /// 2-digit INE province code → AEMET CCAA code, for all 52 provinces.

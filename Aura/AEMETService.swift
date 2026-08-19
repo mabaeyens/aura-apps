@@ -23,10 +23,6 @@ enum AEMETService {
             return "AEMET devolvió \(code): \(desc)"
         case AEMETClient.ClientError.decoding:
             return "No se pudieron leer los datos de AEMET."
-        case AEMETBulletinClient.BulletinError.http(let code):
-            return "No se pudo obtener la predicción (HTTP \(code))."
-        case AEMETBulletinClient.BulletinError.parsing:
-            return "No se pudo leer la predicción de AEMET."
         case let urlError as URLError where urlError.code == .notConnectedToInternet:
             return "Sin conexión. Se muestran los últimos datos disponibles."
         default:
