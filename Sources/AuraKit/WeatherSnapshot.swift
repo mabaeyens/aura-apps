@@ -44,6 +44,11 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let hours: [HourSlot]
     /// The most severe active AEMET warning for this location's province, if any.
     public let alert: WeatherAlert?
+    /// The community narrative bulletin covering today (AEMET's human-written text), when fetched.
+    /// Only carried on the primary/selected location, since it's what the Watch shows.
+    public let bulletin: String?
+    /// The bulletin's significant-phenomenon headline, if any.
+    public let bulletinPhenomenon: String?
     /// When the app last refreshed this snapshot.
     public let updated: Date
 
@@ -54,7 +59,9 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
-                alert: WeatherAlert? = nil, updated: Date) {
+                alert: WeatherAlert? = nil,
+                bulletin: String? = nil, bulletinPhenomenon: String? = nil,
+                updated: Date) {
         self.ine = ine
         self.localidad = localidad
         self.provincia = provincia
@@ -73,6 +80,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.days = days
         self.hours = hours
         self.alert = alert
+        self.bulletin = bulletin
+        self.bulletinPhenomenon = bulletinPhenomenon
         self.updated = updated
     }
 }
@@ -140,6 +149,7 @@ public extension WeatherSnapshot {
                      hourly: MunicipioHourly?,
                      observed: StationObservation? = nil,
                      alert: WeatherAlert? = nil,
+                     bulletin: ForecastBulletin? = nil,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
         let today = daily.prediccion.dia.first
@@ -171,6 +181,8 @@ public extension WeatherSnapshot {
             days: days,
             hours: hourly?.strip ?? [],
             alert: alert,
+            bulletin: bulletin?.texto,
+            bulletinPhenomenon: bulletin?.fenomenoSignificativo,
             updated: now
         )
     }

@@ -29,6 +29,13 @@ enum AEMETService {
         for area in areas {
             alertsByArea[area] = (try? await client.avisos(area: area)) ?? []
         }
+        // The Watch shows the primary location, so fetch its community bulletin once and attach it
+        // there (only that snapshot carries the narrative — it's what the Watch renders).
+        let primary = locations.first
+        var primaryBulletin: ForecastBulletin?
+        if let primary, stale.contains(where: { $0.ine == primary.ine }), let comunidad = primary.comunidad {
+            primaryBulletin = try? await client.comunidadBulletin(comunidad)
+        }
         var didUpdate = false
         for location in stale {
             guard let daily = try? await client.municipioDiaria(location.ine) else { continue }
@@ -39,8 +46,9 @@ enum AEMETService {
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?
                 .topActive(forProvince: location.provinciaCode)
+            let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                    observed: observed, alert: alert,
+                                                    observed: observed, alert: alert, bulletin: bulletin,
                                                     timeZone: location.timeZone))
             didUpdate = true
         }

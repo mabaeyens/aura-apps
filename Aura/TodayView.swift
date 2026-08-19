@@ -96,9 +96,13 @@ struct TodayView: View {
             let hourly = try? await client.municipioHoraria(location.ine)
             let observed = try? await client.observacionTodas().nearest(to: location)
             let alert = await AEMETService.topAlert(for: location, using: client)
+            var bulletin: ForecastBulletin?
+            if let comunidad = location.comunidad {
+                bulletin = try? await client.comunidadBulletin(comunidad)
+            }
             // Feed the App Group cache the widgets read, then ask them to re-render.
             let snapshot = WeatherSnapshot.make(location: location, daily: fetched, hourly: hourly,
-                                                observed: observed, alert: alert,
+                                                observed: observed, alert: alert, bulletin: bulletin,
                                                 timeZone: location.timeZone)
             SharedCache.upsert(snapshot)
             WidgetCenter.shared.reloadAllTimelines()
