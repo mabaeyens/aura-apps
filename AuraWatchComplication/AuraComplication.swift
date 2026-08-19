@@ -60,7 +60,7 @@ struct AuraConditionsView: View {
                     AuraAccessoryCorner(snapshot: snapshot)
                         .widgetLabel(AuraAccessoryCorner(snapshot: snapshot).cornerLabel)
                 }
-            default: AuraAccessoryCircular(snapshot: snapshot)
+            default: AuraAccessoryCircular(snapshot: snapshot, now: entry.date)
             }
         } else {
             AuraAccessoryEmpty()

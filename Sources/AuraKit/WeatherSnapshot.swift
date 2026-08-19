@@ -105,6 +105,14 @@ public extension WeatherSnapshot {
         if let sr = sunrise { return .sunrise(sr) }
         return sunset.map { .sunset($0) }
     }
+
+    /// Whether it's night at `date` for this location — before today's sunrise or after today's sunset.
+    /// Lets a complication pick the moon icon at view time instead of trusting a possibly-stale AEMET
+    /// day/night code. Falls back to the cached sky code's "n" suffix when sun times are unknown.
+    func isNight(at date: Date = Date()) -> Bool {
+        if let sunrise, let sunset { return date < sunrise || date >= sunset }
+        return (currentSky ?? "").hasSuffix("n")
+    }
 }
 
 /// One hour of the hourly strip: the hour of day, its forecast temperature, sky code, and the

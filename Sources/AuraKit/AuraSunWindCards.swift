@@ -45,16 +45,22 @@ public struct AuraSunCorner: View {
     public var body: some View {
         // `.resizable()` makes the symbol fill the whole corner region; a plain `.font(.title)` renders
         // at a fixed, much smaller intrinsic size that leaves most of the corner empty — that's why it
-        // looked tiny next to the circular complication. The precise event time rides the bezel below.
+        // looked tiny next to the circular complication. Palette tint keeps the rising/setting arrow
+        // yellow over an orange horizon; the event time and the time remaining ride the bezel below.
         Image(systemName: SunFormat.icon(snapshot.nextSunEvent(now: now)))
             .resizable()
             .scaledToFit()
-            .symbolRenderingMode(.multicolor)
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.yellow, .orange)
     }
 
-    /// The curved label: the event time, e.g. "21:06".
+    /// The curved label: the event time plus how long until it, e.g. "21:06 · 2h51".
     public var cornerLabel: String {
-        SunFormat.date(snapshot.nextSunEvent(now: now)).map(SunFormat.hhmm) ?? "—"
+        let event = snapshot.nextSunEvent(now: now)
+        guard let date = SunFormat.date(event) else { return "—" }
+        let time = SunFormat.hhmm(date)
+        if let remaining = SunFormat.remaining(from: now, to: date) { return "\(time) · \(remaining)" }
+        return time
     }
 }
 
@@ -79,6 +85,14 @@ private enum SunFormat {
         f.locale = Locale(identifier: "es_ES")
         f.dateFormat = "HH:mm"
         return f.string(from: date)
+    }
+
+    /// Compact time-until, e.g. "2h51" or "43m"; nil once the event has passed.
+    static func remaining(from: Date, to: Date) -> String? {
+        let seconds = Int(to.timeIntervalSince(from))
+        guard seconds > 0 else { return nil }
+        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
+        return hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))" : "\(minutes)m"
     }
 }
 

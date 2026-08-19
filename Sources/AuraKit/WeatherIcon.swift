@@ -26,4 +26,12 @@ public enum WeatherIcon {
         default: return night ? "cloud.moon.fill" : "cloud.sun.fill"
         }
     }
+
+    /// SF Symbol for a sky-state code, but forcing the day or night variant from a caller that knows
+    /// the actual time of day (from the location's sun times) rather than the AEMET code's own suffix.
+    public static func symbol(forSky code: String?, isNight: Bool) -> String {
+        guard let code, !code.isEmpty else { return isNight ? "moon.stars.fill" : "sun.max.fill" }
+        let base = code.hasSuffix("n") ? String(code.dropLast()) : code
+        return symbol(forSky: isNight ? base + "n" : base)
+    }
 }

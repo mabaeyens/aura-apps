@@ -12,13 +12,24 @@ import SwiftUI
 /// the middle. Falls back to icon + temp when the range is unknown.
 public struct AuraAccessoryCircular: View {
     let snapshot: WeatherSnapshot
+    let now: Date
 
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    /// Condition glyph resolved to the actual time of day (moon after sunset), rendered in colour so
+    /// it's a yellow sun by day, a pale moon by night, a grey cloud when overcast — not a flat white.
+    private var conditionIcon: some View {
+        Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))
+            .symbolRenderingMode(.multicolor)
+    }
 
     public var body: some View {
         if let value = gaugeValue, let lo = snapshot.tempMin, let hi = snapshot.tempMax, lo < hi {
             Gauge(value: value, in: Double(lo)...Double(hi)) {
-                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+                conditionIcon
             } currentValueLabel: {
                 Text(AccessoryFormat.temp(current))
                     .foregroundStyle(Palette.temperature(current))
@@ -27,9 +38,7 @@ public struct AuraAccessoryCircular: View {
             .tint(Palette.temperature(current))
         } else {
             VStack(spacing: 1) {
-                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
-                    .symbolRenderingMode(.multicolor)
-                    .font(.title3)
+                conditionIcon.font(.title3)
                 Text(AccessoryFormat.temp(current))
                     .font(.headline)
                     .foregroundStyle(Palette.temperature(current))
@@ -124,8 +133,12 @@ public struct AuraAccessoryCorner: View {
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
+        // Oversized font + minimumScaleFactor makes the number scale up to fill the whole corner
+        // region (like Carrot's), instead of sitting small at a fixed title size.
         Text(AccessoryFormat.temp(snapshot.heroTemp))
-            .font(.system(.title2, design: .rounded).weight(.semibold))
+            .font(.system(size: 100, weight: .bold, design: .rounded))
+            .minimumScaleFactor(0.01)
+            .lineLimit(1)
             .foregroundStyle(Palette.temperature(snapshot.heroTemp))
     }
 
