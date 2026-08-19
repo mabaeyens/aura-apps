@@ -1,5 +1,6 @@
 import AuraKit
 import SwiftUI
+import WidgetKit
 
 /// "Hoy" — the numeric daily forecast for the selected location, plus locally computed
 /// sunrise/sunset. This is the screen that proves clean AEMET data reaches the UI.
@@ -74,7 +75,11 @@ struct TodayView: View {
         isLoading = true
         errorMessage = nil
         do {
-            forecast = try await client.municipioDiaria(location.ine)
+            let fetched = try await client.municipioDiaria(location.ine)
+            forecast = fetched
+            // Feed the App Group cache the widgets read, then ask them to re-render.
+            SharedCache.upsert(WeatherSnapshot.make(location: location, forecast: fetched))
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             errorMessage = AEMETService.message(for: error)
         }
