@@ -14,6 +14,10 @@ import WidgetKit
 public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     public static let shared = WatchSync()
 
+    /// Posted on the main thread after a freshly received snapshot is written to the Watch's cache,
+    /// so an open SwiftUI view can re-read it live instead of only on the next `onAppear`.
+    public static let snapshotDidUpdate = Notification.Name("AuraKit.WatchSync.snapshotDidUpdate")
+
     private let payloadKey = "snapshot"
 
     private override init() { super.init() }
@@ -56,6 +60,10 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()
         #endif
+        // Nudge any open view to re-read the cache. Delivered on main so SwiftUI state updates safely.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Self.snapshotDidUpdate, object: nil)
+        }
     }
 
     #if os(iOS)

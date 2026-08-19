@@ -37,6 +37,9 @@ struct WatchRootView: View {
             }
         }
         .onAppear { snapshot = SharedCache.read().first }
+        .onReceive(NotificationCenter.default.publisher(for: WatchSync.snapshotDidUpdate)) { _ in
+            snapshot = SharedCache.read().first
+        }
     }
 
     private func fmt(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—" }
