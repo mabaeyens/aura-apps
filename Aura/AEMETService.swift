@@ -1,5 +1,6 @@
 import AuraKit
 import Foundation
+import WidgetKit
 
 /// Bridges the app to `AEMETClient`: builds a client from the stored key and turns
 /// low-level client errors into Spanish, user-facing messages.
@@ -8,6 +9,24 @@ enum AEMETService {
     static func client() -> AEMETClient? {
         guard let key = AuraKeychain.apiKey(), !key.isEmpty else { return nil }
         return AEMETClient(apiKey: key)
+    }
+
+    /// Fetch and cache a snapshot for every saved location so any widget-selected location has
+    /// data, then reload the widgets. Locations cached within the last hour are skipped to stay
+    /// well under AEMET's rate limit; a single failure never aborts the rest.
+    static func refreshAllForWidgets(_ locations: [Location]) async {
+        guard let client = client() else { return }
+        var didUpdate = false
+        for location in locations {
+            if let existing = SharedCache.snapshot(forINE: location.ine),
+               Date().timeIntervalSince(existing.updated) < 3600 { continue }
+            guard let daily = try? await client.municipioDiaria(location.ine) else { continue }
+            let hourly = try? await client.municipioHoraria(location.ine)
+            SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
+                                                    timeZone: location.timeZone))
+            didUpdate = true
+        }
+        if didUpdate { WidgetCenter.shared.reloadAllTimelines() }
     }
 
     /// Spanish message for any error surfaced while talking to AEMET.

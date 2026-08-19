@@ -3,8 +3,9 @@ import Combine
 import Foundation
 
 /// Owns the user's favorite locations, the current selection, and knowledge of whether an
-/// AEMET key has been entered. Favorites persist to `UserDefaults`; the selected location
-/// drives every data screen. (App Group–backed storage arrives with the widgets in Phase 2.)
+/// AEMET key has been entered. Favorites persist to `UserDefaults` and are mirrored to the App
+/// Group (via `SharedLocations`) so the widget's configuration picker can list them; the selected
+/// location drives every data screen.
 @MainActor
 final class LocationStore: ObservableObject {
     @Published var favorites: [Location] {
@@ -35,6 +36,8 @@ final class LocationStore: ObservableObject {
             favorites = Location.seedCities.filter { $0.ine == "28079" || $0.ine == "15030" }
         }
         selectedINE = defaults.string(forKey: Keys.selected) ?? favorites.first?.ine
+        // `didSet` doesn't fire during init, so mirror the initial list explicitly.
+        SharedLocations.write(favorites)
     }
 
     var selected: Location? {
@@ -69,5 +72,7 @@ final class LocationStore: ObservableObject {
         if let data = try? JSONEncoder().encode(favorites) {
             defaults.set(data, forKey: Keys.favorites)
         }
+        // Keep the widget's location picker in sync with the favourites list.
+        SharedLocations.write(favorites)
     }
 }

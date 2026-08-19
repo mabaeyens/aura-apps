@@ -27,9 +27,11 @@ A thin shell over `AuraKit`, Spanish-only, four tabs:
   capitals, use the current GPS location (nearest bundled city), reorder, delete.
 - **Ajustes** — enter the AEMET API key (stored in the Keychain) and attribution.
 
-The app is the fetch hub: on each refresh it calls AEMET and writes a `WeatherSnapshot` to the
-App Group cache the **home-screen widgets** read (small / medium / large), then reloads their
-timelines. Open `Aura.xcodeproj`, or build from the command line:
+The app is the fetch hub: it caches every saved location's `WeatherSnapshot` to the App Group and
+mirrors the favourites list so the **widgets** can render any of them. Home-screen (small / medium /
+large) and Lock Screen (circular / rectangular / inline) families are supported, and each widget
+instance is **configurable to a specific location** via App Intents. Open `Aura.xcodeproj`, or build
+from the command line:
 
 ```bash
 xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
@@ -57,6 +59,8 @@ xcodebuild -project Aura.xcodeproj -scheme Aura -sdk iphonesimulator \
   hourly municipal forecasts.
 - **`SharedCache`** — the App Group seam (`group.com.mab.Aura`): the app upserts snapshots, the
   widget extension reads them. No backend — the device is the hub.
+- **`SharedLocations`** — the favourites list mirrored to the same App Group, so the widget's
+  configuration picker lists exactly the user's saved locations.
 - **`WeatherIcon`** — maps AEMET `estadoCielo` codes to SF Symbols, honouring the `n` night suffix.
 - **`AuraCard*`** — the shared SwiftUI cards (small / medium / large + empty state), so the app and
   the widget extension render from identical code.

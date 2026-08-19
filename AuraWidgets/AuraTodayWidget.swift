@@ -1,3 +1,4 @@
+import AppIntents
 import AuraKit
 import SwiftUI
 import WidgetKit
@@ -9,32 +10,43 @@ struct AuraEntry: TimelineEntry {
     let snapshot: WeatherSnapshot?
 }
 
-/// Reads the shared cache the app fills. The widget never calls AEMET; it just re-renders whatever
-/// the app last stored, and asks WidgetKit to refresh a few times a day.
-struct AuraProvider: TimelineProvider {
+/// Reads the shared cache the app fills, for the location the widget is configured to show. The
+/// widget never calls AEMET; it just re-renders whatever the app last stored, and asks WidgetKit to
+/// refresh a few times a day.
+struct AuraProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> AuraEntry {
         AuraEntry(date: Date(), snapshot: .preview)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (AuraEntry) -> Void) {
-        let snapshot = context.isPreview ? .preview : SharedCache.read().first
-        completion(AuraEntry(date: Date(), snapshot: snapshot))
+    func snapshot(for configuration: SelectLocationIntent, in context: Context) async -> AuraEntry {
+        AuraEntry(date: Date(), snapshot: resolve(configuration, isPreview: context.isPreview))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<AuraEntry>) -> Void) {
-        let entry = AuraEntry(date: Date(), snapshot: SharedCache.read().first)
+    func timeline(for configuration: SelectLocationIntent, in context: Context) async -> Timeline<AuraEntry> {
+        let entry = AuraEntry(date: Date(), snapshot: resolve(configuration, isPreview: false))
         // The app is the real fetch hub; nudge WidgetKit to re-read the cache periodically.
         let next = Calendar.current.date(byAdding: .hour, value: 3, to: entry.date) ?? entry.date.addingTimeInterval(3 * 3600)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        return Timeline(entries: [entry], policy: .after(next))
+    }
+
+    /// The configured location's cached snapshot, falling back to the first cached location so a
+    /// freshly added widget shows something before it's configured.
+    private func resolve(_ configuration: SelectLocationIntent, isPreview: Bool) -> WeatherSnapshot? {
+        if isPreview { return .preview }
+        if let ine = configuration.location?.id, let snapshot = SharedCache.snapshot(forINE: ine) {
+            return snapshot
+        }
+        return SharedCache.read().first
     }
 }
 
 /// Aura's all-in-one location card, on the home screen (small / medium / large) and the Lock Screen
-/// (circular / rectangular / inline). Configuration (choosing the location and metric) arrives in
-/// Slice D.
+/// (circular / rectangular / inline). Each instance is configurable to a specific saved location.
 struct AuraTodayWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "AuraTodayWidget", provider: AuraProvider()) { entry in
+        AppIntentConfiguration(kind: "AuraTodayWidget",
+                               intent: SelectLocationIntent.self,
+                               provider: AuraProvider()) { entry in
             AuraTodayEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
