@@ -132,3 +132,45 @@ struct AuraWindView: View {
         }
     }
 }
+
+// MARK: - Next hours (rectangular)
+
+/// The next few hours as a wide card for the Modular centre slot.
+struct AuraHoursComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraHours", provider: AuraComplicationProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraRectHours(snapshot: snapshot)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Próximas horas")
+        .description("La previsión de las próximas horas.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+// MARK: - Next days (rectangular)
+
+/// The next few days as a wide card for the Modular centre slot.
+struct AuraDaysComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraDays", provider: AuraComplicationProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraRectDays(snapshot: snapshot)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Próximos días")
+        .description("La previsión de los próximos días.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}

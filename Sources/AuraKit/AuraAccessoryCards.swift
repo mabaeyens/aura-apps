@@ -73,9 +73,18 @@ public struct AuraAccessoryRectangular: View {
                 }
             }
 
-            Text(AccessoryFormat.range(snapshot))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                HStack(spacing: 3) {
+                    Text(AccessoryFormat.temp(snapshot.tempMax))
+                        .foregroundStyle(Palette.temperature(snapshot.tempMax))
+                    Text(AccessoryFormat.temp(snapshot.tempMin))
+                        .foregroundStyle(Palette.temperature(snapshot.tempMin))
+                }
+                if let wind = snapshot.windSpeed {
+                    Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
+                }
+            }
+            .font(.caption)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
