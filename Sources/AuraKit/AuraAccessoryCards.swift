@@ -64,40 +64,35 @@ public struct AuraAccessoryRectangular: View {
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        HStack(alignment: .center, spacing: 8) {
-            // Left: the hero temperature as big as the card allows, with the sky text tucked under it.
-            VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 2) {
+            // Row 1: the condition icon leads the big temperature, with the sky text on the right.
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+                    .symbolRenderingMode(.multicolor)
+                    .font(.title3)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
                     .foregroundStyle(Palette.temperature(snapshot.heroTemp))
                 if let text = snapshot.currentSkyText {
+                    Spacer(minLength: 4)
                     Text(text).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
 
-            Spacer(minLength: 4)
-
-            // Right: place name + condition icon on top, today's range and wind beneath — all aligned
-            // right so they clear the big number.
-            VStack(alignment: .trailing, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(snapshot.localidad)
-                        .font(.caption).fontWeight(.semibold).lineLimit(1)
-                    Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
-                        .symbolRenderingMode(.multicolor)
-                        .font(.footnote)
+            // Row 2: place name on the left, today's range and wind trailing.
+            HStack(spacing: 5) {
+                Text(snapshot.localidad)
+                    .font(.caption).fontWeight(.semibold).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(AccessoryFormat.temp(snapshot.tempMax))
+                    .foregroundStyle(Palette.temperature(snapshot.tempMax))
+                Text(AccessoryFormat.temp(snapshot.tempMin))
+                    .foregroundStyle(Palette.temperature(snapshot.tempMin))
+                if let wind = snapshot.windSpeed {
+                    Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
                 }
-                HStack(spacing: 5) {
-                    Text(AccessoryFormat.temp(snapshot.tempMax))
-                        .foregroundStyle(Palette.temperature(snapshot.tempMax))
-                    Text(AccessoryFormat.temp(snapshot.tempMin))
-                        .foregroundStyle(Palette.temperature(snapshot.tempMin))
-                    if let wind = snapshot.windSpeed {
-                        Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
-                    }
-                }
-                .font(.caption2)
             }
+            .font(.caption2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

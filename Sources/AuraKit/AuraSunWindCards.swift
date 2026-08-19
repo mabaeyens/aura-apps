@@ -20,12 +20,19 @@ public struct AuraSunCircular: View {
 
     public var body: some View {
         let event = snapshot.nextSunEvent(now: now)
-        VStack(spacing: 2) {
+        let date = SunFormat.date(event)
+        VStack(spacing: 1) {
             Image(systemName: SunFormat.icon(event))
-                .symbolRenderingMode(.multicolor)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.yellow, .orange)
                 .font(.title2)
-            Text(SunFormat.date(event).map { SunFormat.hhmm($0) } ?? "—")
+            Text(date.map(SunFormat.hhmm) ?? "—")
                 .font(.caption).fontWeight(.semibold)
+            if let date, let remaining = SunFormat.remaining(from: now, to: date) {
+                Text("· \(remaining)")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
@@ -98,39 +105,48 @@ private enum SunFormat {
 
 // MARK: - Wind
 
-/// `.accessoryCircular`: wind speed as a ring (0–60 km/h), a compass arrow pointing the way the wind
-/// comes from, and the speed in the middle.
+/// `.accessoryCircular`: an eight-point wind rose. The petal in the direction the wind is *going*
+/// (a SurOeste wind blows toward the North-East) lights up, tinted by how hard it's blowing, with the
+/// speed in km/h in the centre. AEMET reports the direction the wind comes *from*, so the lit petal is
+/// that bearing turned 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
 
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
-    private static let fullScale = 60.0
-
     public var body: some View {
-        if let speed = snapshot.windSpeed {
-            Gauge(value: min(Double(speed), Self.fullScale), in: 0...Self.fullScale) {
-                arrow
-            } currentValueLabel: {
-                Text("\(speed)")
+        ZStack {
+            ForEach(0..<8, id: \.self) { i in
+                let lit = i == litPetal
+                Capsule()
+                    .fill(lit ? speedColor : Color.secondary.opacity(0.35))
+                    .frame(width: lit ? 5 : 2.5, height: lit ? 11 : 6)
+                    .offset(y: -19)
+                    .rotationEffect(.degrees(Double(i) * 45))
             }
-            .gaugeStyle(.accessoryCircular)
-            .tint(Gradient(colors: [Palette.tempTeal, Palette.tempGreen, Palette.tempYellow, Palette.tempOrange]))
-        } else {
-            VStack(spacing: 1) {
-                Image(systemName: "wind")
-                Text("—").font(.headline)
+            VStack(spacing: -1) {
+                Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("km/h").font(.system(size: 7)).foregroundStyle(.secondary)
             }
         }
     }
 
-    /// A north-referenced arrow rotated to the direction the wind blows *from* (meteorological).
-    @ViewBuilder private var arrow: some View {
-        if let dir = snapshot.windDirection {
-            Image(systemName: "location.north.fill")
-                .rotationEffect(.degrees(dir.degrees))
-        } else {
-            Image(systemName: "wind")
+    /// Index (0 = N, clockwise) of the eight-point petal the wind is blowing toward, or nil if unknown.
+    private var litPetal: Int? {
+        guard let dir = snapshot.windDirection else { return nil }
+        let towards = (dir.degrees + 180).truncatingRemainder(dividingBy: 360)
+        return Int((towards / 45).rounded()) % 8
+    }
+
+    /// Petal colour by wind speed, teal (calm) through to red (gale).
+    private var speedColor: Color {
+        switch snapshot.windSpeed ?? 0 {
+        case ..<10:    return Palette.tempTeal
+        case 10..<20:  return Palette.tempGreen
+        case 20..<30:  return Palette.tempYellow
+        case 30..<45:  return Palette.tempOrange
+        default:       return Palette.tempRed
         }
     }
 }
