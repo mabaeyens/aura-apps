@@ -43,9 +43,13 @@ public struct AuraSunCorner: View {
     }
 
     public var body: some View {
+        // `.resizable()` makes the symbol fill the whole corner region; a plain `.font(.title)` renders
+        // at a fixed, much smaller intrinsic size that leaves most of the corner empty — that's why it
+        // looked tiny next to the circular complication. The precise event time rides the bezel below.
         Image(systemName: SunFormat.icon(snapshot.nextSunEvent(now: now)))
+            .resizable()
+            .scaledToFit()
             .symbolRenderingMode(.multicolor)
-            .font(.title)
     }
 
     /// The curved label: the event time, e.g. "21:06".

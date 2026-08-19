@@ -114,14 +114,16 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
     public let temp: Int?
     public let sky: String?       // AEMET estadoCielo code
     public let precipProb: Int?   // %
+    public let windSpeed: Int?    // km/h, for the hourly card's wind row
 
     public var id: Int { hour }
 
-    public init(hour: Int, temp: Int?, sky: String?, precipProb: Int?) {
+    public init(hour: Int, temp: Int?, sky: String?, precipProb: Int?, windSpeed: Int? = nil) {
         self.hour = hour
         self.temp = temp
         self.sky = sky
         self.precipProb = precipProb
+        self.windSpeed = windSpeed
     }
 }
 
@@ -133,14 +135,21 @@ public struct DaySnapshot: Codable, Sendable, Hashable, Identifiable {
     /// Peak relative humidity for the day, %. Lets "Hoy" render the daily list straight from the
     /// cached snapshot instead of re-fetching the forecast.
     public let humidityMax: Int?
+    /// Representative sky code for the day (daytime block), for the days card's condition icon.
+    public let sky: String?
+    /// Representative wind speed for the day, km/h, for the days card's wind row.
+    public let windSpeed: Int?
 
     public var id: Date { date }
 
-    public init(date: Date, min: Int?, max: Int?, humidityMax: Int? = nil) {
+    public init(date: Date, min: Int?, max: Int?, humidityMax: Int? = nil,
+                sky: String? = nil, windSpeed: Int? = nil) {
         self.date = date
         self.min = min
         self.max = max
         self.humidityMax = humidityMax
+        self.sky = sky
+        self.windSpeed = windSpeed
     }
 }
 
@@ -161,7 +170,8 @@ public extension WeatherSnapshot {
         let days = daily.prediccion.dia.prefix(5).compactMap { dia -> DaySnapshot? in
             guard let date = Self.parseDay(dia.fecha) else { return nil }
             return DaySnapshot(date: date, min: dia.temperatura?.minima, max: dia.temperatura?.maxima,
-                               humidityMax: dia.humedadRelativa?.maxima)
+                               humidityMax: dia.humedadRelativa?.maxima,
+                               sky: Self.dailySky(dia), windSpeed: Self.dailyWind(dia))
         }
 
         let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
@@ -252,11 +262,39 @@ public extension WeatherSnapshot {
             return (start, end, value)
         }
 
+        // Per-hour wind speed, from the mixed wind/gust array (wind entries carry `velocidad`).
+        let winds = Dictionary((dia.vientoAndRachaMax ?? []).compactMap { w -> (Int, Int)? in
+            guard let h = Int(w.periodo), let first = w.velocidad?.first, let v = Int(first) else { return nil }
+            return (h, v)
+        }, uniquingKeysWith: { a, _ in a })
+
         let hours = Set(temps.keys).union(skies.keys).sorted()
         return hours.map { hour in
             let prob = blocks.first { $0.start <= hour && hour < $0.end }?.value
-            return HourSlot(hour: hour, temp: temps[hour], sky: skies[hour], precipProb: prob)
+            return HourSlot(hour: hour, temp: temps[hour], sky: skies[hour], precipProb: prob,
+                            windSpeed: winds[hour])
         }
+    }
+
+    /// The daytime sky code for a daily forecast block — prefers the whole-day/afternoon block so the
+    /// days card shows a sun rather than a moon.
+    private static func dailySky(_ dia: MunicipioForecast.Dia) -> String? {
+        let blocks = dia.estadoCielo ?? []
+        for periodo in ["00-24", "12-24", "12", "06-12", "00-12"] {
+            if let value = blocks.first(where: { $0.periodo == periodo })?.value, !value.isEmpty {
+                return value
+            }
+        }
+        return blocks.first(where: { !$0.value.isEmpty })?.value
+    }
+
+    /// The representative wind speed for a daily forecast block, km/h — same block preference as the sky.
+    private static func dailyWind(_ dia: MunicipioForecast.Dia) -> Int? {
+        let blocks = dia.viento ?? []
+        for periodo in ["00-24", "12-24", "12", "06-12", "00-12"] {
+            if let speed = blocks.first(where: { $0.periodo == periodo })?.velocidad { return speed }
+        }
+        return blocks.compactMap { $0.velocidad }.max()
     }
 
     private static func pairs(_ values: [MunicipioHourly.HourValue]) -> [Int: Int] {

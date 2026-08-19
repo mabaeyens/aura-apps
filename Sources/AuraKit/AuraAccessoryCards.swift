@@ -55,38 +55,40 @@ public struct AuraAccessoryRectangular: View {
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Row 1: place name, then the condition icon sitting just above the big number.
-            HStack(spacing: 4) {
-                Text(snapshot.localidad)
-                    .font(.caption).fontWeight(.semibold).lineLimit(1)
-                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
-                    .symbolRenderingMode(.multicolor)
-                    .font(.footnote)
-            }
-
-            // Row 2: the hero temperature, big and temperature-tinted, with the sky text beside it.
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+        HStack(alignment: .center, spacing: 8) {
+            // Left: the hero temperature as big as the card allows, with the sky text tucked under it.
+            VStack(alignment: .leading, spacing: 0) {
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundStyle(Palette.temperature(snapshot.heroTemp))
                 if let text = snapshot.currentSkyText {
                     Text(text).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
 
-            // Row 3: today's range and wind, aligned right so nothing crowds the number.
-            HStack(spacing: 6) {
-                Text(AccessoryFormat.temp(snapshot.tempMax))
-                    .foregroundStyle(Palette.temperature(snapshot.tempMax))
-                Text(AccessoryFormat.temp(snapshot.tempMin))
-                    .foregroundStyle(Palette.temperature(snapshot.tempMin))
-                if let wind = snapshot.windSpeed {
-                    Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+
+            // Right: place name + condition icon on top, today's range and wind beneath — all aligned
+            // right so they clear the big number.
+            VStack(alignment: .trailing, spacing: 3) {
+                HStack(spacing: 4) {
+                    Text(snapshot.localidad)
+                        .font(.caption).fontWeight(.semibold).lineLimit(1)
+                    Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
+                        .symbolRenderingMode(.multicolor)
+                        .font(.footnote)
                 }
+                HStack(spacing: 5) {
+                    Text(AccessoryFormat.temp(snapshot.tempMax))
+                        .foregroundStyle(Palette.temperature(snapshot.tempMax))
+                    Text(AccessoryFormat.temp(snapshot.tempMin))
+                        .foregroundStyle(Palette.temperature(snapshot.tempMin))
+                    if let wind = snapshot.windSpeed {
+                        Label("\(wind)", systemImage: "wind").foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption2)
             }
-            .font(.caption2)
-            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
