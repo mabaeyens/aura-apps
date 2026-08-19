@@ -19,6 +19,8 @@ struct AuraApp: App {
                 .task { await AEMETService.refreshAllForWidgets(store.favorites) }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
+                        // Match the app icon to the season, then refresh widget data.
+                        AppIconManager.updateForSeason()
                         Task { await AEMETService.refreshAllForWidgets(store.favorites) }
                     }
                 }
