@@ -126,6 +126,13 @@ public enum Palette {
         (24, (0.05, 0.07, 0.20), (0.10, 0.13, 0.30)),   // night (wrap)
     ]
 
+    /// The sky gradient's top and bottom colours for a given time — the base sky behind `AuraSky`,
+    /// before the sun glow and scenery are layered on. Exposes the same day-cycle anchors the header
+    /// card's `timeGradient` uses.
+    public static func skyBaseColors(at date: Date = Date()) -> (top: Color, bottom: Color) {
+        timeColors(at: date)
+    }
+
     private static func timeColors(at date: Date) -> (Color, Color) {
         let cal = Calendar.current
         let h = Double(cal.component(.hour, from: date)) + Double(cal.component(.minute, from: date)) / 60

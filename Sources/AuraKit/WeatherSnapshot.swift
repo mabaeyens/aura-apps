@@ -197,7 +197,7 @@ public extension WeatherSnapshot {
         let resolved = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
         let currentSky = resolved?.current?.sky
 
-        let days = daily.prediccion.dia.prefix(5).enumerated().compactMap { (idx, dia) -> DaySnapshot? in
+        let days = daily.prediccion.dia.prefix(7).enumerated().compactMap { (idx, dia) -> DaySnapshot? in
             guard let date = Self.parseDay(dia.fecha) else { return nil }
             // Today (idx 0) follows the current hour: a clear morning shows a sun even when the
             // afternoon turns rainy, and the icon re-adapts as a fresh forecast arrives. Later days
@@ -253,7 +253,8 @@ public extension WeatherSnapshot {
         let text = dias.first.flatMap { skyText($0, hour: current?.hour) }
             ?? (dias.count > 1 ? skyText(dias[1], hour: current?.hour) : nil)
 
-        return (current, text, Array(upcoming.prefix(6)))
+        // Keep a full day ahead so the hourly strip has real data to scroll through (five show at once).
+        return (current, text, Array(upcoming.prefix(24)))
     }
 
     /// The wind for the current hour (or the next available reading), as speed km/h + direction.

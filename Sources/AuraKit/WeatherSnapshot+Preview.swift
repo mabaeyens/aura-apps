@@ -5,14 +5,17 @@ public extension WeatherSnapshot {
     static var preview: WeatherSnapshot {
         let cal = Calendar(identifier: .gregorian)
         let base = Date()
-        let days = (0..<5).compactMap { offset -> DaySnapshot? in
+        let days = (0..<7).compactMap { offset -> DaySnapshot? in
             guard let date = cal.date(byAdding: .day, value: offset, to: base) else { return nil }
-            return DaySnapshot(date: date, min: 17 + offset, max: 33 - offset)
+            return DaySnapshot(date: date, min: 17 + offset, max: 33 - offset,
+                               sky: ["12", "13", "11", "14", "13", "43", "12"][offset],
+                               probPrecip: [0, 10, 0, 20, 15, 60, 5][offset])
         }
         let startHour = cal.component(.hour, from: base)
-        let skies = ["11", "11", "12", "13", "13n", "14"]
-        let hours = (0..<6).map { i in
-            HourSlot(hour: (startHour + i) % 24, temp: 29 - i, sky: skies[i], precipProb: i >= 4 ? 15 : 0)
+        let skies = ["11", "11", "12", "13", "13n", "14", "14n", "13n", "12n", "11n", "11n", "12n"]
+        let hours = (0..<12).map { i in
+            HourSlot(hour: (startHour + i) % 24, temp: 29 - i, sky: skies[i],
+                     precipProb: [0, 0, 0, 0, 15, 15, 20, 20, 10, 0, 0, 5][i])
         }
         return WeatherSnapshot(
             ine: "28079", localidad: "Madrid", provincia: "Madrid",

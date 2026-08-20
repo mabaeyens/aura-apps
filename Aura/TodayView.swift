@@ -1,8 +1,12 @@
 import AuraKit
 import SwiftUI
 
-/// "Hoy" — the numeric daily forecast for the selected location, plus locally computed
-/// sunrise/sunset. It renders straight from the shared App Group cache: it asks the one coalesced
+/// "Hoy" — the forecast for the selected location, rendered as Aura's signature screen: the shared
+/// `AuraForecastStack` (hero, hours, days, sun·wind, aviso, predicción) floating as frosted cards over
+/// a full-bleed `AuraSky` whose light sits where the sun actually is for the hour. The same cards the
+/// Apple Watch shows, resized.
+///
+/// It renders straight from the shared App Group cache: it asks the one coalesced
 /// `AEMETService.refreshAllForWidgets` to fill the cache, then reads the snapshot — it never calls
 /// AEMET directly, so it can't duplicate the launch refresh's requests.
 struct TodayView: View {
@@ -22,72 +26,61 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let location = store.selected {
-                    content(for: location)
-                } else {
-                    ContentUnavailableView(
-                        "Sin ubicaciones",
-                        systemImage: "mappin.slash",
-                        description: Text("Añade una ubicación en la pestaña Ubicaciones.")
-                    )
+            ZStack {
+                AuraSky(snapshot: snapshot).ignoresSafeArea()
+                Group {
+                    if let location = store.selected {
+                        content(for: location)
+                    } else {
+                        ContentUnavailableView(
+                            "Sin ubicaciones",
+                            systemImage: "mappin.slash",
+                            description: Text("Añade una ubicación en la pestaña Ubicaciones.")
+                        )
+                    }
                 }
+                .environment(\.colorScheme, .dark)   // light text + dark frosted cards over the sky
             }
-            .navigationTitle(store.selected?.nombre ?? "Hoy")
-            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .navigationBar)    // immersive: the hero card carries the location name
         }
         .task(id: store.selectedINE) { await load(force: false) }
     }
 
     @ViewBuilder
     private func content(for location: Location) -> some View {
-        List {
-            if !store.apiKeyPresent {
-                Section {
-                    Label("Añade tu clave de AEMET en Ajustes para ver los datos.",
-                          systemImage: "key")
-                        .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(spacing: 14) {
+                if !store.apiKeyPresent { keyBanner }
+
+                if let snapshot {
+                    AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date())
+                } else if isLoading {
+                    notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }
+                } else if let errorMessage {
+                    notice { Label(errorMessage, systemImage: "exclamationmark.triangle") }
                 }
             }
-
-            if let snapshot {
-                Section {
-                    CurrentConditionsHeader(snapshot: snapshot)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                }
-                if let alert = snapshot.alert {
-                    Section {
-                        AlertBanner(alert: alert)
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                    }
-                }
-            }
-
-            Section("Sol") {
-                SunTimesRow(location: location)
-            }
-
-            if let snapshot, !snapshot.days.isEmpty {
-                Section("Predicción diaria") {
-                    ForEach(snapshot.days) { day in
-                        DayRow(day: day)
-                    }
-                }
-            } else if isLoading {
-                Section { HStack { ProgressView(); Text("Cargando…").foregroundStyle(.secondary) } }
-            } else if let errorMessage {
-                Section { Label(errorMessage, systemImage: "exclamationmark.triangle").foregroundStyle(.secondary) }
-            }
-
-            Section {
-                Text("Elaborado con datos de AEMET")
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 64)   // let the sky's horizon breathe below the last card
         }
+        .scrollContentBackground(.hidden)
         .refreshable { await load(force: true) }
+    }
+
+    /// A translucent banner used for the API-key prompt, loading and error states, so they sit on the
+    /// sky like the cards do.
+    private func notice<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .font(.subheadline)
+            .foregroundStyle(.white.opacity(0.9))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var keyBanner: some View {
+        notice { Label("Añade tu clave de AEMET en Ajustes para ver los datos.", systemImage: "key") }
     }
 
     private func load(force: Bool) async {
@@ -119,157 +112,5 @@ struct TodayView: View {
             errorMessage = refreshError ?? "No se pudieron obtener los datos."
         }
         isLoading = false
-    }
-}
-
-/// The current conditions at a glance: condition icon, temperature-tinted hero number, sky text,
-/// and today's Máx/Mín — over a soft sky-gradient card. Aura's splash of colour on the phone.
-private struct CurrentConditionsHeader: View {
-    let snapshot: WeatherSnapshot
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky))
-                .symbolRenderingMode(.multicolor)
-                .font(.system(size: 40))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
-                    .font(.system(size: 46, weight: .bold, design: .rounded))
-                if let sky = snapshot.currentSkyText {
-                    Text(sky).font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                }
-            }
-            Spacer()
-            // Right column: max, min and wind on one type scale, each with a leading symbol so the
-            // icons line up. Max/min carry their temperature colour (the day-cycle gradient behind
-            // them is dark enough to read against); wind stays white.
-            VStack(alignment: .leading, spacing: 6) {
-                metric("arrow.up", fmt(snapshot.tempMax), Palette.temperature(snapshot.tempMax))
-                metric("arrow.down", fmt(snapshot.tempMin), Palette.temperature(snapshot.tempMin))
-                if let wind = snapshot.windSpeed {
-                    metric("wind",
-                           "\(wind) km/h\(snapshot.windDirection.map { " " + $0.abbreviation } ?? "")",
-                           .white)
-                }
-            }
-        }
-        .foregroundStyle(.white)
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        // Sky gradient that tracks the time of day, not the current condition — Aura's changing splash
-        // of colour on the phone. White text reads on every phase.
-        .background(Palette.timeGradient(at: Date()), in: RoundedRectangle(cornerRadius: 18))
-        .padding(.vertical, 4)
-    }
-
-    /// One right-column row: a fixed-width symbol so every row's icon aligns, then the value, all at
-    /// the same size. `tint` colours the whole row.
-    private func metric(_ icon: String, _ text: String, _ tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon).frame(width: 18)
-            Text(text)
-        }
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(tint)
-    }
-
-    private func fmt(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—" }
-}
-
-/// A tinted avisos banner matching AEMET's warning level colour.
-private struct AlertBanner: View {
-    let alert: WeatherAlert
-
-    var body: some View {
-        Label(alert.phenomenon ?? alert.event, systemImage: "exclamationmark.triangle.fill")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(Palette.alert(alert.level))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(Palette.alert(alert.level).opacity(0.16),
-                        in: RoundedRectangle(cornerRadius: 14))
-            .padding(.vertical, 4)
-    }
-}
-
-/// Sunrise/sunset for today, computed on-device and shown in the location's time zone.
-private struct SunTimesRow: View {
-    let location: Location
-
-    var body: some View {
-        let sun = SolarTimes(date: Date(), latitude: location.latitude, longitude: location.longitude)
-        HStack {
-            sunLabel("Orto", systemImage: "sunrise.fill", date: sun.sunrise, tint: .orange)
-            Spacer()
-            sunLabel("Ocaso", systemImage: "sunset.fill", date: sun.sunset, tint: .pink)
-        }
-    }
-
-    private func sunLabel(_ title: String, systemImage: String, date: Date?, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label(title, systemImage: systemImage)
-                .font(.caption)
-                .foregroundStyle(tint)
-            Text(date.map { Self.timeFormatter(for: location).string(from: $0) } ?? "—")
-                .font(.title3.monospacedDigit())
-        }
-    }
-
-    private static func timeFormatter(for location: Location) -> DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.timeZone = location.timeZone
-        f.dateFormat = "HH:mm"
-        return f
-    }
-}
-
-/// One day of the daily forecast: date, condition icon, rain chance, min/max temperature. Renders from
-/// the cached `DaySnapshot`.
-private struct DayRow: View {
-    let day: DaySnapshot
-
-    var body: some View {
-        HStack {
-            Text(Self.dayLabel(day.date))
-                .frame(width: 96, alignment: .leading)
-            Spacer()
-            // The day's actual condition, not peak humidity: the humidity glyph looked like rain and
-            // showed every day, which read as "rain daily" and contradicted the complications. This is
-            // the same sky code the complications use, so a clear day shows a sun and rain shows only
-            // when it actually rains.
-            Image(systemName: WeatherIcon.symbol(forSky: day.sky))
-                .symbolRenderingMode(.multicolor)
-                .font(.title3)
-                .frame(width: 30)
-            // Rain chance, only when there's a real one (≥10%) so dry days stay uncluttered. Fixed
-            // width so the temperatures stay column-aligned whether or not the drop shows.
-            HStack(spacing: 2) {
-                if let p = day.probPrecip, p >= 10 {
-                    Image(systemName: "drop.fill").font(.caption2)
-                    Text("\(p)%").font(.subheadline.monospacedDigit())
-                }
-            }
-            .foregroundStyle(Palette.tempBlue)
-            .frame(width: 54, alignment: .trailing)
-            Spacer().frame(width: 12)
-            minMax
-                .font(.headline.monospacedDigit())
-        }
-    }
-
-    private var minMax: some View {
-        HStack(spacing: 4) {
-            Text(day.min.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(day.min))
-            Text("/").foregroundStyle(.tertiary)
-            Text(day.max.map { "\($0)°" } ?? "—").foregroundStyle(Palette.temperature(day.max))
-        }
-    }
-
-    private static func dayLabel(_ date: Date) -> String {
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "es_ES")
-        out.dateFormat = "EEE d MMM"
-        return out.string(from: date).capitalized
     }
 }

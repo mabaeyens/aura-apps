@@ -74,3 +74,48 @@ func tempRamp() -> some View {
     .background(Color(white: 0.10))
 }
 write(tempRamp(), name: "temp-ramp", size: CGSize(width: 26 * 11 + 12, height: 58))
+
+// ---- Full app screen (the redesign): the shared stack over the sun-tracking sky ----
+// Rendered at four times of day so the sun's travel (east → noon → west → night) is visible on a real
+// build. Phone and Watch draw the identical stack from AuraKit, only resized.
+@MainActor
+func appScreen(size: CGSize, now: Date) -> some View {
+    let isPhone = size.width > 220
+    return ZStack(alignment: .top) {
+        AuraSky(snapshot: .preview, now: now)
+        AuraForecastStack(snapshot: .preview, size: isPhone ? .phone : .watch, now: now,
+                          hoursScroll: false)   // ImageRenderer can't lay out the horizontal strip
+            .padding(.horizontal, isPhone ? 14 : 5)
+            .padding(.top, isPhone ? 16 : 8)
+    }
+    .frame(width: size.width, height: size.height)
+    .clipShape(RoundedRectangle(cornerRadius: isPhone ? 32 : 40, style: .continuous))
+    .environment(\.colorScheme, .dark)
+}
+
+let renderCal = Calendar.current
+func todayAt(_ h: Int, _ m: Int) -> Date {
+    renderCal.date(bySettingHour: h, minute: m, second: 0, of: Date()) ?? Date()
+}
+for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
+                      ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
+    let phone = CGSize(width: 300, height: 900)    // tall enough to show the whole stack (device scrolls)
+    let watch = CGSize(width: 184, height: 620)    // tall enough to show the full stack (device scrolls)
+    write(appScreen(size: phone, now: when), name: "app-phone-\(label)", size: phone)
+    write(appScreen(size: watch, now: when), name: "app-watch-\(label)", size: watch)
+}
+
+// The hourly card on its own over a morning sky — the strip now distributes edge to edge (no scroll),
+// so ImageRenderer lays it out in full.
+@MainActor
+func hoursPreview() -> some View {
+    ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(8, 0))
+        AuraHourlyCard(hours: WeatherSnapshot.preview.hours, size: .phone, scrolls: false)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 320, height: 150)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+}
+write(hoursPreview(), name: "app-hours-populated", size: CGSize(width: 320, height: 150))
