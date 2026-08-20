@@ -5,7 +5,7 @@ import SwiftUI
 // and any iOS Lock Screen render identical code. Colour comes through on watchOS full-colour faces;
 // the iOS Lock Screen renders vibrant/monochrome.
 //
-//   Hours: header (hour) · icon · temperature, over a "station · updated" footer.
+//   Hours: header (hour) · icon · temperature, over a "time · humidity · rain-chance" footer.
 //   Days:  header (weekday) · icon · high · low — max/min is more useful than a footer here.
 //
 // The icon sits in a fixed-height slot so the temperature rows line up across columns even though the
@@ -65,22 +65,32 @@ public struct AuraRectHours: View {
                                     value: h.temp)
                     }
                 }
-                Text(Self.footer(updated: snapshot.updated, place: snapshot.localidad))
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .frame(maxWidth: .infinity)
+                // Footer: refresh time, plus the current humidity and rain chance — a teal drop and a
+                // blue umbrella tell the two percentages apart. Replaces the old "· location" line
+                // (which read as an observed-station reference) entirely.
+                HStack(spacing: 8) {
+                    Text("act. \(Self.hhmm(snapshot.updated))")
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 2)
+                    pct("humidity.fill", snapshot.currentHumidity ?? 0, Palette.tempTeal)
+                    pct("umbrella.fill", snapshot.currentPrecipProb ?? 0, Palette.tempBlue)
+                }
+                .font(.system(size: 9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
-    /// "act. 23:14 · Madrid" — the refresh time and the location name (no observed-station reference).
-    private static func footer(updated: Date, place: String?) -> String {
-        let time = hhmm(updated)
-        if let place, !place.isEmpty { return "act. \(time) · \(place)" }
-        return "Actualizado \(time)"
+    /// One footer percentage: a small icon and its value in one tint.
+    private func pct(_ icon: String, _ value: Int, _ tint: Color) -> some View {
+        HStack(spacing: 2) {
+            Image(systemName: icon)
+            Text("\(value)%")
+        }
+        .foregroundStyle(tint)
     }
 
     private static func hhmm(_ date: Date) -> String {

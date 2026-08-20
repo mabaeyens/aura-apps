@@ -171,12 +171,13 @@ public struct AuraWindCircular: View {
                 .frame(width: d * 0.30, height: d * 0.78)
         case .needle:
             // Two slim triangles with a gap in the middle for the number — bright half the head, dim
-            // half the tail.
+            // half the tail. Length reaches the mark radius (~0.485d) less 2pt, so each tip just short
+            // of its mark.
             ZStack {
                 NeedleHalf(pointingUp: true).fill(head)
                 NeedleHalf(pointingUp: false).fill(tail)
             }
-            .frame(width: d * 0.16, height: d * 0.78)
+            .frame(width: d * 0.16, height: d * 0.97 - 4)
         }
     }
 
@@ -196,18 +197,20 @@ private struct WindRose: View {
     var body: some View {
         let d = diameter
         ZStack {
-            // 24 marks, every 15°. Cardinals (90°) longest/brightest, inter-cardinals (45°) medium, the
-            // rest short and dim — subtle, so the number can be big and the rose still reads.
+            // Marks every 15°, but NOT at the cardinals — there the letter itself is the mark. Bright,
+            // nearly white (inter-cardinals full white, the rest almost), as asked; the number stays
+            // legible over them because the vane, not the marks, is what it sits on.
             ForEach(Array(stride(from: 0, to: 360, by: 15)), id: \.self) { deg in
-                let cardinal = deg % 90 == 0
-                let inter = deg % 45 == 0
-                mark(bearing: Double(deg),
-                     length: cardinal ? d * 0.09 : (inter ? d * 0.07 : d * 0.05),
-                     width: d * 0.016,
-                     color: .white.opacity(cardinal ? 0.55 : (inter ? 0.36 : 0.22)),
-                     d: d)
+                if deg % 90 != 0 {
+                    let inter = deg % 45 == 0
+                    mark(bearing: Double(deg),
+                         length: inter ? d * 0.085 : d * 0.06,
+                         width: d * 0.018,
+                         color: .white.opacity(inter ? 1.0 : 0.85),
+                         d: d)
+                }
             }
-            // Cardinal letters, small and understated — orientation without shouting over the number.
+            // Cardinal letters — bright, and the only marker at N/E/S/O (no tick beside them).
             letter("N", dx: 0, dy: -1, d: d)
             letter("E", dx: 1, dy: 0, d: d)
             letter("S", dx: 0, dy: 1, d: d)
@@ -233,9 +236,9 @@ private struct WindRose: View {
     /// One upright cardinal letter placed inside the marks (dx/dy are unit offsets, not rotated).
     private func letter(_ s: String, dx: CGFloat, dy: CGFloat, d: CGFloat) -> some View {
         Text(s)
-            .font(.system(size: d * 0.12, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.6))
-            .offset(x: dx * d * 0.30, y: dy * d * 0.30)
+            .font(.system(size: d * 0.13, weight: .bold))
+            .foregroundStyle(.white.opacity(0.95))
+            .offset(x: dx * d * 0.34, y: dy * d * 0.34)
     }
 }
 
