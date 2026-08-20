@@ -76,44 +76,38 @@ public struct AuraAccessoryRectangular: View {
         // largely dropped: hierarchy comes from weight and grayscale, not tint (Apple HIG). Semantic
         // font styles — not fixed point sizes — so the text scales with Dynamic Type and never
         // overflows the way a hardcoded 30pt did once the icon was added.
-        VStack(alignment: .leading, spacing: 1) {
-            // Line 1: condition glyph + hero temp on the left, current wind on the right. Wind lives
-            // here — not on the sky line — because AEMET's sky phrases run long ("Intervalos nubosos
-            // con lluvia") and would otherwise fight the wind for width, truncating and shrinking to a
-            // different size than the row below. Beside the temperature there is always room.
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
+            // Row 1: condition glyph + temperature, both large — and alone on the line. The real Lock
+            // Screen rectangular slot is narrow (~160pt when two share the row), so anything placed
+            // beside the temperature squeezed it into "2…". Nothing shares this row now.
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                    .font(.headline)
+                    .font(.title2)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
-                if snapshot.windSpeed != nil {
-                    Spacer(minLength: 4)
-                    Label(AccessoryFormat.wind(snapshot), systemImage: "wind")
-                        .labelStyle(TightLabelStyle())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1).minimumScaleFactor(0.85)
-                }
+                    .font(.title).fontWeight(.semibold).fontDesign(.rounded)
+                    .lineLimit(1).minimumScaleFactor(0.8)
             }
-            // Line 2: the sky word, the full width to itself, so a long phrase can shrink evenly
-            // instead of clipping mid-word against the wind.
+            // Row 2: the sky word, on its own line.
             if let text = snapshot.currentSkyText {
                 Text(text)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
             }
-            // Line 3: which location this is, and today's high/low with up/down arrows.
-            HStack(spacing: 6) {
-                Text(snapshot.localidad).lineLimit(1).minimumScaleFactor(0.7)
-                Spacer(minLength: 2)
+            // Row 3: today's high and low, then the current wind.
+            HStack(spacing: 5) {
                 Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
                 Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
+                if snapshot.windSpeed != nil {
+                    Label(AccessoryFormat.wind(snapshot), systemImage: "wind")
+                }
             }
             .font(.caption2)
             .foregroundStyle(.secondary)
             .labelStyle(TightLabelStyle())
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

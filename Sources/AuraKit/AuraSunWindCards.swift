@@ -108,26 +108,16 @@ private enum SunFormat {
 
 // MARK: - Wind
 
-/// Which vane shape the wind complication draws over its compass rose.
-public enum WindVaneStyle: Sendable {
-    /// One tapered arrow — arrowhead = where the wind blows *to*, swallowtail = where it comes *from*.
-    case arrow
-    /// A two-tone compass needle — the bright half points *to*, the dim half points *from*.
-    case needle
-}
-
-/// `.accessoryCircular`: a compass read like a weather vane. A clear rose rings the dial — white
-/// cardinal letters and marks, grey inter-cardinal marks — with the speed big in the centre. A vane,
-/// coloured by wind strength (Windy-style ramp), spans the dial and covers the marks at its head and
-/// tail so the heading reads at a glance. AEMET reports the direction the wind comes *from*, so the
-/// vane's head points that bearing + 180°. Two shapes to choose from, `.arrow` and `.needle`.
+/// `.accessoryCircular`: a compass read like a weather vane. A fine rose rings the dial — bright,
+/// near-white marks with the N/E/S/O letters standing in for the cardinal marks, all on one ring — with
+/// the speed big in the centre. A two-tone needle, coloured by wind strength (Windy-style ramp), lies
+/// over the rose and spans it tip to tip. AEMET reports the direction the wind comes *from*, so the
+/// needle's bright head points that bearing + 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
-    let style: WindVaneStyle
 
-    public init(snapshot: WeatherSnapshot, style: WindVaneStyle = .arrow) {
+    public init(snapshot: WeatherSnapshot) {
         self.snapshot = snapshot
-        self.style = style
     }
 
     public var body: some View {
@@ -136,17 +126,16 @@ public struct AuraWindCircular: View {
             ZStack {
                 WindRose(diameter: d)
 
-                // The vane, over the rose so it covers the marks at head and tail. Sized nearly the full
-                // diameter so both ends reach the rim; rotated so the head sits at the "blows toward"
-                // bearing.
+                // The needle, over the rose. Sized so its tips reach the mark ring; rotated so the
+                // bright head sits at the "blows toward" bearing.
                 if let towards = towardsDegrees {
                     vane(diameter: d)
                         .frame(width: d, height: d)
                         .rotationEffect(.degrees(towards))
                 }
 
-                // Centre: the speed, big and white, drawn last so it stays legible over the vane. A soft
-                // dark halo lifts it off a bright vane.
+                // Centre: the speed, big and white, drawn last so it stays legible over the needle. A
+                // soft dark halo lifts it off a bright needle.
                 Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
                     .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
@@ -156,29 +145,17 @@ public struct AuraWindCircular: View {
         }
     }
 
-    /// The vane view for the chosen style, coloured by wind strength. The head (points *to*) takes the
-    /// full intensity colour; the tail (points *from*) a dimmer shade of it, so the two sections read.
-    /// Kept slim — a thin arrow / needle over a legible rose, not a chunky wedge that hides the dial.
+    /// The compass needle, coloured by wind strength: two slim triangles with a gap in the middle for
+    /// the number — the bright half is the head (points *to*), the dim half the tail (points *from*).
+    /// Tip to tip it is as long as the marker ring, so each tip meets its mark.
     @ViewBuilder private func vane(diameter d: CGFloat) -> some View {
         let head = Palette.wind(snapshot.windSpeed)
         let tail = head.opacity(0.5)
-        switch style {
-        case .arrow:
-            // One thin arrow: a sharp arrowhead (points *to*), a slim shaft, a swallowtail (comes
-            // *from*). The shape alone carries head-vs-tail, so it stays a single intensity colour.
-            WindArrow()
-                .fill(head)
-                .frame(width: d * 0.30, height: d * 0.78)
-        case .needle:
-            // Two slim triangles with a gap in the middle for the number — bright half the head, dim
-            // half the tail. Length reaches the mark radius (~0.485d) less 2pt, so each tip just short
-            // of its mark.
-            ZStack {
-                NeedleHalf(pointingUp: true).fill(head)
-                NeedleHalf(pointingUp: false).fill(tail)
-            }
-            .frame(width: d * 0.16, height: d * 0.97 - 4)
+        ZStack {
+            NeedleHalf(pointingUp: true).fill(head)
+            NeedleHalf(pointingUp: false).fill(tail)
         }
+        .frame(width: d * 0.16, height: d * WindRose.markRingRadiusFactor * 2)
     }
 
     /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.
@@ -188,29 +165,33 @@ public struct AuraWindCircular: View {
     }
 }
 
-/// The compass rose behind the vane: a fine ring of radial marks — a tick every 15° — so it reads as a
-/// real rose, with the cardinals a touch longer and brighter and understated N/E/S/O letters just
-/// inside. No dial ring; the marks alone carry it. Sized to `diameter`.
+/// The compass rose behind the needle: a fine ring of radial marks — a tick every 9°, 40 in all — so it
+/// reads as a real rose, with the inter-cardinals a touch longer. The N/E/S/O letters sit ON that same
+/// ring, standing in for the cardinal marks (no separate tick). No dial ring; the marks carry it.
 private struct WindRose: View {
     let diameter: CGFloat
+
+    /// Radius, as a fraction of the diameter, of the outer tip of every mark — the ring the marks and
+    /// the cardinal letters share, and the ring the needle's tips reach.
+    static let markRingRadiusFactor: CGFloat = 0.485
 
     var body: some View {
         let d = diameter
         ZStack {
-            // Marks every 15°, but NOT at the cardinals — there the letter itself is the mark. Bright,
-            // nearly white (inter-cardinals full white, the rest almost), as asked; the number stays
-            // legible over them because the vane, not the marks, is what it sits on.
-            ForEach(Array(stride(from: 0, to: 360, by: 15)), id: \.self) { deg in
+            // Marks every 9°, but NOT at the cardinals — there the letter itself is the mark. Bright,
+            // nearly white (inter-cardinals full white, the rest almost); all reach the same outer ring.
+            ForEach(Array(stride(from: 0, to: 360, by: 9)), id: \.self) { deg in
                 if deg % 90 != 0 {
                     let inter = deg % 45 == 0
                     mark(bearing: Double(deg),
-                         length: inter ? d * 0.085 : d * 0.06,
-                         width: d * 0.018,
+                         length: inter ? d * 0.10 : d * 0.06,
+                         width: d * 0.016,
                          color: .white.opacity(inter ? 1.0 : 0.85),
                          d: d)
                 }
             }
-            // Cardinal letters — bright, and the only marker at N/E/S/O (no tick beside them).
+            // Cardinal letters — bright white, ON the mark ring and aligned with the rest of the marks:
+            // they ARE the cardinal marks, with no tick beside them.
             letter("N", dx: 0, dy: -1, d: d)
             letter("E", dx: 1, dy: 0, d: d)
             letter("S", dx: 0, dy: 1, d: d)
@@ -219,58 +200,27 @@ private struct WindRose: View {
         .frame(width: d, height: d)
     }
 
-    /// One radial mark at `bearing` (0 = N, clockwise). Built as a capsule offset to the top of a
-    /// d×d container, then the container is rotated about its centre — the dial centre — so the mark
-    /// lands on its bearing, oriented radially.
+    /// One radial mark at `bearing` (0 = N, clockwise). Built as a capsule whose outer tip sits on the
+    /// mark ring inside a d×d container, then rotated about the container (dial) centre onto its bearing.
     private func mark(bearing: Double, length: CGFloat, width: CGFloat, color: Color, d: CGFloat) -> some View {
         ZStack {
             Capsule()
                 .fill(color)
                 .frame(width: width, height: length)
-                .offset(y: -(d / 2 - length / 2 - d * 0.015))
+                .offset(y: -(d * Self.markRingRadiusFactor - length / 2))
         }
         .frame(width: d, height: d)
         .rotationEffect(.degrees(bearing))
     }
 
-    /// One upright cardinal letter placed inside the marks (dx/dy are unit offsets, not rotated).
+    /// One upright cardinal letter, centred on the mark ring (dx/dy are unit offsets, not rotated), so
+    /// it reads as the cardinal mark rather than a label sitting inside the ring.
     private func letter(_ s: String, dx: CGFloat, dy: CGFloat, d: CGFloat) -> some View {
-        Text(s)
-            .font(.system(size: d * 0.13, weight: .bold))
-            .foregroundStyle(.white.opacity(0.95))
-            .offset(x: dx * d * 0.34, y: dy * d * 0.34)
-    }
-}
-
-/// A slim weather-vane arrow pointing up (rotated to heading): a sharp arrowhead at the top, a thin
-/// shaft, and a forked "swallowtail" flight at the bottom — so it reads as one clean directional arrow
-/// without hiding the rose behind it.
-private struct WindArrow: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let midX = rect.midX
-        let w = rect.width
-        let h = rect.height
-        let shaftHalf = w * 0.11
-        let barb = w * 0.5
-        let headH = h * 0.26
-        let tailH = h * 0.20
-        // Arrowhead (top): a sharp triangle.
-        path.move(to: CGPoint(x: midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: midX + barb, y: rect.minY + headH))
-        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headH))
-        // Shaft down to the tail.
-        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY - tailH))
-        // Swallowtail flight (right point, centre notch, left point).
-        path.addLine(to: CGPoint(x: midX + barb, y: rect.maxY))
-        path.addLine(to: CGPoint(x: midX, y: rect.maxY - tailH * 0.5))
-        path.addLine(to: CGPoint(x: midX - barb, y: rect.maxY))
-        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY - tailH))
-        // Shaft back up and the left barb.
-        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headH))
-        path.addLine(to: CGPoint(x: midX - barb, y: rect.minY + headH))
-        path.closeSubpath()
-        return path
+        let r = d * (Self.markRingRadiusFactor - 0.075)   // centre pulled in by ~half the glyph height
+        return Text(s)
+            .font(.system(size: d * 0.15, weight: .bold))
+            .foregroundStyle(.white)
+            .offset(x: dx * r, y: dy * r)
     }
 }
 

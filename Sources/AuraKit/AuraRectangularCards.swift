@@ -75,7 +75,7 @@ public struct AuraRectHours: View {
                     pct("humidity.fill", snapshot.currentHumidity ?? 0, Palette.tempTeal)
                     pct("umbrella.fill", snapshot.currentPrecipProb ?? 0, Palette.tempBlue)
                 }
-                .font(.system(size: 9))
+                .font(.system(size: 11))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .frame(maxWidth: .infinity)
