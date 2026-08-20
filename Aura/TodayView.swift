@@ -133,36 +133,44 @@ private struct CurrentConditionsHeader: View {
                 .symbolRenderingMode(.multicolor)
                 .font(.system(size: 40))
             VStack(alignment: .leading, spacing: 2) {
-                // Primary colour, not the temperature tint: the pale yellow/orange of the tint washes
-                // out against the light sky-gradient card. The colour lives in the icon and the card;
-                // the numbers stay high-contrast and readable.
                 Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
                     .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .foregroundStyle(.primary)
                 if let sky = snapshot.currentSkyText {
-                    Text(sky).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    Text(sky).font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
                 }
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Máx \(fmt(snapshot.tempMax))")
-                Text("Mín \(fmt(snapshot.tempMin))")
-                // Current wind — speed and the direction it blows from — instead of the observation
-                // station, which was low-value and truncated ("Madrid C…").
+            // Right column: max, min and wind on one type scale, each with a leading symbol so the
+            // icons line up. Max/min carry their temperature colour (the day-cycle gradient behind
+            // them is dark enough to read against); wind stays white.
+            VStack(alignment: .leading, spacing: 6) {
+                metric("arrow.up", fmt(snapshot.tempMax), Palette.temperature(snapshot.tempMax))
+                metric("arrow.down", fmt(snapshot.tempMin), Palette.temperature(snapshot.tempMin))
                 if let wind = snapshot.windSpeed {
-                    Label("\(wind) km/h\(snapshot.windDirection.map { " " + $0.abbreviation } ?? "")",
-                          systemImage: "wind")
-                        .font(.caption).lineLimit(1)
+                    metric("wind",
+                           "\(wind) km/h\(snapshot.windDirection.map { " " + $0.abbreviation } ?? "")",
+                           .white)
                 }
             }
-            .foregroundStyle(.primary)
-            .font(.subheadline.weight(.medium))
         }
+        .foregroundStyle(.white)
         .padding(16)
         .frame(maxWidth: .infinity)
-        .background(Palette.skyGradient(forCode: snapshot.currentSky).opacity(0.5),
-                    in: RoundedRectangle(cornerRadius: 18))
+        // Sky gradient that tracks the time of day, not the current condition — Aura's changing splash
+        // of colour on the phone. White text reads on every phase.
+        .background(Palette.timeGradient(at: Date()), in: RoundedRectangle(cornerRadius: 18))
         .padding(.vertical, 4)
+    }
+
+    /// One right-column row: a fixed-width symbol so every row's icon aligns, then the value, all at
+    /// the same size. `tint` colours the whole row.
+    private func metric(_ icon: String, _ text: String, _ tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).frame(width: 18)
+            Text(text)
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(tint)
     }
 
     private func fmt(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—" }
@@ -226,12 +234,15 @@ private struct DayRow: View {
             Text(Self.dayLabel(day.date))
                 .frame(width: 96, alignment: .leading)
             Spacer()
-            if let hum = day.humidityMax {
-                Label("\(hum)%", systemImage: "humidity")
-                    .font(.subheadline)
-                    .foregroundStyle(.blue)
-                Spacer().frame(width: 12)
-            }
+            // The day's actual condition, not peak humidity: the humidity glyph looked like rain and
+            // showed every day, which read as "rain daily" and contradicted the complications. This is
+            // the same sky code the complications use, so a clear day shows a sun and rain shows only
+            // when it actually rains.
+            Image(systemName: WeatherIcon.symbol(forSky: day.sky))
+                .symbolRenderingMode(.multicolor)
+                .font(.title3)
+                .frame(width: 30)
+            Spacer().frame(width: 12)
             minMax
                 .font(.headline.monospacedDigit())
         }

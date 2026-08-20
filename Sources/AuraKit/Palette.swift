@@ -6,21 +6,42 @@ public enum Palette {
 
     // MARK: Temperature → colour
 
-    /// Temperature colour, blue (very cold) through purple (terribly hot). Bands tuned for mainland
-    /// Spain: ≤0 deep blue · 1–8 blue · 9–15 teal · 16–21 green · 22–27 yellow · 28–33 orange ·
-    /// 34–39 red · ≥40 purple.
+    /// Temperature colour, blue (very cold) through purple (terribly hot). Continuously interpolated
+    /// between control stops, not banded — so every degree gets a distinct colour and the progression
+    /// reads as a smooth ramp. Previously 22° and 27° both fell in one "yellow" band and looked
+    /// identical; now 22° is green-yellow, 27° is yellow-orange, 30° orange, 33° orange-red. Stops
+    /// tuned for mainland Spain.
     public static func temperature(_ celsius: Int?) -> Color {
         guard let t = celsius else { return .gray }
-        switch t {
-        case ..<1:    return tempDeepBlue
-        case 1...8:   return tempBlue
-        case 9...15:  return tempTeal
-        case 16...21: return tempGreen
-        case 22...27: return tempYellow
-        case 28...33: return tempOrange
-        case 34...39: return tempRed
-        default:      return tempPurple      // ≥ 40
+        return interpolatedTemperature(Double(t))
+    }
+
+    /// Control stops: (°C, red, green, blue). Between two stops the colour is linearly interpolated.
+    private static let tempStops: [(t: Double, r: Double, g: Double, b: Double)] = [
+        (-5, 0.16, 0.28, 0.78),   // deep blue
+        ( 5, 0.25, 0.52, 0.93),   // blue
+        (11, 0.20, 0.74, 0.80),   // teal
+        (18, 0.30, 0.72, 0.42),   // green
+        (25, 0.96, 0.80, 0.25),   // yellow
+        (30, 0.97, 0.58, 0.18),   // orange
+        (36, 0.90, 0.29, 0.24),   // red
+        (42, 0.60, 0.28, 0.75),   // purple
+    ]
+
+    private static func interpolatedTemperature(_ t: Double) -> Color {
+        guard let first = tempStops.first, let last = tempStops.last else { return .gray }
+        if t <= first.t { return Color(red: first.r, green: first.g, blue: first.b) }
+        if t >= last.t  { return Color(red: last.r, green: last.g, blue: last.b) }
+        for i in 0..<(tempStops.count - 1) {
+            let a = tempStops[i], b = tempStops[i + 1]
+            if t >= a.t && t <= b.t {
+                let k = (t - a.t) / (b.t - a.t)
+                return Color(red: a.r + (b.r - a.r) * k,
+                             green: a.g + (b.g - a.g) * k,
+                             blue: a.b + (b.b - a.b) * k)
+            }
         }
+        return .gray
     }
 
     /// The full cold→hot scale, for `Gauge` tints and range bars.
@@ -48,6 +69,47 @@ public enum Palette {
     /// Night moon glyph — a clear cool blue that reads on both a black face and a light complication
     /// well, rather than the flat pale white multicolour gives.
     public static let nightMoon    = Color(red: 0.42, green: 0.55, blue: 0.96)
+
+    // MARK: Time of day → gradient
+
+    /// A sky-coloured gradient that tracks the time of day: light blue in the morning, electric blue at
+    /// midday, a darker warm-violet at dusk, deep blue at night. Interpolated between hourly anchors so
+    /// it drifts smoothly. White text stays legible on every phase. Used behind the "Hoy" header card.
+    public static func timeGradient(at date: Date = Date()) -> LinearGradient {
+        let (top, bottom) = timeColors(at: date)
+        return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)
+    }
+
+    /// Day-cycle anchors: (hour, topRGB, bottomRGB). The 24h anchor mirrors 0h so the loop wraps.
+    private static let dayAnchors: [(h: Double,
+                                     top: (Double, Double, Double),
+                                     bot: (Double, Double, Double))] = [
+        ( 0, (0.05, 0.07, 0.20), (0.10, 0.13, 0.30)),   // night
+        ( 7, (0.24, 0.42, 0.76), (0.40, 0.60, 0.90)),   // dawn — light blue
+        (13, (0.10, 0.40, 0.90), (0.26, 0.56, 0.96)),   // zenith — electric blue
+        (19, (0.16, 0.20, 0.44), (0.40, 0.28, 0.46)),   // dusk — darker, warm hint
+        (24, (0.05, 0.07, 0.20), (0.10, 0.13, 0.30)),   // night (wrap)
+    ]
+
+    private static func timeColors(at date: Date) -> (Color, Color) {
+        let cal = Calendar.current
+        let h = Double(cal.component(.hour, from: date)) + Double(cal.component(.minute, from: date)) / 60
+        for i in 0..<(dayAnchors.count - 1) {
+            let a = dayAnchors[i], b = dayAnchors[i + 1]
+            if h >= a.h && h <= b.h {
+                let k = (h - a.h) / (b.h - a.h)
+                func lerp(_ x: (Double, Double, Double), _ y: (Double, Double, Double)) -> Color {
+                    Color(red: x.0 + (y.0 - x.0) * k,
+                          green: x.1 + (y.1 - x.1) * k,
+                          blue: x.2 + (y.2 - x.2) * k)
+                }
+                return (lerp(a.top, b.top), lerp(a.bot, b.bot))
+            }
+        }
+        let n = dayAnchors[0]
+        return (Color(red: n.top.0, green: n.top.1, blue: n.top.2),
+                Color(red: n.bot.0, green: n.bot.1, blue: n.bot.2))
+    }
 
     // MARK: Sky condition → gradient
 
