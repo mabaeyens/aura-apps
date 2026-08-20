@@ -52,11 +52,16 @@ struct AuraConditionsView: View {
             switch family {
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
+                // `.widgetCurvesContent()` (watchOS 10+) curves the corner's main content along the
+                // screen edge — the documented fix for corner content that otherwise stays horizontal
+                // and cramped. The range arcs along the outer bezel via `.widgetLabel`.
                 if AuraAccessoryCorner(snapshot: snapshot, now: entry.date).hasRange {
                     AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                        .widgetCurvesContent()
                         .widgetLabel { AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerGauge }
                 } else {
                     AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                        .widgetCurvesContent()
                         .widgetLabel(AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerLabel)
                 }
             default: AuraAccessoryCircular(snapshot: snapshot, now: entry.date)

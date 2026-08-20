@@ -76,22 +76,21 @@ public struct AuraAccessoryRectangular: View {
         // largely dropped: hierarchy comes from weight and grayscale, not tint (Apple HIG). Semantic
         // font styles — not fixed point sizes — so the text scales with Dynamic Type and never
         // overflows the way a hardcoded 30pt did once the icon was added.
-        VStack(alignment: .leading, spacing: 2) {
-            // Row 1: condition glyph, the temperature as the hero, the sky word trailing.
+        VStack(alignment: .leading, spacing: 1) {
+            // Line 1: condition glyph + the hero temperature. Alone on the line, so the temperature
+            // can be large and never has to fight the sky word for width.
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
                     .font(.title3)
-                    .fixedSize()
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
-                    .fixedSize()  // the hero temperature is inviolable — never let it truncate to "2…"
-                if let text = snapshot.currentSkyText {
-                    Text(text).font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                }
+                    .font(.title).fontWeight(.semibold).fontDesign(.rounded)
             }
-
-            // Row 2: which location this is, and today's high/low with up/down arrows.
+            // Line 2: the sky word on its own line — full, never truncated to "Desp…" (Apple/Carrot).
+            if let text = snapshot.currentSkyText {
+                Text(text).font(.subheadline).foregroundStyle(.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            // Line 3: which location this is, and today's high/low with up/down arrows.
             HStack(spacing: 6) {
                 Text(snapshot.localidad).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer(minLength: 2)
@@ -150,17 +149,18 @@ public struct AuraAccessoryCorner: View {
     }
 
     public var body: some View {
-        // The corner content region is only ~20–24pt tall (Apple HIG), so the icon + degrees use
-        // semantic styles that fit it; the day's range arcs along the bezel via `cornerGauge`.
-        VStack(spacing: -1) {
+        // Condition glyph + temperature. The complication applies `.widgetCurvesContent()` so this
+        // whole row curves along the corner (watchOS 10+) — the only way the corner's main content
+        // arcs like Carrot's; before that modifier it was stuck horizontal and small. The day's range
+        // arcs along the outer bezel via `cornerGauge`.
+        HStack(spacing: 2) {
             ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                .font(.subheadline)
             Text(AccessoryFormat.temp(snapshot.heroTemp))
-                .font(.title2).fontWeight(.bold).fontDesign(.rounded)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-                .foregroundStyle(.white)
+                .fontWeight(.bold).fontDesign(.rounded)
+                .lineLimit(1).minimumScaleFactor(0.6)  // scale, never clip to "…", if room is tight
         }
+        .font(.title3)
+        .foregroundStyle(.white)
     }
 
     /// Whether today's low/high are known and ordered, so the bezel gauge can be drawn.
