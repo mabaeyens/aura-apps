@@ -7,10 +7,12 @@ let package = Package(
     products: [
         .library(name: "AuraKit", targets: ["AuraKit"]),
         .executable(name: "aura-smoke", targets: ["AuraSmoke"]),
+        .executable(name: "aura-render", targets: ["AuraRender"]),
     ],
     targets: [
         .target(name: "AuraKit"),
         .executableTarget(name: "AuraSmoke", dependencies: ["AuraKit"]),
+        .executableTarget(name: "AuraRender", dependencies: ["AuraKit"]),
         .testTarget(name: "AuraKitTests", dependencies: ["AuraKit"]),
     ]
 )

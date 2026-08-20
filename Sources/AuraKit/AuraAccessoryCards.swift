@@ -81,8 +81,10 @@ public struct AuraAccessoryRectangular: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
                     .font(.title3)
+                    .fixedSize()
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
+                    .fixedSize()  // the hero temperature is inviolable — never let it truncate to "2…"
                 if let text = snapshot.currentSkyText {
                     Text(text).font(.caption).foregroundStyle(.secondary)
                         .lineLimit(1).minimumScaleFactor(0.7)
@@ -150,11 +152,11 @@ public struct AuraAccessoryCorner: View {
     public var body: some View {
         // The corner content region is only ~20–24pt tall (Apple HIG), so the icon + degrees use
         // semantic styles that fit it; the day's range arcs along the bezel via `cornerGauge`.
-        VStack(spacing: 0) {
+        VStack(spacing: -1) {
             ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                .font(.footnote)
+                .font(.subheadline)
             Text(AccessoryFormat.temp(snapshot.heroTemp))
-                .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
+                .font(.title2).fontWeight(.bold).fontDesign(.rounded)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
                 .foregroundStyle(.white)

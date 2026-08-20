@@ -108,45 +108,48 @@ private enum SunFormat {
 
 // MARK: - Wind
 
-/// `.accessoryCircular`: a compass wind rose. A light-grey crown of ticks stays legible on any face;
-/// a bright arrowhead points the way the wind is *going* (a SurOeste wind blows toward the North-East),
-/// coloured by strength; the bold speed and the source direction sit in the centre. AEMET reports the
-/// direction the wind comes *from*, so the arrow is that bearing turned 180°.
+/// `.accessoryCircular`: a compass, read like a weather vane. Fixed N/E/S/O letters ring the dial; a
+/// long arrow spans it — the arrowhead marks where the wind is *going* (a SurOeste wind blows toward
+/// the North-East), the flighted tail where it comes *from* — coloured by strength. The speed sits in
+/// the centre. AEMET reports the direction the wind comes *from*, so the vane points that bearing + 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
 
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
-    private static let radius: CGFloat = 19
+    private static let letterRadius: CGFloat = 22
 
     public var body: some View {
         ZStack {
-            // Crown: eight uniform light ticks — always readable, independent of the wind.
-            ForEach(0..<8, id: \.self) { i in
-                Capsule()
-                    .fill(Color.primary.opacity(0.30))
-                    .frame(width: 2, height: 5)
-                    .offset(y: -Self.radius - 1)
-                    .rotationEffect(.degrees(Double(i) * 45))
-            }
-            // A full arrow (shaft + head), not a stub wedge, so the heading reads clearly. It rides
-            // the outer ring pointing the way the wind is going, coloured by strength.
+            // A faint dial and the four fixed cardinal letters, so the vane's heading is readable.
+            Circle().stroke(Color.primary.opacity(0.18), lineWidth: 1)
+            compassLetter("N", dx: 0, dy: -1)
+            compassLetter("E", dx: 1, dy: 0)
+            compassLetter("S", dx: 0, dy: 1)
+            compassLetter("O", dx: -1, dy: 0)
+
+            // The vane: a full arrow across the dial, rotated to the wind's heading.
             if let towards = towardsDegrees {
-                WindArrow()
+                WeatherVane()
                     .fill(speedColor)
-                    .frame(width: 8, height: 15)
-                    .offset(y: -Self.radius + 2)
+                    .frame(width: 15, height: 44)
                     .rotationEffect(.degrees(towards))
             }
-            // Centre: bold speed, and the source direction (or the unit when direction is unknown).
-            VStack(spacing: -1) {
-                Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                Text(snapshot.windDirection?.abbreviation ?? "km/h")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
+
+            // Centre: the speed, bold and white so it reads over the vane's shaft.
+            Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
+                .font(.system(.title3, design: .rounded)).fontWeight(.heavy)
+                .foregroundStyle(.white)
         }
+    }
+
+    /// One upright cardinal letter placed on the dial (dx/dy are unit offsets, not rotated, so the
+    /// glyph stays upright).
+    private func compassLetter(_ s: String, dx: CGFloat, dy: CGFloat) -> some View {
+        Text(s)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(.secondary)
+            .offset(x: dx * Self.letterRadius, y: dy * Self.letterRadius)
     }
 
     /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.
@@ -155,7 +158,7 @@ public struct AuraWindCircular: View {
         return (dir.degrees + 180).truncatingRemainder(dividingBy: 360)
     }
 
-    /// Arrow colour by wind speed — teal (light) through green and orange to red (gale). No pale
+    /// Vane colour by wind speed — teal (light) through green and orange to red (gale). No pale
     /// yellow, which washes out on a black face.
     private var speedColor: Color {
         switch snapshot.windSpeed ?? 0 {
@@ -167,23 +170,31 @@ public struct AuraWindCircular: View {
     }
 }
 
-/// A full arrow — a broad arrowhead over a slim shaft — pointing up (outward once rotated). A whole
-/// arrow marks the wind's heading far more clearly than a lone wedge did.
-private struct WindArrow: Shape {
+/// A weather-vane arrow pointing up (rotated to heading): a broad arrowhead at the top, a slim shaft,
+/// and a forked "swallowtail" flight at the bottom — so the whole dial reads as one directional arrow.
+private struct WeatherVane: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let midX = rect.midX
-        let headHeight = rect.height * 0.5
-        let shaftHalf = rect.width * 0.20
-        // Arrowhead (top): tip, out to the two barbs.
+        let w = rect.width
+        let h = rect.height
+        let shaftHalf = w * 0.16
+        let headH = h * 0.24
+        let tailH = h * 0.20
+        // Arrowhead (top).
         path.move(to: CGPoint(x: midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + headHeight))
-        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headHeight))
-        // Shaft down the right side, across the base, up the left side.
-        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY))
-        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY))
-        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headHeight))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + headHeight))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + headH))
+        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headH))
+        // Shaft down to the tail.
+        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY - tailH))
+        // Swallowtail flight (right point, centre notch, left point).
+        path.addLine(to: CGPoint(x: midX + w * 0.42, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX, y: rect.maxY - tailH * 0.55))
+        path.addLine(to: CGPoint(x: midX - w * 0.42, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY - tailH))
+        // Shaft back up and the left barb.
+        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headH))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + headH))
         path.closeSubpath()
         return path
     }
