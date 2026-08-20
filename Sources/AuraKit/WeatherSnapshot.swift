@@ -32,6 +32,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let currentSkyText: String?
     /// Relative humidity for the current hour, %, from the hourly feed.
     public let currentHumidity: Int?
+    /// Precipitation probability for the current hour, %, from the hourly feed's coarse blocks.
+    public let currentPrecipProb: Int?
     /// Current-hour wind speed, km/h.
     public let windSpeed: Int?
     /// Current-hour wind direction (whence it blows), or nil when calm/unknown.
@@ -58,7 +60,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 tempMin: Int?, tempMax: Int?, humedadMax: Int?,
                 currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
                 currentSky: String? = nil, currentSkyText: String? = nil,
-                currentHumidity: Int? = nil,
+                currentHumidity: Int? = nil, currentPrecipProb: Int? = nil,
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
@@ -77,6 +79,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.currentSky = currentSky
         self.currentSkyText = currentSkyText
         self.currentHumidity = currentHumidity
+        self.currentPrecipProb = currentPrecipProb
         self.windSpeed = windSpeed
         self.windDirection = windDirection
         self.sunrise = sunrise
@@ -190,6 +193,7 @@ public extension WeatherSnapshot {
         // actual current hour rather than a fixed whole-day block.
         let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
         let humidityNow = hourly.flatMap { Self.currentHumidity($0, timeZone: timeZone, now: now) }
+        let precipNow = hourly.flatMap { Self.currentPrecipProb($0, timeZone: timeZone, now: now) }
         let resolved = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
         let currentSky = resolved?.current?.sky
 
@@ -218,6 +222,7 @@ public extension WeatherSnapshot {
             currentSky: resolved?.current?.sky,
             currentSkyText: resolved?.currentText,
             currentHumidity: humidityNow,
+            currentPrecipProb: precipNow,
             windSpeed: wind?.speed ?? nil,
             windDirection: wind?.direction ?? nil,
             sunrise: sun.sunrise,
@@ -292,6 +297,34 @@ public extension WeatherSnapshot {
         let dias = forecast.prediccion.dia
         if let day0 = dias.first, let h = humidity(in: day0, from: currentHour) { return h }
         if dias.count > 1, let h = humidity(in: dias[1], from: 0) { return h }
+        return nil
+    }
+
+    /// The precipitation probability for the current hour, %, from the hourly feed's coarse blocks
+    /// (periodo is 4 chars, "SSEE" — start and end hour, e.g. "1218"). Picks the block covering the
+    /// current hour, else the next upcoming block.
+    private static func currentPrecipProb(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let currentHour = cal.component(.hour, from: now)
+
+        func prob(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
+            let blocks = dia.probPrecipitacion.compactMap { hv -> (start: Int, end: Int, value: Int)? in
+                guard hv.periodo.count == 4,
+                      let start = Int(hv.periodo.prefix(2)),
+                      var end = Int(hv.periodo.suffix(2)),
+                      let value = Int(hv.value) else { return nil }
+                if end == 0 { end = 24 }
+                return (start, end, value)
+            }.sorted { $0.start < $1.start }
+            if let covering = blocks.first(where: { $0.start <= from && from < $0.end }) { return covering.value }
+            if let next = blocks.first(where: { $0.start >= from }) { return next.value }
+            return blocks.first?.value
+        }
+
+        let dias = forecast.prediccion.dia
+        if let day0 = dias.first, let p = prob(in: day0, from: currentHour) { return p }
+        if dias.count > 1, let p = prob(in: dias[1], from: 0) { return p }
         return nil
     }
 

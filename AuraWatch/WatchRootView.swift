@@ -59,15 +59,29 @@ struct WatchRootView: View {
                 Text("Mín \(fmt(s.tempMin))").foregroundStyle(Palette.temperature(s.tempMin))
             }
             .font(.caption).fontWeight(.medium)
-            if let humidity = s.currentHumidity {
-                Label("\(humidity) %", systemImage: "humidity.fill")
-                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+            // Humidity and rain chance, always on their own row (even at 0%) so nothing jumps. A teal
+            // humidity drop and a blue umbrella tell the two percentages apart.
+            VStack(alignment: .leading, spacing: 1) {
+                pctRow("humidity.fill", s.currentHumidity ?? 0, Palette.tempTeal)
+                pctRow("umbrella.fill", s.currentPrecipProb ?? 0, Palette.tempBlue)
             }
+            .padding(.top, 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(Palette.skyGradient(forCode: s.currentSky).opacity(0.45),
                     in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// One labelled percentage: a fixed-width icon so humidity and rain-chance line up, its value, all
+    /// in one tint. `humidity.fill` = humidity, `umbrella.fill` = chance of rain.
+    private func pctRow(_ icon: String, _ value: Int, _ tint: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon).frame(width: 14)
+            Text("\(value) %")
+        }
+        .font(.system(size: 12, weight: .medium))
+        .foregroundStyle(tint)
     }
 
     private func alertBanner(_ alert: WeatherAlert) -> some View {

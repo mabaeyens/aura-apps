@@ -45,7 +45,7 @@ private struct StripColumn: View {
 // MARK: - Next hours
 
 /// `.accessoryRectangular`: up to five upcoming hours, each with its own day/night icon, over a footer
-/// naming the observing station and when the data was refreshed.
+/// naming the location and when the data was refreshed.
 public struct AuraRectHours: View {
     let snapshot: WeatherSnapshot
 
@@ -65,7 +65,7 @@ public struct AuraRectHours: View {
                                     value: h.temp)
                     }
                 }
-                Text(Self.footer(updated: snapshot.updated, station: snapshot.observedStation))
+                Text(Self.footer(updated: snapshot.updated, place: snapshot.localidad))
                     .font(.system(size: 9))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -76,11 +76,10 @@ public struct AuraRectHours: View {
         }
     }
 
-    /// "act. 23:14 · Retiro" when a station is known (it truncates first, since names run long),
-    /// otherwise just the update time.
-    private static func footer(updated: Date, station: String?) -> String {
+    /// "act. 23:14 · Madrid" — the refresh time and the location name (no observed-station reference).
+    private static func footer(updated: Date, place: String?) -> String {
         let time = hhmm(updated)
-        if let station { return "act. \(time) · \(station)" }
+        if let place, !place.isEmpty { return "act. \(time) · \(place)" }
         return "Actualizado \(time)"
     }
 

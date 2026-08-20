@@ -148,9 +148,9 @@ public struct AuraWindCircular: View {
                 // Centre: the speed, big and white, drawn last so it stays legible over the vane. A soft
                 // dark halo lifts it off a bright vane.
                 Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                    .font(.system(size: d * 0.30, weight: .heavy, design: .rounded))
+                    .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.55), radius: 1)
+                    .shadow(color: .black.opacity(0.6), radius: 1.5)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -158,24 +158,25 @@ public struct AuraWindCircular: View {
 
     /// The vane view for the chosen style, coloured by wind strength. The head (points *to*) takes the
     /// full intensity colour; the tail (points *from*) a dimmer shade of it, so the two sections read.
+    /// Kept slim — a thin arrow / needle over a legible rose, not a chunky wedge that hides the dial.
     @ViewBuilder private func vane(diameter d: CGFloat) -> some View {
         let head = Palette.wind(snapshot.windSpeed)
         let tail = head.opacity(0.5)
         switch style {
         case .arrow:
-            // One tapered arrow. The shape alone carries head-vs-tail (arrowhead vs swallowtail), so it
-            // stays a single intensity colour.
+            // One thin arrow: a sharp arrowhead (points *to*), a slim shaft, a swallowtail (comes
+            // *from*). The shape alone carries head-vs-tail, so it stays a single intensity colour.
             WindArrow()
                 .fill(head)
-                .frame(width: d * 0.40, height: d * 0.92)
+                .frame(width: d * 0.30, height: d * 0.78)
         case .needle:
-            // Two long slim triangles with a gap in the middle for the number — the bright half is the
-            // head, the dim half the tail.
+            // Two slim triangles with a gap in the middle for the number — bright half the head, dim
+            // half the tail.
             ZStack {
                 NeedleHalf(pointingUp: true).fill(head)
                 NeedleHalf(pointingUp: false).fill(tail)
             }
-            .frame(width: d * 0.32, height: d * 0.92)
+            .frame(width: d * 0.16, height: d * 0.78)
         }
     }
 
@@ -186,24 +187,27 @@ public struct AuraWindCircular: View {
     }
 }
 
-/// The compass rose behind the vane: white cardinal letters and marks, grey inter-cardinal marks. No
-/// dial ring — the marks alone read as a clean rose. Sized to `diameter`.
+/// The compass rose behind the vane: a fine ring of radial marks — a tick every 15° — so it reads as a
+/// real rose, with the cardinals a touch longer and brighter and understated N/E/S/O letters just
+/// inside. No dial ring; the marks alone carry it. Sized to `diameter`.
 private struct WindRose: View {
     let diameter: CGFloat
 
     var body: some View {
         let d = diameter
         ZStack {
-            // Eight marks: the four cardinals white and long, the four inter-cardinals grey and short.
-            ForEach(Array(stride(from: 0, to: 360, by: 45)), id: \.self) { deg in
+            // 24 marks, every 15°. Cardinals (90°) longest/brightest, inter-cardinals (45°) medium, the
+            // rest short and dim — subtle, so the number can be big and the rose still reads.
+            ForEach(Array(stride(from: 0, to: 360, by: 15)), id: \.self) { deg in
                 let cardinal = deg % 90 == 0
+                let inter = deg % 45 == 0
                 mark(bearing: Double(deg),
-                     length: cardinal ? d * 0.12 : d * 0.08,
-                     width: cardinal ? d * 0.045 : d * 0.03,
-                     color: cardinal ? .white : Color.white.opacity(0.4),
+                     length: cardinal ? d * 0.09 : (inter ? d * 0.07 : d * 0.05),
+                     width: d * 0.016,
+                     color: .white.opacity(cardinal ? 0.55 : (inter ? 0.36 : 0.22)),
                      d: d)
             }
-            // Cardinal letters, upright, white, just inside the marks.
+            // Cardinal letters, small and understated — orientation without shouting over the number.
             letter("N", dx: 0, dy: -1, d: d)
             letter("E", dx: 1, dy: 0, d: d)
             letter("S", dx: 0, dy: 1, d: d)
@@ -220,7 +224,7 @@ private struct WindRose: View {
             Capsule()
                 .fill(color)
                 .frame(width: width, height: length)
-                .offset(y: -(d / 2 - length / 2 - d * 0.02))
+                .offset(y: -(d / 2 - length / 2 - d * 0.015))
         }
         .frame(width: d, height: d)
         .rotationEffect(.degrees(bearing))
@@ -229,37 +233,39 @@ private struct WindRose: View {
     /// One upright cardinal letter placed inside the marks (dx/dy are unit offsets, not rotated).
     private func letter(_ s: String, dx: CGFloat, dy: CGFloat, d: CGFloat) -> some View {
         Text(s)
-            .font(.system(size: d * 0.15, weight: .bold))
-            .foregroundStyle(.white)
+            .font(.system(size: d * 0.12, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.6))
             .offset(x: dx * d * 0.30, y: dy * d * 0.30)
     }
 }
 
-/// A weather-vane arrow pointing up (rotated to heading): a broad arrowhead at the top, a slim shaft,
-/// and a forked "swallowtail" flight at the bottom — so the whole dial reads as one directional arrow.
+/// A slim weather-vane arrow pointing up (rotated to heading): a sharp arrowhead at the top, a thin
+/// shaft, and a forked "swallowtail" flight at the bottom — so it reads as one clean directional arrow
+/// without hiding the rose behind it.
 private struct WindArrow: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let midX = rect.midX
         let w = rect.width
         let h = rect.height
-        let shaftHalf = w * 0.16
-        let headH = h * 0.24
+        let shaftHalf = w * 0.11
+        let barb = w * 0.5
+        let headH = h * 0.26
         let tailH = h * 0.20
-        // Arrowhead (top).
+        // Arrowhead (top): a sharp triangle.
         path.move(to: CGPoint(x: midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + headH))
+        path.addLine(to: CGPoint(x: midX + barb, y: rect.minY + headH))
         path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headH))
         // Shaft down to the tail.
         path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY - tailH))
         // Swallowtail flight (right point, centre notch, left point).
-        path.addLine(to: CGPoint(x: midX + w * 0.42, y: rect.maxY))
-        path.addLine(to: CGPoint(x: midX, y: rect.maxY - tailH * 0.55))
-        path.addLine(to: CGPoint(x: midX - w * 0.42, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX + barb, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX, y: rect.maxY - tailH * 0.5))
+        path.addLine(to: CGPoint(x: midX - barb, y: rect.maxY))
         path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY - tailH))
         // Shaft back up and the left barb.
         path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headH))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + headH))
+        path.addLine(to: CGPoint(x: midX - barb, y: rect.minY + headH))
         path.closeSubpath()
         return path
     }
