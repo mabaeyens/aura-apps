@@ -108,49 +108,75 @@ private enum SunFormat {
 
 // MARK: - Wind
 
-/// `.accessoryCircular`: a compass, read like a weather vane. Fixed N/E/S/O letters ring the dial; a
-/// long arrow spans it — the arrowhead marks where the wind is *going* (a SurOeste wind blows toward
-/// the North-East), the flighted tail where it comes *from* — coloured by strength. The speed sits in
-/// the centre. AEMET reports the direction the wind comes *from*, so the vane points that bearing + 180°.
+/// Which vane shape the wind complication draws over its compass rose.
+public enum WindVaneStyle: Sendable {
+    /// One tapered arrow — arrowhead = where the wind blows *to*, swallowtail = where it comes *from*.
+    case arrow
+    /// A two-tone compass needle — the bright half points *to*, the dim half points *from*.
+    case needle
+}
+
+/// `.accessoryCircular`: a compass read like a weather vane. A clear rose rings the dial — white
+/// cardinal letters and marks, grey inter-cardinal marks — with the speed big in the centre. A vane,
+/// coloured by wind strength (Windy-style ramp), spans the dial and covers the marks at its head and
+/// tail so the heading reads at a glance. AEMET reports the direction the wind comes *from*, so the
+/// vane's head points that bearing + 180°. Two shapes to choose from, `.arrow` and `.needle`.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
+    let style: WindVaneStyle
 
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
-
-    private static let letterRadius: CGFloat = 22
+    public init(snapshot: WeatherSnapshot, style: WindVaneStyle = .arrow) {
+        self.snapshot = snapshot
+        self.style = style
+    }
 
     public var body: some View {
-        ZStack {
-            // The dial and the four fixed cardinal letters, so the vane's heading is readable.
-            Circle().stroke(Color.primary.opacity(0.3), lineWidth: 1)
-            compassLetter("N", dx: 0, dy: -1)
-            compassLetter("E", dx: 1, dy: 0)
-            compassLetter("S", dx: 0, dy: 1)
-            compassLetter("O", dx: -1, dy: 0)
+        GeometryReader { geo in
+            let d = min(geo.size.width, geo.size.height)
+            ZStack {
+                WindRose(diameter: d)
 
-            // The vane: a slim arrow across the dial, rotated to the wind's heading. Kept narrow so it
-            // reads as a direction indicator, not a chunky wedge, and doesn't crowd the centre number.
-            if let towards = towardsDegrees {
-                WeatherVane()
-                    .fill(speedColor)
-                    .frame(width: 10, height: 44)
-                    .rotationEffect(.degrees(towards))
+                // The vane, over the rose so it covers the marks at head and tail. Sized nearly the full
+                // diameter so both ends reach the rim; rotated so the head sits at the "blows toward"
+                // bearing.
+                if let towards = towardsDegrees {
+                    vane(diameter: d)
+                        .frame(width: d, height: d)
+                        .rotationEffect(.degrees(towards))
+                }
+
+                // Centre: the speed, big and white, drawn last so it stays legible over the vane. A soft
+                // dark halo lifts it off a bright vane.
+                Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
+                    .font(.system(size: d * 0.30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.55), radius: 1)
             }
-
-            // Centre: the speed, bold and white so it reads over the vane's shaft.
-            Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                .font(.system(.title3, design: .rounded)).fontWeight(.heavy)
-                .foregroundStyle(.white)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
-    /// One upright cardinal letter placed on the dial (dx/dy are unit offsets, not rotated, so the
-    /// glyph stays upright).
-    private func compassLetter(_ s: String, dx: CGFloat, dy: CGFloat) -> some View {
-        Text(s)
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(.primary)  // full-contrast, not the dim .secondary — the marks must read
-            .offset(x: dx * Self.letterRadius, y: dy * Self.letterRadius)
+    /// The vane view for the chosen style, coloured by wind strength. The head (points *to*) takes the
+    /// full intensity colour; the tail (points *from*) a dimmer shade of it, so the two sections read.
+    @ViewBuilder private func vane(diameter d: CGFloat) -> some View {
+        let head = Palette.wind(snapshot.windSpeed)
+        let tail = head.opacity(0.5)
+        switch style {
+        case .arrow:
+            // One tapered arrow. The shape alone carries head-vs-tail (arrowhead vs swallowtail), so it
+            // stays a single intensity colour.
+            WindArrow()
+                .fill(head)
+                .frame(width: d * 0.40, height: d * 0.92)
+        case .needle:
+            // Two long slim triangles with a gap in the middle for the number — the bright half is the
+            // head, the dim half the tail.
+            ZStack {
+                NeedleHalf(pointingUp: true).fill(head)
+                NeedleHalf(pointingUp: false).fill(tail)
+            }
+            .frame(width: d * 0.32, height: d * 0.92)
+        }
     }
 
     /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.
@@ -158,22 +184,60 @@ public struct AuraWindCircular: View {
         guard let dir = snapshot.windDirection else { return nil }
         return (dir.degrees + 180).truncatingRemainder(dividingBy: 360)
     }
+}
 
-    /// Vane colour by wind speed — teal (light) through green and orange to red (gale). No pale
-    /// yellow, which washes out on a black face.
-    private var speedColor: Color {
-        switch snapshot.windSpeed ?? 0 {
-        case ..<15:    return Palette.tempTeal
-        case 15..<30:  return Palette.tempGreen
-        case 30..<45:  return Palette.tempOrange
-        default:       return Palette.tempRed
+/// The compass rose behind the vane: white cardinal letters and marks, grey inter-cardinal marks. No
+/// dial ring — the marks alone read as a clean rose. Sized to `diameter`.
+private struct WindRose: View {
+    let diameter: CGFloat
+
+    var body: some View {
+        let d = diameter
+        ZStack {
+            // Eight marks: the four cardinals white and long, the four inter-cardinals grey and short.
+            ForEach(Array(stride(from: 0, to: 360, by: 45)), id: \.self) { deg in
+                let cardinal = deg % 90 == 0
+                mark(bearing: Double(deg),
+                     length: cardinal ? d * 0.12 : d * 0.08,
+                     width: cardinal ? d * 0.045 : d * 0.03,
+                     color: cardinal ? .white : Color.white.opacity(0.4),
+                     d: d)
+            }
+            // Cardinal letters, upright, white, just inside the marks.
+            letter("N", dx: 0, dy: -1, d: d)
+            letter("E", dx: 1, dy: 0, d: d)
+            letter("S", dx: 0, dy: 1, d: d)
+            letter("O", dx: -1, dy: 0, d: d)
         }
+        .frame(width: d, height: d)
+    }
+
+    /// One radial mark at `bearing` (0 = N, clockwise). Built as a capsule offset to the top of a
+    /// d×d container, then the container is rotated about its centre — the dial centre — so the mark
+    /// lands on its bearing, oriented radially.
+    private func mark(bearing: Double, length: CGFloat, width: CGFloat, color: Color, d: CGFloat) -> some View {
+        ZStack {
+            Capsule()
+                .fill(color)
+                .frame(width: width, height: length)
+                .offset(y: -(d / 2 - length / 2 - d * 0.02))
+        }
+        .frame(width: d, height: d)
+        .rotationEffect(.degrees(bearing))
+    }
+
+    /// One upright cardinal letter placed inside the marks (dx/dy are unit offsets, not rotated).
+    private func letter(_ s: String, dx: CGFloat, dy: CGFloat, d: CGFloat) -> some View {
+        Text(s)
+            .font(.system(size: d * 0.15, weight: .bold))
+            .foregroundStyle(.white)
+            .offset(x: dx * d * 0.30, y: dy * d * 0.30)
     }
 }
 
 /// A weather-vane arrow pointing up (rotated to heading): a broad arrowhead at the top, a slim shaft,
 /// and a forked "swallowtail" flight at the bottom — so the whole dial reads as one directional arrow.
-private struct WeatherVane: Shape {
+private struct WindArrow: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let midX = rect.midX
@@ -196,6 +260,26 @@ private struct WeatherVane: Shape {
         // Shaft back up and the left barb.
         path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headH))
         path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + headH))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// One half of a compass needle — a long slim triangle from the rim to a gap near the centre (leaving
+/// room for the number). `pointingUp` is the head half (tip at top), otherwise the tail (tip at bottom).
+private struct NeedleHalf: Shape {
+    let pointingUp: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let midX = rect.midX
+        let halfW = rect.width / 2
+        let gap = rect.height * 0.10          // clear space around the centre number
+        let baseY = rect.midY + (pointingUp ? -gap : gap)
+        let tipY = pointingUp ? rect.minY : rect.maxY
+        path.move(to: CGPoint(x: midX, y: tipY))
+        path.addLine(to: CGPoint(x: midX + halfW, y: baseY))
+        path.addLine(to: CGPoint(x: midX - halfW, y: baseY))
         path.closeSubpath()
         return path
     }

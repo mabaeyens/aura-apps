@@ -78,14 +78,17 @@ public struct AuraAccessoryRectangular: View {
         // overflows the way a hardcoded 30pt did once the icon was added.
         VStack(alignment: .leading, spacing: 1) {
             // Line 1: condition glyph + the hero temperature. Alone on the line, so the temperature
-            // can be large and never has to fight the sky word for width.
+            // can be large and never has to fight the sky word for width. Sized a touch down from
+            // .title so the two text rows below have room and the wind stops truncating.
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                    .font(.title3)
+                    .font(.headline)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.title).fontWeight(.semibold).fontDesign(.rounded)
+                    .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
             }
-            // Line 2: the sky word, with current wind (speed + direction) filling the space on the right.
+            // Line 2: the sky word, with current wind (speed + direction) filling the space on the
+            // right. Same type size as the location/high-low line below it (both .caption2), so the
+            // card reads as two even rows and "14 km/h SO" fits without clipping to "14 k…".
             HStack(spacing: 4) {
                 if let text = snapshot.currentSkyText {
                     Text(text).lineLimit(1).minimumScaleFactor(0.7)
@@ -97,7 +100,7 @@ public struct AuraAccessoryRectangular: View {
                         .lineLimit(1).minimumScaleFactor(0.9)
                 }
             }
-            .font(.subheadline)
+            .font(.caption2)
             .foregroundStyle(.secondary)
             // Line 3: which location this is, and today's high/low with up/down arrows.
             HStack(spacing: 6) {

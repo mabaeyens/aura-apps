@@ -9,6 +9,7 @@ struct AuraComplicationBundle: WidgetBundle {
         AuraConditionsComplication()
         AuraSunComplication()
         AuraWindComplication()
+        AuraWindNeedleComplication()
         AuraHoursComplication()
         AuraDaysComplication()
     }

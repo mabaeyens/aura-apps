@@ -50,8 +50,26 @@ let snap = WeatherSnapshot.preview
 // iPhone-ish accessory sizes (community-measured) and watch complication regions.
 dump("rectangular", size: CGSize(width: 170, height: 76)) { AuraAccessoryRectangular(snapshot: snap) }
 dump("circular",    size: CGSize(width: 76,  height: 76)) { AuraAccessoryCircular(snapshot: snap) }
-dump("wind",        size: CGSize(width: 60,  height: 60)) { AuraWindCircular(snapshot: snap) }
+dump("wind-arrow",  size: CGSize(width: 84,  height: 84)) { AuraWindCircular(snapshot: snap, style: .arrow) }
+dump("wind-needle", size: CGSize(width: 84,  height: 84)) { AuraWindCircular(snapshot: snap, style: .needle) }
 dump("sun",         size: CGSize(width: 60,  height: 60)) { AuraSunCircular(snapshot: snap) }
 dump("corner",      size: CGSize(width: 44,  height: 44)) { AuraAccessoryCorner(snapshot: snap) }
 dump("hours",       size: CGSize(width: 170, height: 76)) { AuraRectHours(snapshot: snap) }
 dump("days",        size: CGSize(width: 170, height: 76)) { AuraRectDays(snapshot: snap) }
+
+// Temperature ramp: one swatch per degree from -5 to 45, each labelled, so the smooth AEMET/TVE
+// progression can be eyeballed (no hard bands, 20° green→yellow hand-off, red ~30°).
+@MainActor
+func tempRamp() -> some View {
+    HStack(spacing: 0) {
+        ForEach(Array(stride(from: -5, through: 45, by: 5)), id: \.self) { t in
+            VStack(spacing: 2) {
+                Text("\(t)").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
+                Rectangle().fill(Palette.temperature(t)).frame(width: 26, height: 34)
+            }
+        }
+    }
+    .padding(6)
+    .background(Color(white: 0.10))
+}
+write(tempRamp(), name: "temp-ramp", size: CGSize(width: 26 * 11 + 12, height: 58))

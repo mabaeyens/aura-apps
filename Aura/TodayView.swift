@@ -224,8 +224,8 @@ private struct SunTimesRow: View {
     }
 }
 
-/// One day of the daily forecast: date, min/max temperature, peak humidity. Renders from the cached
-/// `DaySnapshot`.
+/// One day of the daily forecast: date, condition icon, rain chance, min/max temperature. Renders from
+/// the cached `DaySnapshot`.
 private struct DayRow: View {
     let day: DaySnapshot
 
@@ -242,6 +242,16 @@ private struct DayRow: View {
                 .symbolRenderingMode(.multicolor)
                 .font(.title3)
                 .frame(width: 30)
+            // Rain chance, only when there's a real one (≥10%) so dry days stay uncluttered. Fixed
+            // width so the temperatures stay column-aligned whether or not the drop shows.
+            HStack(spacing: 2) {
+                if let p = day.probPrecip, p >= 10 {
+                    Image(systemName: "drop.fill").font(.caption2)
+                    Text("\(p)%").font(.subheadline.monospacedDigit())
+                }
+            }
+            .foregroundStyle(Palette.tempBlue)
+            .frame(width: 54, alignment: .trailing)
             Spacer().frame(width: 12)
             minMax
                 .font(.headline.monospacedDigit())

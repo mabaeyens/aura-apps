@@ -107,25 +107,39 @@ struct AuraSunView: View {
 
 // MARK: - Wind
 
-/// Wind speed + direction as a circular gauge.
+/// Wind speed + direction, an arrow vane over a compass rose.
 struct AuraWindComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraWind", provider: AuraComplicationProvider()) { entry in
-            AuraWindView(entry: entry)
+            AuraWindView(entry: entry, style: .arrow)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Viento")
-        .description("Velocidad y dirección del viento.")
+        .configurationDisplayName("Viento (flecha)")
+        .description("Velocidad y dirección del viento, con una flecha.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+/// The same wind reading with a compass-needle vane — a second shape to pick between on the watch face.
+struct AuraWindNeedleComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraWindNeedle", provider: AuraComplicationProvider()) { entry in
+            AuraWindView(entry: entry, style: .needle)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Viento (aguja)")
+        .description("Velocidad y dirección del viento, con una aguja.")
         .supportedFamilies([.accessoryCircular])
     }
 }
 
 struct AuraWindView: View {
     let entry: AuraComplicationEntry
+    let style: WindVaneStyle
 
     var body: some View {
         if let snapshot = entry.snapshot {
-            AuraWindCircular(snapshot: snapshot)
+            AuraWindCircular(snapshot: snapshot, style: style)
         } else {
             AuraAccessoryEmpty()
         }

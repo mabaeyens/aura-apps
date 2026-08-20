@@ -19,6 +19,11 @@ public struct MunicipioForecast: Decodable, Sendable {
         public let estadoCielo: [SkyBlock]?
         /// Wind in coarse blocks; daily `velocidad` is a plain integer (km/h), unlike the hourly feed.
         public let viento: [WindBlock]?
+        /// Precipitation probability in coarse blocks (%). `value` is a plain Int here (the hourly feed
+        /// uses a String). Blocks vary by day: days 0–1 carry the full "00-24"/"00-12"/… set, days 4–6
+        /// a single value with no `periodo`. The whole-day "00-24" can be stale (0 while an afternoon
+        /// block reads 55), so a representative daily chance is the max across blocks — see `dailyPrecip`.
+        public let probPrecipitacion: [ProbBlock]?
     }
 
     public struct MinMax: Decodable, Sendable {
@@ -35,6 +40,11 @@ public struct MunicipioForecast: Decodable, Sendable {
     public struct WindBlock: Decodable, Sendable {
         public let direccion: String?
         public let velocidad: Int?
+        public let periodo: String?
+    }
+
+    public struct ProbBlock: Decodable, Sendable {
+        public let value: Int?
         public let periodo: String?
     }
 }

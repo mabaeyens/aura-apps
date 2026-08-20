@@ -147,17 +147,21 @@ public struct DaySnapshot: Codable, Sendable, Hashable, Identifiable {
     public let sky: String?
     /// Representative wind speed for the day, km/h, for the days card's wind row.
     public let windSpeed: Int?
+    /// Representative precipitation probability for the day, % (max across AEMET's coarse blocks), for
+    /// the daily list's rain-chance. Optional — an older cached snapshot decodes this as nil.
+    public let probPrecip: Int?
 
     public var id: Date { date }
 
     public init(date: Date, min: Int?, max: Int?, humidityMax: Int? = nil,
-                sky: String? = nil, windSpeed: Int? = nil) {
+                sky: String? = nil, windSpeed: Int? = nil, probPrecip: Int? = nil) {
         self.date = date
         self.min = min
         self.max = max
         self.humidityMax = humidityMax
         self.sky = sky
         self.windSpeed = windSpeed
+        self.probPrecip = probPrecip
     }
 }
 
@@ -179,7 +183,8 @@ public extension WeatherSnapshot {
             guard let date = Self.parseDay(dia.fecha) else { return nil }
             return DaySnapshot(date: date, min: dia.temperatura?.minima, max: dia.temperatura?.maxima,
                                humidityMax: dia.humedadRelativa?.maxima,
-                               sky: Self.dailySky(dia), windSpeed: Self.dailyWind(dia))
+                               sky: Self.dailySky(dia), windSpeed: Self.dailyWind(dia),
+                               probPrecip: Self.dailyPrecip(dia))
         }
 
         let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
@@ -303,6 +308,14 @@ public extension WeatherSnapshot {
             if let speed = blocks.first(where: { $0.periodo == periodo })?.velocidad { return speed }
         }
         return blocks.compactMap { $0.velocidad }.max()
+    }
+
+    /// The representative precipitation probability for a day, % — the max across AEMET's coarse blocks.
+    /// The whole-day "00-24" block is unreliable (0 for day 0 even when the afternoon reads 55), and
+    /// days 4–6 carry a single value with no `periodo`; taking the max is robust to both and answers the
+    /// question a daily list poses — "any real chance of rain today?".
+    private static func dailyPrecip(_ dia: MunicipioForecast.Dia) -> Int? {
+        (dia.probPrecipitacion ?? []).compactMap { $0.value }.max()
     }
 
     private static func pairs(_ values: [MunicipioHourly.HourValue]) -> [Int: Int] {

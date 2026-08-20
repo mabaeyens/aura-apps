@@ -6,36 +6,49 @@ public enum Palette {
 
     // MARK: Temperature → colour
 
-    /// Temperature colour, blue (very cold) through purple (terribly hot). Continuously interpolated
-    /// between control stops, not banded — so every degree gets a distinct colour and the progression
-    /// reads as a smooth ramp. Previously 22° and 27° both fell in one "yellow" band and looked
-    /// identical; now 22° is green-yellow, 27° is yellow-orange, 30° orange, 33° orange-red. Stops
-    /// tuned for mainland Spain.
+    /// Temperature colour, blue (very cold) through deep red (terribly hot). Continuously interpolated
+    /// between control stops, not banded — every degree gets a distinct colour and the progression reads
+    /// as one smooth ramp. Tuned to the scale AEMET and TVE's "El Tiempo" use: blues and greens up to
+    /// 20°, then warm tones (yellow → orange → red → near-black) above, with the green→yellow boundary at
+    /// 20° and red around 30° (per RTVE/VerificaRTVE). So 20° reads green, 22° green-yellow, 27°
+    /// yellow-orange, 30° orange, 33° red-orange. Stops tuned for mainland Spain.
     public static func temperature(_ celsius: Int?) -> Color {
         guard let t = celsius else { return .gray }
         return interpolatedTemperature(Double(t))
     }
 
     /// Control stops: (°C, red, green, blue). Between two stops the colour is linearly interpolated.
+    /// The 20° green/yellow hand-off is the anchor of the TVE/AEMET scale; the hot end stays a deep
+    /// legible maroon rather than the reference's literal black, which would vanish as tinted text.
     private static let tempStops: [(t: Double, r: Double, g: Double, b: Double)] = [
-        (-5, 0.16, 0.28, 0.78),   // deep blue
-        ( 5, 0.25, 0.52, 0.93),   // blue
-        (11, 0.20, 0.74, 0.80),   // teal
-        (18, 0.30, 0.72, 0.42),   // green
-        (25, 0.96, 0.80, 0.25),   // yellow
-        (30, 0.97, 0.58, 0.18),   // orange
-        (36, 0.90, 0.29, 0.24),   // red
-        (42, 0.60, 0.28, 0.75),   // purple
+        (-8, 0.40, 0.16, 0.56),   // violet — extreme cold
+        (-2, 0.24, 0.28, 0.74),   // blue-violet
+        ( 4, 0.20, 0.52, 0.90),   // blue
+        (10, 0.24, 0.74, 0.82),   // cyan-teal
+        (15, 0.34, 0.76, 0.55),   // green-teal
+        (19, 0.46, 0.77, 0.37),   // green
+        (22, 0.74, 0.80, 0.30),   // green-yellow (boundary at 20°)
+        (25, 0.97, 0.83, 0.26),   // yellow
+        (28, 0.98, 0.65, 0.20),   // amber
+        (31, 0.96, 0.47, 0.18),   // orange
+        (34, 0.90, 0.30, 0.20),   // red-orange
+        (37, 0.80, 0.19, 0.19),   // red
+        (41, 0.60, 0.11, 0.16),   // dark red
+        (45, 0.40, 0.07, 0.13),   // deep maroon — the scale's "black" end, kept legible
     ]
 
-    private static func interpolatedTemperature(_ t: Double) -> Color {
-        guard let first = tempStops.first, let last = tempStops.last else { return .gray }
-        if t <= first.t { return Color(red: first.r, green: first.g, blue: first.b) }
-        if t >= last.t  { return Color(red: last.r, green: last.g, blue: last.b) }
-        for i in 0..<(tempStops.count - 1) {
-            let a = tempStops[i], b = tempStops[i + 1]
-            if t >= a.t && t <= b.t {
-                let k = (t - a.t) / (b.t - a.t)
+    private static func interpolatedTemperature(_ t: Double) -> Color { lerp(t, tempStops) }
+
+    /// Linear-interpolate a colour for `x` across `(threshold, r, g, b)` stops, clamped at both ends.
+    /// Shared by the temperature and wind ramps.
+    private static func lerp(_ x: Double, _ stops: [(t: Double, r: Double, g: Double, b: Double)]) -> Color {
+        guard let first = stops.first, let last = stops.last else { return .gray }
+        if x <= first.t { return Color(red: first.r, green: first.g, blue: first.b) }
+        if x >= last.t  { return Color(red: last.r, green: last.g, blue: last.b) }
+        for i in 0..<(stops.count - 1) {
+            let a = stops[i], b = stops[i + 1]
+            if x >= a.t && x <= b.t {
+                let k = (x - a.t) / (b.t - a.t)
                 return Color(red: a.r + (b.r - a.r) * k,
                              green: a.g + (b.g - a.g) * k,
                              blue: a.b + (b.b - a.b) * k)
@@ -43,6 +56,28 @@ public enum Palette {
         }
         return .gray
     }
+
+    // MARK: Wind speed → colour
+
+    /// Wind-speed colour, calm (pale blue) through gale (red) to violent storm (violet), continuously
+    /// interpolated — modelled on Windy's wind scale so a glance at the vane reads intensity. Values in
+    /// km/h, the unit AEMET reports. Used by the Watch wind complications' vane.
+    public static func wind(_ kmh: Int?) -> Color {
+        guard let v = kmh else { return tempTeal }
+        return lerp(Double(v), windStops)
+    }
+
+    private static let windStops: [(t: Double, r: Double, g: Double, b: Double)] = [
+        (  0, 0.55, 0.80, 0.92),   // calm — pale blue
+        ( 12, 0.30, 0.80, 0.72),   // light — teal
+        ( 22, 0.42, 0.80, 0.40),   // moderate — green
+        ( 32, 0.86, 0.84, 0.28),   // fresh — yellow
+        ( 45, 0.97, 0.62, 0.20),   // strong — orange
+        ( 60, 0.92, 0.34, 0.22),   // very strong — red-orange
+        ( 80, 0.84, 0.18, 0.28),   // gale — red
+        (105, 0.66, 0.20, 0.62),   // storm — magenta
+        (130, 0.52, 0.28, 0.78),   // violent — violet
+    ]
 
     /// The full cold→hot scale, for `Gauge` tints and range bars.
     public static let temperatureGradient = Gradient(colors: [
