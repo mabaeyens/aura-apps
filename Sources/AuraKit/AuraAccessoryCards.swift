@@ -85,11 +85,20 @@ public struct AuraAccessoryRectangular: View {
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.title).fontWeight(.semibold).fontDesign(.rounded)
             }
-            // Line 2: the sky word on its own line — full, never truncated to "Desp…" (Apple/Carrot).
-            if let text = snapshot.currentSkyText {
-                Text(text).font(.subheadline).foregroundStyle(.secondary)
-                    .lineLimit(1).minimumScaleFactor(0.8)
+            // Line 2: the sky word, with current wind (speed + direction) filling the space on the right.
+            HStack(spacing: 4) {
+                if let text = snapshot.currentSkyText {
+                    Text(text).lineLimit(1).minimumScaleFactor(0.7)
+                }
+                if snapshot.windSpeed != nil {
+                    Spacer(minLength: 4)
+                    Label(AccessoryFormat.wind(snapshot), systemImage: "wind")
+                        .labelStyle(TightLabelStyle())
+                        .lineLimit(1).minimumScaleFactor(0.9)
+                }
             }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
             // Line 3: which location this is, and today's high/low with up/down arrows.
             HStack(spacing: 6) {
                 Text(snapshot.localidad).lineLimit(1).minimumScaleFactor(0.7)
@@ -209,6 +218,13 @@ private enum AccessoryFormat {
 
     static func range(_ s: WeatherSnapshot) -> String {
         "\(temp(s.tempMax)) · \(temp(s.tempMin))"
+    }
+
+    /// "12 km/h SO" — current wind speed with the direction it blows from, direction omitted if unknown.
+    static func wind(_ s: WeatherSnapshot) -> String {
+        let speed = s.windSpeed.map { "\($0) km/h" } ?? "—"
+        if let dir = s.windDirection { return "\(speed) \(dir.abbreviation)" }
+        return speed
     }
 
     /// "29° Despejado" — temp plus condition when known, temp alone otherwise.

@@ -133,9 +133,12 @@ private struct CurrentConditionsHeader: View {
                 .symbolRenderingMode(.multicolor)
                 .font(.system(size: 40))
             VStack(alignment: .leading, spacing: 2) {
+                // Primary colour, not the temperature tint: the pale yellow/orange of the tint washes
+                // out against the light sky-gradient card. The colour lives in the icon and the card;
+                // the numbers stay high-contrast and readable.
                 Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
                     .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .foregroundStyle(Palette.temperature(snapshot.heroTemp))
+                    .foregroundStyle(.primary)
                 if let sky = snapshot.currentSkyText {
                     Text(sky).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
@@ -143,14 +146,16 @@ private struct CurrentConditionsHeader: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
                 Text("Máx \(fmt(snapshot.tempMax))")
-                    .foregroundStyle(Palette.temperature(snapshot.tempMax))
                 Text("Mín \(fmt(snapshot.tempMin))")
-                    .foregroundStyle(Palette.temperature(snapshot.tempMin))
-                if snapshot.heroIsObserved, let station = snapshot.observedStation {
-                    Text("Observado · \(station)")
-                        .font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                // Current wind — speed and the direction it blows from — instead of the observation
+                // station, which was low-value and truncated ("Madrid C…").
+                if let wind = snapshot.windSpeed {
+                    Label("\(wind) km/h\(snapshot.windDirection.map { " " + $0.abbreviation } ?? "")",
+                          systemImage: "wind")
+                        .font(.caption).lineLimit(1)
                 }
             }
+            .foregroundStyle(.primary)
             .font(.subheadline.weight(.medium))
         }
         .padding(16)

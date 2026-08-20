@@ -121,18 +121,19 @@ public struct AuraWindCircular: View {
 
     public var body: some View {
         ZStack {
-            // A faint dial and the four fixed cardinal letters, so the vane's heading is readable.
-            Circle().stroke(Color.primary.opacity(0.18), lineWidth: 1)
+            // The dial and the four fixed cardinal letters, so the vane's heading is readable.
+            Circle().stroke(Color.primary.opacity(0.3), lineWidth: 1)
             compassLetter("N", dx: 0, dy: -1)
             compassLetter("E", dx: 1, dy: 0)
             compassLetter("S", dx: 0, dy: 1)
             compassLetter("O", dx: -1, dy: 0)
 
-            // The vane: a full arrow across the dial, rotated to the wind's heading.
+            // The vane: a slim arrow across the dial, rotated to the wind's heading. Kept narrow so it
+            // reads as a direction indicator, not a chunky wedge, and doesn't crowd the centre number.
             if let towards = towardsDegrees {
                 WeatherVane()
                     .fill(speedColor)
-                    .frame(width: 15, height: 44)
+                    .frame(width: 10, height: 44)
                     .rotationEffect(.degrees(towards))
             }
 
@@ -147,8 +148,8 @@ public struct AuraWindCircular: View {
     /// glyph stays upright).
     private func compassLetter(_ s: String, dx: CGFloat, dy: CGFloat) -> some View {
         Text(s)
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(.secondary)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(.primary)  // full-contrast, not the dim .secondary — the marks must read
             .offset(x: dx * Self.letterRadius, y: dy * Self.letterRadius)
     }
 
