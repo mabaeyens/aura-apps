@@ -19,6 +19,7 @@ public extension WeatherSnapshot {
             tempMin: 18, tempMax: 34, humedadMax: 55,
             currentTemp: 29, observedTemp: 30, observedStation: "Madrid Retiro",
             currentSky: "11", currentSkyText: "Despejado",
+            currentHumidity: 42,
             windSpeed: 25, windDirection: .so,
             sunrise: cal.date(bySettingHour: 7, minute: 12, second: 0, of: base),
             sunset: cal.date(bySettingHour: 21, minute: 11, second: 0, of: base),

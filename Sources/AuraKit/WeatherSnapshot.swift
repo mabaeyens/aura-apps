@@ -30,6 +30,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let currentSky: String?
     /// AEMET's Spanish description of the current sky state (e.g. "Despejado").
     public let currentSkyText: String?
+    /// Relative humidity for the current hour, %, from the hourly feed.
+    public let currentHumidity: Int?
     /// Current-hour wind speed, km/h.
     public let windSpeed: Int?
     /// Current-hour wind direction (whence it blows), or nil when calm/unknown.
@@ -56,6 +58,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 tempMin: Int?, tempMax: Int?, humedadMax: Int?,
                 currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
                 currentSky: String? = nil, currentSkyText: String? = nil,
+                currentHumidity: Int? = nil,
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
@@ -73,6 +76,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.observedStation = observedStation
         self.currentSky = currentSky
         self.currentSkyText = currentSkyText
+        self.currentHumidity = currentHumidity
         self.windSpeed = windSpeed
         self.windDirection = windDirection
         self.sunrise = sunrise
@@ -87,12 +91,14 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
 }
 
 public extension WeatherSnapshot {
-    /// The card's "now" hero temperature: the real observed reading when one is available, otherwise
-    /// the current-hour forecast, otherwise today's high. °C.
-    var heroTemp: Int? { observedTemp ?? currentTemp ?? tempMax }
+    /// The card's "now" hero temperature: the current-hour forecast, falling back to today's high only
+    /// when the hourly feed is missing. °C. Deliberately *not* the observed-station reading — a warm
+    /// nearby station read the day's max hours before the forecast said it would, so the gauge looked
+    /// pinned to the high; tracking the hourly forecast keeps the hero consistent with the hours strip.
+    var heroTemp: Int? { currentTemp ?? tempMax }
 
-    /// Whether the hero is a real station observation (so the UI can mark it as such).
-    var heroIsObserved: Bool { observedTemp != nil }
+    /// Whether the hero is a real station observation. Now always false — kept for API compatibility.
+    var heroIsObserved: Bool { false }
 
     /// The next sun event to happen, for the sunrise/sunset complication: sunrise if it's still to
     /// come today, otherwise sunset if that's still to come, otherwise the next sunrise (sun times
@@ -179,16 +185,25 @@ public extension WeatherSnapshot {
                      now: Date = Date()) -> WeatherSnapshot {
         let today = daily.prediccion.dia.first
         let sun = SolarTimes(date: now, latitude: location.latitude, longitude: location.longitude)
-        let days = daily.prediccion.dia.prefix(5).compactMap { dia -> DaySnapshot? in
+
+        // Resolve the hourly feed first, so today's daily row and the current humidity can follow the
+        // actual current hour rather than a fixed whole-day block.
+        let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
+        let humidityNow = hourly.flatMap { Self.currentHumidity($0, timeZone: timeZone, now: now) }
+        let resolved = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
+        let currentSky = resolved?.current?.sky
+
+        let days = daily.prediccion.dia.prefix(5).enumerated().compactMap { (idx, dia) -> DaySnapshot? in
             guard let date = Self.parseDay(dia.fecha) else { return nil }
+            // Today (idx 0) follows the current hour: a clear morning shows a sun even when the
+            // afternoon turns rainy, and the icon re-adapts as a fresh forecast arrives. Later days
+            // keep their daytime-block summary.
+            let sky = idx == 0 ? (currentSky ?? Self.dailySky(dia)) : Self.dailySky(dia)
             return DaySnapshot(date: date, min: dia.temperatura?.minima, max: dia.temperatura?.maxima,
                                humidityMax: dia.humedadRelativa?.maxima,
-                               sky: Self.dailySky(dia), windSpeed: Self.dailyWind(dia),
+                               sky: sky, windSpeed: Self.dailyWind(dia),
                                probPrecip: Self.dailyPrecip(dia))
         }
-
-        let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
-        let hourly = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
 
         return WeatherSnapshot(
             ine: location.ine,
@@ -197,17 +212,18 @@ public extension WeatherSnapshot {
             tempMin: today?.temperatura?.minima,
             tempMax: today?.temperatura?.maxima,
             humedadMax: today?.humedadRelativa?.maxima,
-            currentTemp: hourly?.current?.temp,
+            currentTemp: resolved?.current?.temp,
             observedTemp: observed?.temperature,
             observedStation: observed?.stationName,
-            currentSky: hourly?.current?.sky,
-            currentSkyText: hourly?.currentText,
+            currentSky: resolved?.current?.sky,
+            currentSkyText: resolved?.currentText,
+            currentHumidity: humidityNow,
             windSpeed: wind?.speed ?? nil,
             windDirection: wind?.direction ?? nil,
             sunrise: sun.sunrise,
             sunset: sun.sunset,
             days: days,
-            hours: hourly?.strip ?? [],
+            hours: resolved?.strip ?? [],
             alert: alert,
             bulletin: bulletin?.texto,
             bulletinPhenomenon: bulletin?.fenomenoSignificativo,
@@ -257,6 +273,26 @@ public extension WeatherSnapshot {
         if let day0 = dias.first, let w = wind(in: day0, from: currentHour) { return w }
         if dias.count > 1, let w = wind(in: dias[1], from: 0) { return w }
         return (nil, nil)
+    }
+
+    /// The relative humidity for the current hour (or the next available reading), %.
+    private static func currentHumidity(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let currentHour = cal.component(.hour, from: now)
+
+        func humidity(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
+            let readings = dia.humedadRelativa.compactMap { hv -> (hour: Int, value: Int)? in
+                guard let hour = Int(hv.periodo), let value = Int(hv.value) else { return nil }
+                return (hour, value)
+            }.sorted { $0.hour < $1.hour }
+            return (readings.first { $0.hour >= from } ?? readings.first)?.value
+        }
+
+        let dias = forecast.prediccion.dia
+        if let day0 = dias.first, let h = humidity(in: day0, from: currentHour) { return h }
+        if dias.count > 1, let h = humidity(in: dias[1], from: 0) { return h }
+        return nil
     }
 
     /// Merge one day's parallel hourly arrays into ordered `HourSlot`s.

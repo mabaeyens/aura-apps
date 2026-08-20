@@ -59,8 +59,9 @@ struct WatchRootView: View {
                 Text("Mín \(fmt(s.tempMin))").foregroundStyle(Palette.temperature(s.tempMin))
             }
             .font(.caption).fontWeight(.medium)
-            if s.heroIsObserved, let station = s.observedStation {
-                Text("Observado · \(station)").font(.system(size: 9)).foregroundStyle(.tertiary).lineLimit(1)
+            if let humidity = s.currentHumidity {
+                Label("\(humidity) %", systemImage: "humidity.fill")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
