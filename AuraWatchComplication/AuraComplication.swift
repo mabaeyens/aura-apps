@@ -52,16 +52,16 @@ struct AuraConditionsView: View {
             switch family {
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
-                // `.widgetCurvesContent()` (watchOS 10+) curves the corner's main content along the
-                // screen edge — the documented fix for corner content that otherwise stays horizontal
-                // and cramped. The range arcs along the outer bezel via `.widgetLabel`.
+                // The corner content is a coloured condition glyph beside the degrees, the way Carrot
+                // keeps its icon in colour. It is deliberately NOT `.widgetCurvesContent()`: curving the
+                // content only bends text glyphs and drops the symbol, so curving and a coloured icon
+                // are mutually exclusive. The day's range still arcs along the outer bezel via
+                // `.widgetLabel`, which is where Carrot's arc lives too.
                 if AuraAccessoryCorner(snapshot: snapshot, now: entry.date).hasRange {
                     AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
-                        .widgetCurvesContent()
                         .widgetLabel { AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerGauge }
                 } else {
                     AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
-                        .widgetCurvesContent()
                         .widgetLabel(AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerLabel)
                 }
             default: AuraAccessoryCircular(snapshot: snapshot, now: entry.date)

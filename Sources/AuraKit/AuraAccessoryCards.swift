@@ -149,14 +149,22 @@ public struct AuraAccessoryCorner: View {
     }
 
     public var body: some View {
-        // The condition symbol INLINE with the temperature, in a single Text, so `.widgetCurvesContent()`
-        // (applied by the complication) curves both together along the corner. An Image in an HStack
-        // would not curve — only text glyphs do, and an inline symbol counts as one. Inline symbols
-        // take the text's colour, so this is a white symbol rather than the multicolour ConditionGlyph.
-        Text("\(Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))) \(AccessoryFormat.temp(snapshot.heroTemp))")
-            .font(.title3).fontWeight(.bold).fontDesign(.rounded)
-            .foregroundStyle(.white)
-            .lineLimit(1).minimumScaleFactor(0.6)
+        // The multicolour condition glyph as its own symbol, beside the temperature — the way Carrot
+        // keeps the icon coloured. A real Image can't ride a `.widgetCurvesContent()` curve (only text
+        // glyphs do), and an inline text symbol renders as nothing in the corner, so this content is
+        // NOT curved: the icon keeps its colour, and the day's range still arcs on the bezel gauge.
+        HStack(spacing: 2) {
+            // Glyph one step smaller than the degrees so the number stays the dominant element and the
+            // icon reads as a companion, not a rival for width (matches Carrot's proportions).
+            ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
+                .font(.body)
+            // The degrees are inviolable: `.fixedSize()` keeps the number at full size so the shrinkable
+            // glyph yields the width — otherwise "30°" clips to "3…" the way the rectangular temp did.
+            Text(AccessoryFormat.temp(snapshot.heroTemp))
+                .font(.title3).fontWeight(.bold).fontDesign(.rounded)
+                .fixedSize()
+        }
+        .foregroundStyle(.white)
     }
 
     /// Whether today's low/high are known and ordered, so the bezel gauge can be drawn.
