@@ -133,27 +133,28 @@ public struct AuraWindCircular: View {
                         .rotationEffect(.degrees(towards))
                 }
 
-                // Centre: the speed, big and white, drawn last so it stays legible over the arrow's
-                // shaft. A soft dark halo lifts it off a bright arrow.
+                // Centre: the speed, big and white, on the bare dial — no backing shape. With just the
+                // two detached tips and nothing crossing the centre, the number needs only a light
+                // shadow to stay crisp.
                 Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
                     .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.7), radius: 2)
-                    .shadow(color: .black.opacity(0.5), radius: 2)
+                    .shadow(color: .black.opacity(0.5), radius: 1)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
-    /// One thin arrow in the wind-intensity colour: a sharp arrowhead where the wind blows *to*, a
-    /// forked swallowtail where it comes *from*. The shape alone carries head-vs-tail, so it stays a
-    /// single solid colour. It spans the dial tip to tip so the arrowhead sits *over* the mark at its
-    /// bearing and the swallowtail *over* the opposite mark — the length that makes the heading read —
-    /// while staying slim so it never looks like a chunky wedge.
+    /// The heading, in the wind-intensity colour, as two separate marks with no shaft between them: a
+    /// solid arrowhead at the mark ring where the wind blows *to*, and a forked swallowtail at the mark
+    /// ring where it comes *from*. Drawn pointing up here; the caller rotates the pair to the bearing.
     @ViewBuilder private func vane(diameter d: CGFloat) -> some View {
-        WindArrow()
-            .fill(Palette.wind(snapshot.windSpeed))
-            .frame(width: d * 0.20, height: d * WindRose.markRingRadiusFactor * 2)
+        let color = Palette.wind(snapshot.windSpeed)
+        ZStack {
+            WindHead().fill(color)
+            WindTail().fill(color).rotationEffect(.degrees(180))
+        }
+        .frame(width: d, height: d)
     }
 
     /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.
@@ -187,12 +188,13 @@ private struct WindRose: View {
                          color: Color(white: tier.shade), d: d)
                 }
             }
-            // Cardinal letters — bright white, ON the mark ring and aligned with the rest of the marks:
-            // they ARE the cardinal marks, with no tick beside them.
-            letter("N", dx: 0, dy: -1, d: d)
-            letter("E", dx: 1, dy: 0, d: d)
-            letter("S", dx: 0, dy: 1, d: d)
-            letter("O", dx: -1, dy: 0, d: d)
+            // Cardinal letters — bright white, ON the mark ring and vertically middle-aligned with the
+            // marks that surround them (they ARE the cardinal marks, no tick beside them). E and O sit a
+            // touch further out than N and S so they stay readable when the arrow lies over them.
+            letter("N", dx: 0, dy: -1, rf: 0.45, d: d)
+            letter("E", dx: 1, dy: 0, rf: 0.47, d: d)
+            letter("S", dx: 0, dy: 1, rf: 0.43, d: d)
+            letter("O", dx: -1, dy: 0, rf: 0.45, d: d)
         }
         .frame(width: d, height: d)
     }
@@ -222,48 +224,56 @@ private struct WindRose: View {
         .rotationEffect(.degrees(bearing))
     }
 
-    /// One upright cardinal letter, centred on the mark ring (dx/dy are unit offsets, not rotated), so
-    /// it reads as the cardinal mark rather than a label sitting inside the ring.
-    private func letter(_ s: String, dx: CGFloat, dy: CGFloat, d: CGFloat) -> some View {
-        let r = d * (Self.markRingRadiusFactor - 0.075)   // centre pulled in by ~half the glyph height
+    /// One upright cardinal letter at radius `rf`·d (dx/dy are unit offsets, not rotated). A fixed
+    /// square frame centres the glyph so N/E/S/O share one baseline and sit in the middle of the marks
+    /// around them, instead of each drifting by its own line-box metrics.
+    private func letter(_ s: String, dx: CGFloat, dy: CGFloat, rf: CGFloat, d: CGFloat) -> some View {
+        let r = d * rf
         return Text(s)
-            .font(.system(size: d * 0.15, weight: .bold))
+            .font(.system(size: d * 0.14, weight: .bold))
             .foregroundStyle(.white)
+            .frame(width: d * 0.16, height: d * 0.16)
             .offset(x: dx * r, y: dy * r)
     }
 }
 
-/// A clean directional arrow pointing up (rotated to the heading): a sharp arrowhead at the top (where
-/// the wind blows *to*), a thin shaft, and a forked swallowtail at the bottom (where it comes *from*).
-/// Head and tail are unmistakably different shapes, so one solid fill reads directionally — no need for
-/// two tones. Proportioned to stay slim and legible at complication size rather than a chunky wedge.
-private struct WindArrow: Shape {
+/// The arrowhead mark alone: a solid triangle pointing up, its tip on the mark ring and its base a short
+/// way in. Drawn in a d×d square; the caller rotates it to the "blows toward" bearing. No shaft — it is
+/// one of the two detached tips.
+private struct WindHead: Shape {
     func path(in rect: CGRect) -> Path {
+        let d = min(rect.width, rect.height)
+        let cx = rect.midX, cy = rect.midY
+        let r = d * WindRose.markRingRadiusFactor      // tip sits on the mark ring
+        let depth = d * 0.20                           // how far the head reaches inward
+        let half = d * 0.11                            // barb half-width
         var path = Path()
-        let midX = rect.midX
-        let w = rect.width
-        let h = rect.height
-        let shaftHalf = w * 0.13           // thin shaft
-        let headHalf = w * 0.5             // arrowhead half-width (the barbs) — reaches the frame edge
-        let headH = h * 0.21               // arrowhead depth (kept a slice of the long arrow, so sharp)
-        let tailHalf = w * 0.42            // swallowtail half-width
-        let tailH = h * 0.17               // swallowtail depth
-        let notch = h * 0.085              // how far the tail's centre V bites in
+        path.move(to: CGPoint(x: cx, y: cy - r))
+        path.addLine(to: CGPoint(x: cx + half, y: cy - (r - depth)))
+        path.addLine(to: CGPoint(x: cx - half, y: cy - (r - depth)))
+        path.closeSubpath()
+        return path
+    }
+}
 
-        // Arrowhead (top): a sharp triangle down to the shaft.
-        path.move(to: CGPoint(x: midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: midX + headHalf, y: rect.minY + headH))
-        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headH))
-        // Right side of the shaft down to the tail.
-        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY - tailH))
-        // Swallowtail: right point, centre notch, left point.
-        path.addLine(to: CGPoint(x: midX + tailHalf, y: rect.maxY))
-        path.addLine(to: CGPoint(x: midX, y: rect.maxY - notch))
-        path.addLine(to: CGPoint(x: midX - tailHalf, y: rect.maxY))
-        // Left side of the shaft back up, and the left barb.
-        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY - tailH))
-        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headH))
-        path.addLine(to: CGPoint(x: midX - headHalf, y: rect.minY + headH))
+/// The swallowtail mark alone: a forked fishtail pointing up, its two outer points on the mark ring with
+/// a centre V notch, narrowing to a small base a short way in. Drawn in a d×d square; the caller rotates
+/// it to the "comes from" bearing. No shaft — the other detached tip.
+private struct WindTail: Shape {
+    func path(in rect: CGRect) -> Path {
+        let d = min(rect.width, rect.height)
+        let cx = rect.midX, cy = rect.midY
+        let r = d * WindRose.markRingRadiusFactor      // outer points sit on the mark ring
+        let depth = d * 0.17                           // how far the tail reaches inward
+        let half = d * 0.11                            // fork half-width
+        let baseHalf = d * 0.03                        // narrow inner base
+        let notch = d * 0.085                          // how far the centre V bites in
+        var path = Path()
+        path.move(to: CGPoint(x: cx - half, y: cy - r))
+        path.addLine(to: CGPoint(x: cx, y: cy - (r - notch)))
+        path.addLine(to: CGPoint(x: cx + half, y: cy - r))
+        path.addLine(to: CGPoint(x: cx + baseHalf, y: cy - (r - depth)))
+        path.addLine(to: CGPoint(x: cx - baseHalf, y: cy - (r - depth)))
         path.closeSubpath()
         return path
     }
