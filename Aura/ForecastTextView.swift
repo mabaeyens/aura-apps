@@ -57,9 +57,17 @@ struct ForecastTextView: View {
                             .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                     }
 
-                    Text(bulletin.texto)
-                        .font(.body)
-                        .textSelection(.enabled)
+                    // AEMET writes the bulletin as one run-on paragraph — sky, then rain, then max
+                    // temps, min temps, wind, all in a row, with hard column wraps baked in. One line
+                    // per sentence (BulletinText) flows it and makes it scannable: one topic per line.
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(BulletinText.sentences(bulletin.texto).enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(.body)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                 } else if isLoading {
                     HStack { ProgressView(); Text("Cargando…").foregroundStyle(.secondary) }
                 } else if let errorMessage {

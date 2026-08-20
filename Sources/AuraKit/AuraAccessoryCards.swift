@@ -149,21 +149,17 @@ public struct AuraAccessoryCorner: View {
     }
 
     public var body: some View {
-        // The multicolour condition glyph as its own symbol, beside the temperature — the way Carrot
-        // keeps the icon coloured. A real Image can't ride a `.widgetCurvesContent()` curve (only text
-        // glyphs do), and an inline text symbol renders as nothing in the corner, so this content is
-        // NOT curved: the icon keeps its colour, and the day's range still arcs on the bezel gauge.
+        // Condition glyph + temperature. The complication applies `.widgetCurvesContent()` so this
+        // whole row curves along the corner (watchOS 10+) — the only way the corner's main content
+        // arcs like Carrot's; before that modifier it was stuck horizontal and small. The day's range
+        // arcs along the outer bezel via `cornerGauge`.
         HStack(spacing: 2) {
-            // Glyph one step smaller than the degrees so the number stays the dominant element and the
-            // icon reads as a companion, not a rival for width (matches Carrot's proportions).
             ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                .font(.body)
-            // The degrees are inviolable: `.fixedSize()` keeps the number at full size so the shrinkable
-            // glyph yields the width — otherwise "30°" clips to "3…" the way the rectangular temp did.
             Text(AccessoryFormat.temp(snapshot.heroTemp))
-                .font(.title3).fontWeight(.bold).fontDesign(.rounded)
-                .fixedSize()
+                .fontWeight(.bold).fontDesign(.rounded)
+                .lineLimit(1).minimumScaleFactor(0.6)  // scale, never clip to "…", if room is tight
         }
+        .font(.title3)
         .foregroundStyle(.white)
     }
 

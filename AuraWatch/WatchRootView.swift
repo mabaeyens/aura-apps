@@ -11,7 +11,7 @@ struct WatchRootView: View {
         Group {
             if let snapshot {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 14) {
                         header(snapshot)
                         if let alert = snapshot.alert { alertBanner(alert) }
                         if !snapshot.hours.isEmpty { hoursSection(snapshot.hours) }
@@ -23,7 +23,10 @@ struct WatchRootView: View {
                         Text("Elaborado con datos de AEMET")
                             .font(.system(size: 9)).foregroundStyle(.tertiary)
                     }
-                    .padding(.horizontal, 2)
+                    // Small side margins so rows aren't flush to the bezel; a touch more on the trailing
+                    // edge so the Digital Crown scroll indicator doesn't clip the text there.
+                    .padding(.leading, 6)
+                    .padding(.trailing, 10)
                 }
             } else {
                 ContentUnavailableView("Abre Aura en el iPhone", systemImage: "iphone")
@@ -147,7 +150,11 @@ struct WatchRootView: View {
                 Label(phenomenon, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption2).foregroundStyle(Palette.tempOrange)
             }
-            Text(text).font(.caption2).foregroundStyle(.secondary)
+            // Flow AEMET's hard-wrapped run-on paragraph into one line per sentence (same as the phone).
+            ForEach(Array(BulletinText.sentences(text).enumerated()), id: \.offset) { _, line in
+                Text(line).font(.caption2).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
