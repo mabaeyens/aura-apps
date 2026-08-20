@@ -52,7 +52,7 @@ let snap = WeatherSnapshot.preview
 // that truncated the temperature on device — so this render reflects the worst case, not a roomy one.
 dump("rectangular", size: CGSize(width: 160, height: 72)) { AuraAccessoryRectangular(snapshot: snap) }
 dump("circular",    size: CGSize(width: 76,  height: 76)) { AuraAccessoryCircular(snapshot: snap) }
-dump("wind-needle", size: CGSize(width: 84,  height: 84)) { AuraWindCircular(snapshot: snap) }
+dump("wind",        size: CGSize(width: 84,  height: 84)) { AuraWindCircular(snapshot: snap) }
 dump("sun",         size: CGSize(width: 60,  height: 60)) { AuraSunCircular(snapshot: snap) }
 dump("corner",      size: CGSize(width: 44,  height: 44)) { AuraAccessoryCorner(snapshot: snap) }
 dump("hours",       size: CGSize(width: 170, height: 76)) { AuraRectHours(snapshot: snap) }

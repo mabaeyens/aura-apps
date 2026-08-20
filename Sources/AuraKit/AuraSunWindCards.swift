@@ -108,11 +108,11 @@ private enum SunFormat {
 
 // MARK: - Wind
 
-/// `.accessoryCircular`: a compass read like a weather vane. A fine rose rings the dial — bright,
-/// near-white marks with the N/E/S/O letters standing in for the cardinal marks, all on one ring — with
-/// the speed big in the centre. A two-tone needle, coloured by wind strength (Windy-style ramp), lies
-/// over the rose and spans it tip to tip. AEMET reports the direction the wind comes *from*, so the
-/// needle's bright head points that bearing + 180°.
+/// `.accessoryCircular`: a compass read like a weather vane. A clean rose rings the dial — a 16-point
+/// ring of grey marks with the N/E/S/O letters standing in for the cardinal marks — with the speed big
+/// in the centre. A compact arrow, coloured by wind strength (Windy-style ramp), points across it: a
+/// sharp arrowhead where the wind blows *to*, a swallowtail where it comes *from*. AEMET reports the
+/// direction the wind comes *from*, so the arrowhead points that bearing + 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
 
@@ -126,36 +126,34 @@ public struct AuraWindCircular: View {
             ZStack {
                 WindRose(diameter: d)
 
-                // The needle, over the rose. Sized so its tips reach the mark ring; rotated so the
-                // bright head sits at the "blows toward" bearing.
+                // The arrow, over the rose. Rotated so the arrowhead sits at the "blows toward" bearing.
                 if let towards = towardsDegrees {
                     vane(diameter: d)
                         .frame(width: d, height: d)
                         .rotationEffect(.degrees(towards))
                 }
 
-                // Centre: the speed, big and white, drawn last so it stays legible over the needle. A
-                // soft dark halo lifts it off a bright needle.
+                // Centre: the speed, big and white, drawn last so it stays legible over the arrow's
+                // shaft. A soft dark halo lifts it off a bright arrow.
                 Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
                     .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.6), radius: 1.5)
+                    .shadow(color: .black.opacity(0.7), radius: 2)
+                    .shadow(color: .black.opacity(0.5), radius: 2)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
-    /// The compass needle, coloured by wind strength: two slim triangles with a gap in the middle for
-    /// the number — the bright half is the head (points *to*), the dim half the tail (points *from*).
-    /// Tip to tip it is as long as the marker ring, so each tip meets its mark.
+    /// One thin arrow in the wind-intensity colour: a sharp arrowhead where the wind blows *to*, a
+    /// forked swallowtail where it comes *from*. The shape alone carries head-vs-tail, so it stays a
+    /// single solid colour. It spans the dial tip to tip so the arrowhead sits *over* the mark at its
+    /// bearing and the swallowtail *over* the opposite mark — the length that makes the heading read —
+    /// while staying slim so it never looks like a chunky wedge.
     @ViewBuilder private func vane(diameter d: CGFloat) -> some View {
-        let head = Palette.wind(snapshot.windSpeed)
-        let tail = head.opacity(0.5)
-        ZStack {
-            NeedleHalf(pointingUp: true).fill(head)
-            NeedleHalf(pointingUp: false).fill(tail)
-        }
-        .frame(width: d * 0.16, height: d * WindRose.markRingRadiusFactor * 2)
+        WindArrow()
+            .fill(Palette.wind(snapshot.windSpeed))
+            .frame(width: d * 0.20, height: d * WindRose.markRingRadiusFactor * 2)
     }
 
     /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.
@@ -165,29 +163,28 @@ public struct AuraWindCircular: View {
     }
 }
 
-/// The compass rose behind the needle: a fine ring of radial marks — a tick every 9°, 40 in all — so it
-/// reads as a real rose, with the inter-cardinals a touch longer. The N/E/S/O letters sit ON that same
-/// ring, standing in for the cardinal marks (no separate tick). No dial ring; the marks carry it.
+/// The compass rose behind the arrow: a 32-point ring. The N/E/S/O letters sit ON the ring and stand in
+/// for the cardinal marks (no separate tick there); the four inter-cardinals (NE/SE/SW/NW) are the
+/// longest, brightest-grey marks; the eight 16-point marks are medium grey; the sixteen finest points
+/// are short, dim grey. Shades of grey in a clear three-tier hierarchy. No dial ring; the marks carry it.
 private struct WindRose: View {
     let diameter: CGFloat
 
     /// Radius, as a fraction of the diameter, of the outer tip of every mark — the ring the marks and
-    /// the cardinal letters share, and the ring the needle's tips reach.
+    /// the cardinal letters share, and the ring the arrow's tips reach.
     static let markRingRadiusFactor: CGFloat = 0.485
 
     var body: some View {
         let d = diameter
         ZStack {
-            // Marks every 9°, but NOT at the cardinals — there the letter itself is the mark. Bright,
-            // nearly white (inter-cardinals full white, the rest almost); all reach the same outer ring.
-            ForEach(Array(stride(from: 0, to: 360, by: 9)), id: \.self) { deg in
-                if deg % 90 != 0 {
-                    let inter = deg % 45 == 0
-                    mark(bearing: Double(deg),
-                         length: inter ? d * 0.10 : d * 0.06,
-                         width: d * 0.016,
-                         color: .white.opacity(inter ? 1.0 : 0.85),
-                         d: d)
+            // The 32 compass points, every 11.25°. Skip the cardinals — there the letter is the mark.
+            // Three tiers by importance: inter-cardinals (45°) longest and brightest, the 16-point marks
+            // (22.5°) medium, the finest points (11.25°) short and dim.
+            ForEach(Array(stride(from: 0.0, to: 360.0, by: 11.25)), id: \.self) { (deg: Double) in
+                if deg.truncatingRemainder(dividingBy: 90) != 0 {
+                    let tier = Self.tier(deg: deg)
+                    mark(bearing: deg, length: d * tier.length, width: d * tier.width,
+                         color: Color(white: tier.shade), d: d)
                 }
             }
             // Cardinal letters — bright white, ON the mark ring and aligned with the rest of the marks:
@@ -198,6 +195,18 @@ private struct WindRose: View {
             letter("O", dx: -1, dy: 0, d: d)
         }
         .frame(width: d, height: d)
+    }
+
+    /// The size/shade tier for a mark at `deg` (as fractions of the diameter): inter-cardinals longest
+    /// and brightest, 16-point marks medium, the finest points short and dim.
+    private static func tier(deg: Double) -> (length: CGFloat, width: CGFloat, shade: Double) {
+        if deg.truncatingRemainder(dividingBy: 45) == 0 {
+            return (0.11, 0.020, 0.85)      // inter-cardinal (NE/SE/SW/NW)
+        } else if deg.truncatingRemainder(dividingBy: 22.5) == 0 {
+            return (0.075, 0.016, 0.6)      // 16-point
+        } else {
+            return (0.05, 0.012, 0.38)      // finest
+        }
     }
 
     /// One radial mark at `bearing` (0 = N, clockwise). Built as a capsule whose outer tip sits on the
@@ -224,21 +233,37 @@ private struct WindRose: View {
     }
 }
 
-/// One half of a compass needle — a long slim triangle from the rim to a gap near the centre (leaving
-/// room for the number). `pointingUp` is the head half (tip at top), otherwise the tail (tip at bottom).
-private struct NeedleHalf: Shape {
-    let pointingUp: Bool
-
+/// A clean directional arrow pointing up (rotated to the heading): a sharp arrowhead at the top (where
+/// the wind blows *to*), a thin shaft, and a forked swallowtail at the bottom (where it comes *from*).
+/// Head and tail are unmistakably different shapes, so one solid fill reads directionally — no need for
+/// two tones. Proportioned to stay slim and legible at complication size rather than a chunky wedge.
+private struct WindArrow: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let midX = rect.midX
-        let halfW = rect.width / 2
-        let gap = rect.height * 0.10          // clear space around the centre number
-        let baseY = rect.midY + (pointingUp ? -gap : gap)
-        let tipY = pointingUp ? rect.minY : rect.maxY
-        path.move(to: CGPoint(x: midX, y: tipY))
-        path.addLine(to: CGPoint(x: midX + halfW, y: baseY))
-        path.addLine(to: CGPoint(x: midX - halfW, y: baseY))
+        let w = rect.width
+        let h = rect.height
+        let shaftHalf = w * 0.13           // thin shaft
+        let headHalf = w * 0.5             // arrowhead half-width (the barbs) — reaches the frame edge
+        let headH = h * 0.21               // arrowhead depth (kept a slice of the long arrow, so sharp)
+        let tailHalf = w * 0.42            // swallowtail half-width
+        let tailH = h * 0.17               // swallowtail depth
+        let notch = h * 0.085              // how far the tail's centre V bites in
+
+        // Arrowhead (top): a sharp triangle down to the shaft.
+        path.move(to: CGPoint(x: midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: midX + headHalf, y: rect.minY + headH))
+        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.minY + headH))
+        // Right side of the shaft down to the tail.
+        path.addLine(to: CGPoint(x: midX + shaftHalf, y: rect.maxY - tailH))
+        // Swallowtail: right point, centre notch, left point.
+        path.addLine(to: CGPoint(x: midX + tailHalf, y: rect.maxY))
+        path.addLine(to: CGPoint(x: midX, y: rect.maxY - notch))
+        path.addLine(to: CGPoint(x: midX - tailHalf, y: rect.maxY))
+        // Left side of the shaft back up, and the left barb.
+        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.maxY - tailH))
+        path.addLine(to: CGPoint(x: midX - shaftHalf, y: rect.minY + headH))
+        path.addLine(to: CGPoint(x: midX - headHalf, y: rect.minY + headH))
         path.closeSubpath()
         return path
     }
