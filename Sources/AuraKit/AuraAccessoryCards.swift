@@ -149,18 +149,14 @@ public struct AuraAccessoryCorner: View {
     }
 
     public var body: some View {
-        // Condition glyph + temperature. The complication applies `.widgetCurvesContent()` so this
-        // whole row curves along the corner (watchOS 10+) — the only way the corner's main content
-        // arcs like Carrot's; before that modifier it was stuck horizontal and small. The day's range
-        // arcs along the outer bezel via `cornerGauge`.
-        HStack(spacing: 2) {
-            ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-            Text(AccessoryFormat.temp(snapshot.heroTemp))
-                .fontWeight(.bold).fontDesign(.rounded)
-                .lineLimit(1).minimumScaleFactor(0.6)  // scale, never clip to "…", if room is tight
-        }
-        .font(.title3)
-        .foregroundStyle(.white)
+        // The condition symbol INLINE with the temperature, in a single Text, so `.widgetCurvesContent()`
+        // (applied by the complication) curves both together along the corner. An Image in an HStack
+        // would not curve — only text glyphs do, and an inline symbol counts as one. Inline symbols
+        // take the text's colour, so this is a white symbol rather than the multicolour ConditionGlyph.
+        Text("\(Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))) \(AccessoryFormat.temp(snapshot.heroTemp))")
+            .font(.title3).fontWeight(.bold).fontDesign(.rounded)
+            .foregroundStyle(.white)
+            .lineLimit(1).minimumScaleFactor(0.6)
     }
 
     /// Whether today's low/high are known and ordered, so the bezel gauge can be drawn.
