@@ -6,6 +6,44 @@ import Foundation
 ///
 /// Source: https://ica.miteco.es/datos/ica-ultima-hora.csv (CC-BY 4.0, MITECO). One ~50 KB national
 /// download serves every location — fetch the rows once per refresh and resolve nearest locally.
+/// One measured pollutant at the nearest station: its latest valid hourly concentration in µg/m³. Only
+/// pollutants the station actually reports appear — a traffic station that measures only NO₂ contributes
+/// a single component, never a fabricated zero for the rest.
+public struct AirComponent: Codable, Sendable, Hashable {
+    /// Canonical MITECO magnitud token: "NO2", "O3", "PM2.5", "PM10", "SO2".
+    public let pollutant: String
+    /// Latest valid hourly concentration, µg/m³.
+    public let value: Double
+
+    public init(pollutant: String, value: Double) {
+        self.pollutant = pollutant
+        self.value = value
+    }
+
+    /// Display order for the breakdown, mirroring the official ICA listing.
+    static let order = ["NO2", "O3", "PM2.5", "PM10", "SO2"]
+    var rank: Int { Self.order.firstIndex(of: pollutant) ?? Self.order.count }
+
+    /// Subscripted label, e.g. "NO₂", "O₃", "PM2,5".
+    public var label: String {
+        switch pollutant {
+        case "O3":    return "O₃"
+        case "NO2":   return "NO₂"
+        case "SO2":   return "SO₂"
+        case "PM2.5": return "PM2,5"
+        case "PM10":  return "PM10"
+        default:      return pollutant
+        }
+    }
+
+    /// The value with Spanish decimal comma, e.g. "3,5" or "27".
+    public var valueText: String {
+        value == value.rounded()
+            ? String(Int(value.rounded()))
+            : String(format: "%.1f", value).replacingOccurrences(of: ".", with: ",")
+    }
+}
+
 public struct AirQuality: Codable, Sendable, Hashable {
     /// ICA category 1…6 (1 buena … 6 extremadamente desfavorable). No-data is represented as `nil`
     /// `AirQuality`, so this is always a real category.
@@ -20,15 +58,27 @@ public struct AirQuality: Codable, Sendable, Hashable {
     public let distanceKm: Double
     /// Measurement instant (UTC in the feed).
     public let measured: Date
+    /// Per-pollutant breakdown for the same station, from MITECO's backend (empty when unavailable).
+    /// Sorted in the canonical `AirComponent.order`; only actually-measured pollutants are present.
+    public let components: [AirComponent]
 
     public init(category: Int, partial: Bool, pollutant: String?,
-                station: String, distanceKm: Double, measured: Date) {
+                station: String, distanceKm: Double, measured: Date,
+                components: [AirComponent] = []) {
         self.category = category
         self.partial = partial
         self.pollutant = pollutant
         self.station = station
         self.distanceKm = distanceKm
         self.measured = measured
+        self.components = components.sorted { $0.rank < $1.rank }
+    }
+
+    /// A copy with the per-pollutant breakdown attached (headline fields unchanged).
+    public func adding(components: [AirComponent]) -> AirQuality {
+        AirQuality(category: category, partial: partial, pollutant: pollutant,
+                   station: station, distanceKm: distanceKm, measured: measured,
+                   components: components)
     }
 
     /// Spanish ICA category name (the official six-level scale).
@@ -62,8 +112,13 @@ public struct AirQuality: Codable, Sendable, Hashable {
 public enum MitecoAirQuality {
     public static let feedURL = URL(string: "https://ica.miteco.es/datos/ica-ultima-hora.csv")!
 
+    /// The undocumented ICA backend that serves the per-pollutant breakdown the CSV lacks. Reached with a
+    /// single named query per nearest station; see `components(toLatitude:…)`.
+    static let backendURL = URL(string: "https://backend.ica.miteco.es/sgca/")!
+
     /// One parsed row of the national feed (only active stations with a real category are kept).
     public struct Station: Sendable, Hashable {
+        public let code: Int            // cod_estacion — keys the backend per-pollutant query
         public let name: String
         public let latitude: Double
         public let longitude: Double
@@ -85,21 +140,81 @@ public enum MitecoAirQuality {
         }
     }
 
-    /// The nearest active station to a point, as an `AirQuality`, or nil if none is usable.
-    public static func nearest(toLatitude lat: Double, longitude lon: Double,
-                               in stations: [Station]) -> AirQuality? {
+    /// The nearest active station to a point, or nil if none is usable.
+    static func nearestStation(toLatitude lat: Double, longitude lon: Double,
+                               in stations: [Station]) -> (station: Station, km: Double)? {
         var best: (station: Station, km: Double)?
         for s in stations {
             let km = haversine(lat, lon, s.latitude, s.longitude)
             if best == nil || km < best!.km { best = (s, km) }
         }
-        guard let (s, km) = best else { return nil }
+        return best
+    }
+
+    /// The nearest active station to a point, as an `AirQuality`, or nil if none is usable.
+    public static func nearest(toLatitude lat: Double, longitude lon: Double,
+                               in stations: [Station]) -> AirQuality? {
+        guard let (s, km) = nearestStation(toLatitude: lat, longitude: lon, in: stations) else { return nil }
         let partial = s.indice >= 10
         let category = partial ? s.indice / 10 : s.indice
         guard (1...6).contains(category) else { return nil }
         return AirQuality(category: category, partial: partial, pollutant: s.pollutant,
                           station: prettyName(s.name), distanceKm: km, measured: s.measured)
     }
+
+    /// The per-pollutant breakdown for the nearest station: its latest valid hourly concentration for
+    /// each measured pollutant. One POST to the undocumented ICA backend (`sql1#code#start#end`). Returns
+    /// an empty array — never throws — on any failure, so the headline card still stands without it.
+    public static func components(toLatitude lat: Double, longitude lon: Double,
+                                  in stations: [Station], session: URLSession = .shared) async -> [AirComponent] {
+        guard let (s, _) = nearestStation(toLatitude: lat, longitude: lon, in: stations) else { return [] }
+        // Query the whole UTC day the reading belongs to; the latest valid hour per pollutant is picked
+        // locally, so a partly-filled day (early morning) still yields whatever has been measured.
+        let day = backendDay.string(from: s.measured)
+        let sql = "sql1#\(s.code)#\(day) 00:00#\(day) 23:00"
+        guard let body = "sql=\(sql)".addingPercentEncoding(withAllowedCharacters: .alphanumerics) else { return [] }
+        var request = URLRequest(url: backendURL)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data(body.utf8)
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
+            return parseComponents(data)
+        } catch {
+            return []
+        }
+    }
+
+    /// One hourly reading row from the backend `sql1` query. `valor_medido` is the raw hourly
+    /// concentration (populated for every pollutant the station reports, unlike the sparse moving average);
+    /// `dato_medido` flags it as validated.
+    private struct Reading: Decodable {
+        let hora: Int
+        let magnitud: String
+        let valor_medido: Double?
+        let dato_medido: Bool
+    }
+
+    /// Latest validated `valor_medido` per pollutant; unmeasured pollutants are omitted (no fabricated
+    /// zeros). Canonical ordering is applied by `AirQuality.init`.
+    static func parseComponents(_ data: Data) -> [AirComponent] {
+        guard let rows = try? JSONDecoder().decode([Reading].self, from: data) else { return [] }
+        var latest: [String: Reading] = [:]
+        for r in rows where r.valor_medido != nil && r.dato_medido {
+            if let existing = latest[r.magnitud], existing.hora >= r.hora { continue }
+            latest[r.magnitud] = r
+        }
+        return latest.compactMap { _, r in r.valor_medido.map { AirComponent(pollutant: r.magnitud, value: $0) } }
+    }
+
+    private static let backendDay: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.dateFormat = "yyyyMMdd"
+        return f
+    }()
 
     // MARK: - CSV
 
@@ -112,10 +227,11 @@ public enum MitecoAirQuality {
             let f = line.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
             guard f.count >= 9,
                   f[5] == "true",                                   // activa
+                  let code = Int(f[0]),                             // cod_estacion
                   let lat = Double(f[3]), let lon = Double(f[4]),
                   let indice = Int(f[7]), indice != 0 else { continue }
             let poll = f[8].trimmingCharacters(in: CharacterSet(charactersIn: "\" "))
-            out.append(Station(name: f[1], latitude: lat, longitude: lon, indice: indice,
+            out.append(Station(code: code, name: f[1], latitude: lat, longitude: lon, indice: indice,
                                pollutant: poll.isEmpty ? nil : poll,
                                measured: parseDate(f[6]) ?? Date()))
         }

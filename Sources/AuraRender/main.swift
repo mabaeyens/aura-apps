@@ -201,3 +201,20 @@ func newsCardPreview() -> some View {
     .fontDesign(.rounded)
 }
 write(newsCardPreview(), name: "app-news-card", size: CGSize(width: 340, height: 420))
+
+// The air-quality card with the per-pollutant breakdown: the ICA headline (category swatch + driver +
+// station), then a row of the measured pollutants (label over µg/m³ value). Preview station reports all
+// five; a real traffic station would show only NO₂ (unmeasured pollutants are omitted, not zeroed).
+@MainActor
+func airQualityCardPreview() -> some View {
+    ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(13, 0))
+        AuraAirQualityCard(airQuality: WeatherSnapshot.preview.airQuality!, size: .phone)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 340, height: 190)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .fontDesign(.rounded)
+}
+write(airQualityCardPreview(), name: "app-airquality-card", size: CGSize(width: 340, height: 190))

@@ -627,33 +627,63 @@ public struct AuraAirQualityCard: View {
     public var body: some View {
         let color = Palette.airQuality(airQuality.category)
         let swatch: CGFloat = size == .phone ? 46 : 30
+        let showComponents = size == .phone && !airQuality.components.isEmpty
         return AuraCard(size: size) {
-            HStack(spacing: size.stackSpacing) {
-                // The ICA colour swatch carrying the 1–6 category number.
-                ZStack {
-                    Circle().fill(color)
-                    Text("\(airQuality.category)")
-                        .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
-                                      weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: swatch, height: swatch)
-                .shadow(color: color.opacity(0.6), radius: 5)
+            VStack(alignment: .leading, spacing: showComponents ? 12 : 0) {
+                HStack(spacing: size.stackSpacing) {
+                    // The ICA colour swatch carrying the 1–6 category number.
+                    ZStack {
+                        Circle().fill(color)
+                        Text("\(airQuality.category)")
+                            .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
+                                          weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: swatch, height: swatch)
+                    .shadow(color: color.opacity(0.6), radius: 5)
 
-                VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
-                    Text(airQuality.categoryName)
-                        .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(2).minimumScaleFactor(0.8)
-                    Text(detail)
-                        .font(.system(size: size.smallSize - 1))
-                        .foregroundStyle(.white.opacity(0.65))
-                        .lineLimit(1).minimumScaleFactor(0.65)
+                    VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
+                        Text(airQuality.categoryName)
+                            .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(2).minimumScaleFactor(0.8)
+                        Text(detail)
+                            .font(.system(size: size.smallSize - 1))
+                            .foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(1).minimumScaleFactor(0.65)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+
+                if showComponents { componentsRow }
             }
         }
         .auraSectionTitle("Calidad del aire".uppercased(), size)
+    }
+
+    /// The measured pollutants at the same station, as an even row of mini-columns (label over value),
+    /// with a single shared "µg/m³" caption. Only pollutants the station actually reports appear.
+    private var componentsRow: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(airQuality.components, id: \.pollutant) { c in
+                    VStack(spacing: 2) {
+                        Text(c.label)
+                            .font(.system(size: size.smallSize - 1, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.6))
+                        Text(c.valueText)
+                            .font(.system(size: size.bodySize, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                }
+            }
+            Text("µg/m³")
+                .font(.system(size: size.smallSize - 2))
+                .foregroundStyle(.white.opacity(0.4))
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
     }
 
     /// "por O₃ · Retiro · a 1,7 km" — the driver pollutant, the station, and its distance (Spanish

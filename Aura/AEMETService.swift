@@ -84,9 +84,18 @@ enum AEMETService {
             let observed = StationObservation.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
                                                       in: observations)
-            let airQuality = MitecoAirQuality.nearest(toLatitude: location.latitude,
+            var airQuality = MitecoAirQuality.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
                                                       in: airStations)
+            // Enrich the ICA headline with the nearest station's per-pollutant breakdown (one POST to
+            // MITECO's backend, a separate host — outside the AEMET budget). A miss leaves the headline
+            // alone; unmeasured pollutants are simply absent.
+            if airQuality != nil {
+                let components = await MitecoAirQuality.components(toLatitude: location.latitude,
+                                                                  longitude: location.longitude,
+                                                                  in: airStations)
+                if !components.isEmpty { airQuality = airQuality?.adding(components: components) }
+            }
             let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?
