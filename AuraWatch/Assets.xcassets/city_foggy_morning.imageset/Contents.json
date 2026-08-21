@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "city_foggy_morning.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
