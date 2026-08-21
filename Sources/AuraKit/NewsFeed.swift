@@ -8,21 +8,40 @@ import Foundation
 public enum NewsSource: String, Sendable, Codable, CaseIterable {
     case rtve
     case aemet
+    case meteored
+    case aemetBlog
 
     /// Short label shown on the headline row, e.g. "RTVE".
     public var displayName: String {
         switch self {
-        case .rtve:  return "RTVE"
-        case .aemet: return "AEMET"
+        case .rtve:      return "RTVE"
+        case .aemet:     return "AEMET"
+        case .meteored:  return "Meteored"
+        case .aemetBlog: return "AEMET Blog"
         }
     }
 
-    /// The source's RSS feed. RTVE serves UTF-8; AEMET serves ISO-8859-15 (XMLParser honours the
-    /// prolog's `encoding=`, so both decode without manual re-encoding).
+    /// The source's RSS feed. RTVE and Meteored serve UTF-8; AEMET serves ISO-8859-15 (XMLParser honours
+    /// the prolog's `encoding=`, so all decode without manual re-encoding). RTVE is the daily TV weather
+    /// bulletin; AEMET is official institutional notices; Meteored (tiempo.com) is meteorologists and
+    /// journalists posting several times a day; the AEMET blog is divulgación by AEMET staff and
+    /// collaborating university researchers.
     public var feedURL: URL {
         switch self {
-        case .rtve:  return URL(string: "https://www.rtve.es/api/tematicas/821/noticias.rss")!
-        case .aemet: return URL(string: "https://www.aemet.es/es/noticias.rss")!
+        case .rtve:      return URL(string: "https://www.rtve.es/api/tematicas/821/noticias.rss")!
+        case .aemet:     return URL(string: "https://www.aemet.es/es/noticias.rss")!
+        case .meteored:  return URL(string: "https://www.tiempo.com/feed/")!
+        case .aemetBlog: return URL(string: "https://aemetblog.es/feed/")!
+        }
+    }
+
+    /// How many of this source's most-recent items to keep. RTVE publishes essentially one bulletin a day
+    /// but its feed carries ~20 entries; we only want today plus the two prior days, so it's capped to 3.
+    /// The others post varied divulgación worth surfacing more broadly, so they stay uncapped (`nil`).
+    public var maxItems: Int? {
+        switch self {
+        case .rtve: return 3
+        default:    return nil
         }
     }
 }
@@ -51,7 +70,7 @@ public enum NewsFeed {
     /// parseable date (AEMET's *publicaciones* feed, for instance, has empty titles — excluded upstream,
     /// but this stays defensive).
     public static func parse(_ data: Data, source: NewsSource) -> [NewsItem] {
-        RSSParser().parse(data).compactMap { raw in
+        let items = RSSParser().parse(data).compactMap { raw -> NewsItem? in
             let title = raw.title.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty,
                   let link = URL(string: raw.link.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -59,6 +78,10 @@ public enum NewsFeed {
             let image = raw.imageURL.flatMap { URL(string: $0) }
             return NewsItem(title: title, link: link, source: source, date: date, imageURL: image)
         }
+        // Trim a chatty feed to its most recent entries (RTVE → 3, the daily bulletin plus the two before
+        // it), so a single source can't flood the merged stream with backlog.
+        guard let cap = source.maxItems else { return items }
+        return Array(items.sorted { $0.date > $1.date }.prefix(cap))
     }
 
     /// Merge per-source items into one stream that is recency-sorted yet never single-source dominated.
@@ -143,7 +166,11 @@ final class RSSParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
 
     func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
-        // Some feeds wrap fields in CDATA; we only need plain-text fields, so ignore CDATA payloads.
+        // WordPress feeds (Meteored's tiempo.com, the AEMET blog) wrap even the <title> in CDATA, so the
+        // buffer has to capture it or those items arrive title-less and get dropped. Only title/link/
+        // pubDate are ever read from the buffer (and it's reset per element), so the large HTML CDATA in
+        // <description>/<content:encoded> is accumulated harmlessly and never lands in a field.
+        if let string = String(data: CDATABlock, encoding: .utf8) { text += string }
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?,

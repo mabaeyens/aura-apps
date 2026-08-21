@@ -203,21 +203,31 @@ func newsCardPreview() -> some View {
 write(newsCardPreview(), name: "app-news-card", size: CGSize(width: 340, height: 420))
 
 // The air-quality card with the per-pollutant breakdown: the ICA headline (category swatch + driver +
-// station), then a row of the measured pollutants (label over µg/m³ value). Preview station reports all
-// five; a real traffic station would show only NO₂ (unmeasured pollutants are omitted, not zeroed).
+// station), then a row of colour-coded chips — each of the five ICA pollutants tinted by its own band,
+// grey for the ones the station doesn't measure, the driver ringed. Preview station reports all five.
 @MainActor
-func airQualityCardPreview() -> some View {
+func airQualityCardPreview(_ aq: AirQuality) -> some View {
     ZStack {
         AuraSky(snapshot: .preview, now: todayAt(13, 0))
-        AuraAirQualityCard(airQuality: WeatherSnapshot.preview.airQuality!, size: .phone)
+        AuraAirQualityCard(airQuality: aq, size: .phone)
             .environment(\.colorScheme, .dark)
             .padding(16)
     }
-    .frame(width: 340, height: 190)
+    .frame(width: 340, height: 230)
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     .fontDesign(.rounded)
 }
-write(airQualityCardPreview(), name: "app-airquality-card", size: CGSize(width: 340, height: 190))
+write(airQualityCardPreview(WeatherSnapshot.preview.airQuality!),
+      name: "app-airquality-card", size: CGSize(width: 340, height: 230))
+
+// A traffic station that measures only NO₂ and O₃: the other three chips (PM2,5, PM10, SO₂) show grey
+// with a dash — MITECO's grey-for-unavailable convention — so the coverage is visible at a glance.
+let partialAQ = AirQuality(
+    category: 3, partial: false, pollutant: "NO2",
+    station: "Escuelas Aguirre", distanceKm: 0.8, measured: todayAt(13, 0),
+    components: [AirComponent(pollutant: "NO2", value: 96), AirComponent(pollutant: "O3", value: 58)])
+write(airQualityCardPreview(partialAQ),
+      name: "app-airquality-card-partial", size: CGSize(width: 340, height: 230))
 
 // The sky ALONE (no cards) at the four times of day, so the sun/moon disc and its travel east→west can
 // be judged without the frosted stack covering it. Phone aspect.

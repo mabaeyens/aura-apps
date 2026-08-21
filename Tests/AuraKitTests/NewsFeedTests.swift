@@ -59,6 +59,53 @@ final class NewsFeedTests: XCTestCase {
         XCTAssertNotNil(items.first?.date, "the Spanish RFC-822 date (no seconds) parses")
     }
 
+    // Meteored (tiempo.com) and the AEMET blog are WordPress: the <title> — and here the <link> — arrive
+    // wrapped in CDATA. The parser must unwrap CDATA or every item lands title-less and is dropped, which
+    // is exactly what left the feed showing only RTVE + AEMET before the fix.
+    func testParsesCDATAWrappedTitles() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0"><channel>
+          <title>Meteored España</title>
+          <item>
+            <title><![CDATA[España afectada: 10 días de batalla entre masas de aire]]></title>
+            <link><![CDATA[https://www.tiempo.com/noticias/uno.html]]></link>
+            <pubDate>Fri, 21 Aug 2026 11:51:35 +0000</pubDate>
+          </item>
+          <item>
+            <title><![CDATA[El calor vuelve la semana que viene]]></title>
+            <link>https://www.tiempo.com/noticias/dos.html</link>
+            <pubDate>Thu, 20 Aug 2026 09:00:00 +0000</pubDate>
+          </item>
+        </channel></rss>
+        """
+        let items = NewsFeed.parse(Data(xml.utf8), source: .meteored)
+        XCTAssertEqual(items.count, 2, "both CDATA-titled items survive")
+        XCTAssertEqual(items.first?.title, "España afectada: 10 días de batalla entre masas de aire")
+        XCTAssertEqual(items.first?.link.absoluteString, "https://www.tiempo.com/noticias/uno.html",
+                       "a CDATA-wrapped <link> is unwrapped too")
+        XCTAssertEqual(items.first?.source, .meteored)
+    }
+
+    // RTVE publishes ~one bulletin a day but its feed carries ~20; the source is capped to its 3 most
+    // recent so it can't flood the merged stream with backlog. The uncapped sources keep everything.
+    func testRTVECappedToThreeMostRecent() {
+        // Eight daily bulletins, newest (21 Aug) first, one day apart going back.
+        let days = ["Fri, 21", "Thu, 20", "Wed, 19", "Tue, 18",
+                    "Mon, 17", "Sun, 16", "Sat, 15", "Fri, 14"]
+        let itemsXML = days.enumerated().map { i, day in
+            let date = "\(day) Aug 2026 06:00:00 GMT"
+            return "<item><title>bulletin \(i)</title>"
+                + "<link>https://www.rtve.es/\(i).shtml</link>"
+                + "<pubDate>\(date)</pubDate></item>"
+        }.joined()
+        let xml = "<rss><channel>" + itemsXML + "</channel></rss>"
+        let items = NewsFeed.parse(Data(xml.utf8), source: .rtve)
+        XCTAssertEqual(items.count, 3, "RTVE trimmed to its 3 newest items")
+        XCTAssertEqual(items.map(\.title), ["bulletin 0", "bulletin 1", "bulletin 2"],
+                       "the three kept are the most recent, newest first")
+    }
+
     func testRFC822BothLocales() {
         XCTAssertNotNil(NewsFeed.parseRFC822("Fri, 21 Aug 2026 03:58:33 GMT"))
         XCTAssertNotNil(NewsFeed.parseRFC822("lun, 10 ago 2026 06:41 +0000"))

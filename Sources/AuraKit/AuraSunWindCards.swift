@@ -102,7 +102,7 @@ private enum SunFormat {
         if seconds < 0 { seconds += 24 * 3600 }
         guard seconds > 0 else { return nil }
         let hours = seconds / 3600, minutes = (seconds % 3600) / 60
-        return hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))" : "\(minutes)m"
+        return hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))m" : "\(minutes)m"
     }
 }
 
@@ -137,13 +137,11 @@ public struct AuraWindCircular: View {
                         .rotationEffect(.degrees(towards))
                 }
 
-                // Centre: the speed, big and white, on the bare dial — no backing shape. With just the
-                // two detached tips and nothing crossing the centre, the number needs only a light
-                // shadow to stay crisp.
-                Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                    .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.5), radius: 1)
+                // Centre. On the plain Watch dial (no speed shown beside it) the speed sits big and white
+                // on the bare dial. The app card already prints the speed next to the rose, so there the
+                // centre instead carries the wind's origin as a compass abbreviation ("SO"), coloured by
+                // strength to match the arrow — anchoring the rose without repeating the number.
+                centre(diameter: d)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -159,6 +157,24 @@ public struct AuraWindCircular: View {
             WindTail().fill(color).rotationEffect(.degrees(180))
         }
         .frame(width: d, height: d)
+    }
+
+    /// The dial centre. On the app card (`detailed`) the speed is already printed beside the rose, so the
+    /// centre carries the wind's origin as a compass abbreviation ("SO"), coloured by strength to echo the
+    /// arrow. Everywhere else (the Watch complication, which has no number beside it) the speed stays big
+    /// and white in the centre. Calm — or a detailed card with no direction — falls back to the number.
+    @ViewBuilder private func centre(diameter d: CGFloat) -> some View {
+        if detailed, let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 {
+            Text(dir.abbreviation)
+                .font(.system(size: d * 0.30, weight: .heavy, design: .rounded))
+                .foregroundStyle(Palette.wind(snapshot.windSpeed))
+                .shadow(color: .black.opacity(0.5), radius: 1)
+        } else {
+            Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
+                .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.5), radius: 1)
+        }
     }
 
     /// Bearing (degrees, N = 0 clockwise) the wind is blowing toward, or nil if direction is unknown.

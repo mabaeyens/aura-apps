@@ -27,13 +27,14 @@ struct AboutView: View {
                 Spacer().frame(height: 28)
 
                 Text(
-                    "Aura es el compañero de Apple Watch de la app de AEMET. Toma tu ubicación más " +
-                    "cercana y muestra el tiempo en complicaciones y widgets a todo color, " +
-                    "actualizándose a medida que cambian los datos.\n\n" +
-                    "Del latín aura: brisa, aire en movimiento — y también el halo de luz que " +
-                    "rodea algo.\n\n" +
-                    "Los datos vienen de tu clave de AEMET OpenData. Todo ocurre en el dispositivo: " +
-                    "sin cuenta, sin servidores, nada se envía a ningún sitio salvo a AEMET."
+                    "Aura es una app del tiempo para iPhone y Apple Watch. Toma tu ubicación más " +
+                    "cercana y te muestra la previsión de AEMET a todo color: en la propia app, en los " +
+                    "widgets y en las complicaciones de la pantalla de bloqueo y del reloj. Se actualiza " +
+                    "sola a medida que cambian los datos.\n\n" +
+                    "Del latín aura: brisa, aire en movimiento, y también el halo de luz que rodea algo." +
+                    "\n\n" +
+                    "Los datos son de fuentes públicas oficiales. Todo ocurre en tu dispositivo: sin " +
+                    "cuenta y sin servidores propios; solo se conecta a esas fuentes para traer los datos."
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -41,28 +42,38 @@ struct AboutView: View {
                 .lineSpacing(3)
                 .frame(maxWidth: 360)
 
-                Spacer().frame(height: 24)
+                Spacer().frame(height: 28)
 
-                Text("Elaborado con datos de AEMET")
-                    .font(.footnote.weight(.medium))
+                Text("Créditos")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 12)
 
-                Spacer().frame(height: 16)
-
-                HStack(spacing: 16) {
-                    if let repo = URL(string: "https://github.com/mabaeyens/aura-apps") {
-                        Link("Código", destination: repo)
-                    }
-                    Text("·").foregroundStyle(.tertiary)
-                    if let aemet = URL(string: "https://opendata.aemet.es") {
-                        Link("AEMET OpenData", destination: aemet)
-                    }
+                VStack(spacing: 12) {
+                    creditRow("AEMET", "Previsión, avisos, radar y UV (OpenData)",
+                              "https://opendata.aemet.es")
+                    creditRow("MITECO", "Índice de calidad del aire (ICA · CC-BY 4.0)",
+                              "https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/visualizacion-datos-calidad-del-aire/ica.html")
+                    creditRow("RTVE", "El Tiempo, el parte diario",
+                              "https://www.rtve.es")
+                    creditRow("Meteored", "Noticias y divulgación (tiempo.com)",
+                              "https://www.tiempo.com")
+                    creditRow("AEMET Blog", "Divulgación de sus meteorólogos",
+                              "https://aemetblog.es")
                 }
-                .font(.footnote)
+                .frame(maxWidth: 360)
 
-                Text("Sin cuenta · sin servidores · solo habla con AEMET")
+                Spacer().frame(height: 20)
+
+                if let repo = URL(string: "https://github.com/mabaeyens/aura-apps") {
+                    Link("Código en GitHub", destination: repo)
+                        .font(.footnote)
+                }
+
+                Text("Sin cuenta · sin servidores · solo fuentes públicas")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-                    .padding(.top, 6)
+                    .padding(.top, 8)
 
                 Spacer(minLength: 24)
             }
@@ -71,6 +82,24 @@ struct AboutView: View {
         }
         .navigationTitle("Acerca de")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// One credit line: the source name (tappable when it has a link) over a one-line note of what it
+    /// provides. Keeps the Créditos list uniform as sources are added.
+    @ViewBuilder
+    private func creditRow(_ name: String, _ provides: String, _ url: String) -> some View {
+        VStack(spacing: 1) {
+            if let link = URL(string: url) {
+                Link(name, destination: link)
+                    .font(.footnote.weight(.semibold))
+            } else {
+                Text(name).font(.footnote.weight(.semibold))
+            }
+            Text(provides)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
     }
 
     @ViewBuilder

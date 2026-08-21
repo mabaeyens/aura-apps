@@ -560,7 +560,7 @@ public struct AuraSunArcCard: View {
         if wrapDay && seconds < 0 { seconds += 24 * 3600 }
         guard seconds > 0 else { return nil }
         let hours = seconds / 3600, minutes = (seconds % 3600) / 60
-        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes))" : "\(minutes) min"
+        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes)) min" : "\(minutes) min"
     }
 }
 
@@ -661,22 +661,21 @@ public struct AuraAirQualityCard: View {
         .auraSectionTitle("Calidad del aire".uppercased(), size)
     }
 
-    /// The measured pollutants at the same station, as an even row of mini-columns (label over value),
-    /// with a single shared "µg/m³" caption. Only pollutants the station actually reports appear.
+    /// The five ICA pollutants as an even row of colour-coded chips (label, value, band bar), each tinted
+    /// by its own indicative ICA band — the same official palette as the headline swatch — so the mix reads
+    /// like a compact version of the ICA per-pollutant chart. Pollutants this station doesn't measure show
+    /// greyed with a dash (MITECO's grey-for-unavailable convention). The pollutant that drove the overall
+    /// category is ringed. A single shared "µg/m³" caption sits beneath.
     private var componentsRow: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(airQuality.components, id: \.pollutant) { c in
-                    VStack(spacing: 2) {
-                        Text(c.label)
-                            .font(.system(size: size.smallSize - 1, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.6))
-                        Text(c.valueText)
-                            .font(.system(size: size.bodySize, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .lineLimit(1).minimumScaleFactor(0.7)
+        // Measured values keyed by MITECO token, for O(1) lookup against the canonical five.
+        let measured = Dictionary(airQuality.components.map { ($0.pollutant, $0) },
+                                  uniquingKeysWith: { a, _ in a })
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
+                ForEach(AirComponent.order, id: \.self) { token in
+                    componentChip(token: token,
+                                  component: measured[token],
+                                  isDriver: token == airQuality.pollutant)
                 }
             }
             Text("µg/m³")
@@ -684,6 +683,38 @@ public struct AuraAirQualityCard: View {
                 .foregroundStyle(.white.opacity(0.4))
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+
+    /// One pollutant chip: its label over the value over a band bar, all in the pollutant's ICA colour
+    /// (grey when the station doesn't measure it). The driver pollutant is ringed to tie it to the reason.
+    @ViewBuilder
+    private func componentChip(token: String, component: AirComponent?, isDriver: Bool) -> some View {
+        let measured = component != nil
+        let color = Palette.airQuality(component?.icaCategory ?? 0)   // 0 → grey (unmeasured)
+        VStack(spacing: 4) {
+            Text(AirComponent.label(for: token))
+                .font(.system(size: size.smallSize - 1, weight: .medium))
+                .foregroundStyle(.white.opacity(measured ? 0.7 : 0.35))
+            Text(component?.valueText ?? "–")
+                .font(.system(size: size.bodySize - 1, weight: .bold, design: .rounded))
+                .foregroundStyle(measured ? .white : .white.opacity(0.3))
+            Capsule()
+                .fill(color)
+                .frame(height: 4)
+                .opacity(measured ? 1 : 0.45)
+        }
+        .frame(maxWidth: .infinity)
+        .lineLimit(1).minimumScaleFactor(0.65)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 3)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(color.opacity(measured ? 0.16 : 0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(color.opacity(isDriver && measured ? 0.9 : 0), lineWidth: 1.5)
+        )
     }
 
     /// "por O₃ · Retiro · a 1,7 km" — the driver pollutant, the station, and its distance (Spanish
@@ -854,8 +885,10 @@ public struct AuraNewsCard: View {
     /// A distinct badge colour per source, so the mix is scannable at a glance.
     private static func badgeColor(_ source: NewsSource) -> Color {
         switch source {
-        case .rtve:  return Color(red: 0.00, green: 0.45, blue: 0.80)
-        case .aemet: return Color(red: 0.85, green: 0.38, blue: 0.10)
+        case .rtve:      return Color(red: 0.00, green: 0.45, blue: 0.80)   // RTVE blue
+        case .aemet:     return Color(red: 0.85, green: 0.38, blue: 0.10)   // AEMET orange
+        case .meteored:  return Color(red: 0.11, green: 0.60, blue: 0.51)   // Meteored teal-green
+        case .aemetBlog: return Color(red: 0.40, green: 0.42, blue: 0.80)   // AEMET Blog indigo
         }
     }
 

@@ -25,7 +25,11 @@ public struct AirComponent: Codable, Sendable, Hashable {
     var rank: Int { Self.order.firstIndex(of: pollutant) ?? Self.order.count }
 
     /// Subscripted label, e.g. "NO₂", "O₃", "PM2,5".
-    public var label: String {
+    public var label: String { Self.label(for: pollutant) }
+
+    /// Subscripted label for a bare MITECO magnitud token, so a column can be rendered for a pollutant the
+    /// station doesn't measure (greyed, no value) as well as for a measured one.
+    public static func label(for pollutant: String) -> String {
         switch pollutant {
         case "O3":    return "O₃"
         case "NO2":   return "NO₂"
@@ -34,6 +38,24 @@ public struct AirComponent: Codable, Sendable, Hashable {
         case "PM10":  return "PM10"
         default:      return pollutant
         }
+    }
+
+    /// Indicative ICA band (1…6) for this pollutant's latest hourly value, from the official Spanish/EEA
+    /// breakpoints (µg/m³). It only tints the per-pollutant chip — the headline category still comes from
+    /// MITECO's own índice — so the raw hourly value stands in for MITECO's moving averages (8 h for O₃,
+    /// 24 h for PM). Returns 0 for an unknown token, which `Palette.airQuality` renders grey.
+    public var icaCategory: Int {
+        let bands: [Double]
+        switch pollutant {
+        case "NO2":   bands = [40, 90, 120, 230, 340]
+        case "O3":    bands = [50, 100, 130, 240, 380]
+        case "PM10":  bands = [20, 40, 50, 100, 150]
+        case "PM2.5": bands = [10, 20, 25, 50, 75]
+        case "SO2":   bands = [100, 200, 350, 500, 750]
+        default:      return 0
+        }
+        for (i, upper) in bands.enumerated() where value <= upper { return i + 1 }
+        return 6
     }
 
     /// The value with Spanish decimal comma, e.g. "3,5" or "27".
