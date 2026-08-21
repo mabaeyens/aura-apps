@@ -1,6 +1,18 @@
 # Backlog
 
 ## Done
+- 2026-08-21 — Documentation refresh + WatchSync hardening (`389acc1`, `a606c98`): brought README +
+  `docs/` in line with what actually shipped — Aura is a **Lock Screen + Watch-complication** product
+  (location-configurable only, no Home Screen / per-metric widgets), with the rich UI in the app's "Hoy"
+  card stack. README gained the missing AuraKit pieces (air quality/MITECO, UV, radar, news, scale
+  sheets, the `Aura*Card` suite, `AuraSky`) and now credits **MITECO (CC-BY 4.0)** + the news feeds;
+  `WATCHOS.md` says the Watch renders the full shared stack; `PLAN.md` / `WIDGETS.md` / `CONVERSATION.md`
+  got archived/superseded banners; news source count fixed to four (RTVE, AEMET, Meteored, AEMET Blog).
+  **WatchSync hardening**: added `WeatherSnapshot.hasCurrentHourData` and made `WatchSync.cache(_:)`
+  refuse to overwrite a good cached snapshot with a "thin" one (hourly feed empty → hero + wind blank
+  while daily/AQI/UV still populate — the regression seen this session, cleared by a manual refresh).
+  Guarded per-INE, so a real location switch or first-ever sync is never blocked; 3 tests lock the
+  signal, 38 pass.
 - 2026-08-21 — Tap-through scale sheets + per-pollutant air quality + single-needle wind (`40d45cd`):
   the wind, air-quality and UV cards open a detail sheet (`AuraScaleSheets.swift`) built on Aura's own
   idiom — a continuous colour ramp with a "you are here" marker plus a legend of levels (Beaufort force,
@@ -147,8 +159,10 @@ near me now" surface (HARMONIE-AROME is forecast, not observation).
   aligning the watch card with the phone. All in `40d45cd`. A reported watch regression (empty wind rose,
   hero missing humidity/precip) turned out to be a **stale watch snapshot**, cleared by a refresh — not a
   code bug (hero code untouched; those fields all come from the one hourly slice, so they vanish together
-  while the separately-cached AQI still looked right). If it recurs *after* a normal refresh, harden
-  `WatchSync` to skip caching a snapshot whose current-hour fields are all nil.
+  while the separately-cached AQI still looked right). **Then hardened `WatchSync` anyway** (`a606c98`):
+  it now refuses to overwrite a good cached snapshot with one whose current-hour fields are all nil
+  (`WeatherSnapshot.hasCurrentHourData`, guarded per-INE). Also **refreshed all docs** (`389acc1`) to the
+  shipped reality — see the Done entry above.
 - **2026-08-21** — Shipped the sun arc, wind, air-quality (MITECO ICA) and UV cards, plus **Radar
   Phase 1** (nearest regional frame, iOS only) — all on `main`. Radar looks good on-device; **Phase 2
   (GeoTIFF crop) parked**. Tried a **fire-risk card off EFFIS/GWIS FWI and reverted it** — the anonymous
