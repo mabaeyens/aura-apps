@@ -121,3 +121,15 @@ near me now" surface (HARMONIE-AROME is forecast, not observation).
 - Hourly-strip staleness is handled at display time by `WeatherSnapshot.upcomingHours(now:)` —
   any new time-sensitive card should re-anchor similarly rather than baking "now" into the
   stored snapshot.
+
+## Session log
+
+- **2026-08-21** — Shipped the sun arc, wind, air-quality (MITECO ICA) and UV cards, plus **Radar
+  Phase 1** (nearest regional frame, iOS only) — all on `main`. Radar looks good on-device; **Phase 2
+  (GeoTIFF crop) parked**. Tried a **fire-risk card off EFFIS/GWIS FWI and reverted it** — the anonymous
+  WMS path can't return a current value (see **Blocked**). Dropped Contaminación (ICA covers it); Ozono
+  parked in **Later**.
+- **Next up: more app-screen design options.** The redesign north star is in memory
+  [[aura-visual-redesign-direction]]; use `aura-render` for offline visual review before committing any
+  card visuals, and keep the shared-card pattern (compose once in `AuraAppCards.swift`, reused by iOS +
+  watchOS). No data-plumbing work is queued — this is a visual/layout exploration lane.
