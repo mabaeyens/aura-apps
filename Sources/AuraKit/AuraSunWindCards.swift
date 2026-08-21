@@ -115,16 +115,20 @@ private enum SunFormat {
 /// direction the wind comes *from*, so the arrowhead points that bearing + 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
+    /// The app's full-width card opts into the denser, graduated rose; the Watch complication and the
+    /// watchOS card keep the plain 32-point ring (fewer marks — cheaper, and legible when desaturated).
+    let detailed: Bool
 
-    public init(snapshot: WeatherSnapshot) {
+    public init(snapshot: WeatherSnapshot, detailed: Bool = false) {
         self.snapshot = snapshot
+        self.detailed = detailed
     }
 
     public var body: some View {
         GeometryReader { geo in
             let d = min(geo.size.width, geo.size.height)
             ZStack {
-                WindRose(diameter: d)
+                WindRose(diameter: d, detailed: detailed)
 
                 // The arrow, over the rose. Rotated so the arrowhead sits at the "blows toward" bearing.
                 if let towards = towardsDegrees {
@@ -170,6 +174,8 @@ public struct AuraWindCircular: View {
 /// are short, dim grey. Shades of grey in a clear three-tier hierarchy. No dial ring; the marks carry it.
 private struct WindRose: View {
     let diameter: CGFloat
+    /// Detailed mode halves the base grid to 7.5° (a 48-point ring), for the app card's nautical look.
+    var detailed: Bool = false
 
     /// Radius, as a fraction of the diameter, of the outer tip of every mark — the ring the marks and
     /// the cardinal letters share, and the ring the arrow's tips reach.
@@ -177,11 +183,12 @@ private struct WindRose: View {
 
     var body: some View {
         let d = diameter
+        let step = detailed ? 7.5 : 11.25
         ZStack {
-            // The 32 compass points, every 11.25°. Skip the cardinals — there the letter is the mark.
-            // Three tiers by importance: inter-cardinals (45°) longest and brightest, the 16-point marks
-            // (22.5°) medium, the finest points (11.25°) short and dim.
-            ForEach(Array(stride(from: 0.0, to: 360.0, by: 11.25)), id: \.self) { (deg: Double) in
+            // Compass points every `step`°. Skip the cardinals — there the letter is the mark. Three tiers
+            // by importance: inter-cardinals (45°) longest and brightest, the 16-point marks (22.5°)
+            // medium, the finer points short and light. Detailed mode adds the 7.5° graduations.
+            ForEach(Array(stride(from: 0.0, to: 360.0, by: step)), id: \.self) { (deg: Double) in
                 if deg.truncatingRemainder(dividingBy: 90) != 0 {
                     let tier = Self.tier(deg: deg)
                     mark(bearing: deg, length: d * tier.length, width: d * tier.width,
@@ -203,11 +210,11 @@ private struct WindRose: View {
     /// and brightest, 16-point marks medium, the finest points short and dim.
     private static func tier(deg: Double) -> (length: CGFloat, width: CGFloat, shade: Double) {
         if deg.truncatingRemainder(dividingBy: 45) == 0 {
-            return (0.11, 0.020, 0.85)      // inter-cardinal (NE/SE/SW/NW)
+            return (0.11, 0.020, 0.95)      // inter-cardinal (NE/SE/SW/NW)
         } else if deg.truncatingRemainder(dividingBy: 22.5) == 0 {
-            return (0.075, 0.016, 0.6)      // 16-point
+            return (0.075, 0.016, 0.80)     // 16-point
         } else {
-            return (0.05, 0.012, 0.38)      // finest
+            return (0.05, 0.012, 0.62)      // finer points — was 0.38, too dark on the sky
         }
     }
 

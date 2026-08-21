@@ -154,3 +154,18 @@ func radarPreview() -> some View {
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 }
 write(radarPreview(), name: "app-radar-card", size: CGSize(width: 320, height: 320))
+
+// The full wind card over a noon sky: the detailed (phone) rose — denser 48-point ring, lightened
+// marks — with the speed, direction spelled out + numeric bearing, and the gust line.
+@MainActor
+func windCardPreview() -> some View {
+    ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(13, 0))
+        AuraWindCard(snapshot: .preview, size: .phone)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 320, height: 200)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+}
+write(windCardPreview(), name: "app-wind-card", size: CGSize(width: 320, height: 200))

@@ -23,7 +23,7 @@ public extension WeatherSnapshot {
             currentTemp: 29, observedTemp: 30, observedStation: "Madrid Retiro",
             currentSky: "11", currentSkyText: "Despejado",
             currentHumidity: 42, currentPrecipProb: 15,
-            windSpeed: 25, windDirection: .so,
+            windSpeed: 25, windDirection: .so, windGust: 47,
             airQuality: AirQuality(category: 2, partial: false, pollutant: "O3",
                                    station: "Retiro", distanceKm: 1.7, measured: base),
             uvIndex: UVIndex(value: 8),

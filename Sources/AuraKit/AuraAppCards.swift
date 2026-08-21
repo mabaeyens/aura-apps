@@ -575,7 +575,7 @@ public struct AuraWindCard: View {
         let rose: CGFloat = size == .phone ? 100 : 62
         return AuraCard(size: size) {
             HStack(spacing: size.stackSpacing) {
-                AuraWindCircular(snapshot: snapshot)
+                AuraWindCircular(snapshot: snapshot, detailed: size == .phone)
                     .frame(width: rose, height: rose)
                 VStack(alignment: .leading, spacing: size == .phone ? 4 : 2) {
                     Text(snapshot.windSpeed.map { "\($0) km/h" } ?? "—")
@@ -585,7 +585,13 @@ public struct AuraWindCard: View {
                     Text(directionText)
                         .font(.system(size: size.smallSize))
                         .foregroundStyle(.white.opacity(0.7))
-                        .lineLimit(2)
+                        .lineLimit(2).minimumScaleFactor(0.8)
+                    if let gust = snapshot.windGust {
+                        Text("Rachas \(gust) km/h")
+                            .font(.system(size: size.smallSize, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                    }
                 }
                 Spacer(minLength: 0)
             }
@@ -593,11 +599,11 @@ public struct AuraWindCard: View {
         .auraSectionTitle("Viento".uppercased(), size)
     }
 
-    /// "del Sudoeste", or "En calma" when there's no measurable direction. The abbreviation is left to
-    /// the compass arrow beside it (and the hero card), so the full name gets the room to read clearly.
+    /// "del Sudoeste · 225°", or "En calma" when there's no measurable direction. The full name reads
+    /// clearly; the numeric bearing (the reported 16-point sector, degrees) rides beside it.
     private var directionText: String {
         guard let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 else { return "En calma" }
-        return "del \(dir.spanishName)"
+        return "del \(dir.spanishName) · \(Int(dir.degrees))°"
     }
 }
 
