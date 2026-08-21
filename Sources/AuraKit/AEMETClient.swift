@@ -126,6 +126,12 @@ public extension AEMETClient {
         return first
     }
 
+    /// The latest regional radar image (a ~240 km-radius reflectivity frame centred on the radar site).
+    /// Raw image bytes (GIF/PNG); pick the site with `RadarSite.nearest(...)`. Updates every ~10 min.
+    func radarRegional(_ code: String) async throws -> Data {
+        try await fetchBinary("/red/radar/regional/\(code)")
+    }
+
     /// Forecast daily-max UV index for every provincial capital, in one call. `dia` 0 = today … 4.
     /// One fetch serves every location; resolve per location by INE with `UVIndex.pick(ine:in:)`. The
     /// payload is a single JSON object (not the array most `/prediccion` products use).

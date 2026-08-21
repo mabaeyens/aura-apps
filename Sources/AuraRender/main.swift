@@ -137,3 +137,20 @@ func dryHoursPreview() -> some View {
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 }
 write(dryHoursPreview(), name: "app-hours-dry", size: CGSize(width: 320, height: 150))
+
+// The radar card with a PLACEHOLDER frame — the real radar image needs an API key, so this only checks
+// the card chrome (title, image frame, freshness subtitle); the actual imagery is verified on-device.
+@MainActor
+func radarPreview() -> some View {
+    ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(13, 0))
+        AuraRadarCard(radar: AuraRadarInfo(image: Image(systemName: "cloud.rain.fill"),
+                                           siteName: "Madrid", time: todayAt(12, 54)),
+                      size: .phone, now: todayAt(13, 0))
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 320, height: 320)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+}
+write(radarPreview(), name: "app-radar-card", size: CGSize(width: 320, height: 320))

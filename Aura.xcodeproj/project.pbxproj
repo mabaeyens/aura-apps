@@ -84,19 +84,19 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		AE00000000000000000000E0 /* Exceptions for "AuraWidgets" folder in "AuraWidgetsExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
-		};
 		AE0000000000000000000090 /* Exceptions for "AuraWatch" folder in "AuraWatch" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = AE00000000000000000000E1 /* AuraWatch */;
+		};
+		AE00000000000000000000E0 /* Exceptions for "AuraWidgets" folder in "AuraWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 

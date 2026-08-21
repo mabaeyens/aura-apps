@@ -1,5 +1,6 @@
 import AuraKit
 import SwiftUI
+import UIKit
 
 /// "Hoy" — the forecast for the selected location, rendered as Aura's signature screen: the shared
 /// `AuraForecastStack` (hero, hours, days, sun·wind, aviso, predicción) floating as frosted cards over
@@ -13,6 +14,7 @@ struct TodayView: View {
     @EnvironmentObject private var store: LocationStore
 
     @State private var snapshot: WeatherSnapshot?
+    @State private var radar: AuraRadarInfo?
     @State private var isLoading = false
     @State private var errorMessage: String?
     /// Which location `snapshot` belongs to, and when it was read — so a tab re-appearance or app
@@ -53,7 +55,8 @@ struct TodayView: View {
                 if !store.apiKeyPresent { keyBanner }
 
                 if let snapshot {
-                    AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date())
+                    AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date(),
+                                      radar: radar)
                 } else if isLoading {
                     notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }
                 } else if let errorMessage {
@@ -107,10 +110,19 @@ struct TodayView: View {
             // Mirror the on-screen location to the paired Watch's complication.
             WatchSync.shared.send(snap)
             errorMessage = nil
+            await loadRadar(for: location, force: force)
         } else {
             // Nothing cached yet and the refresh couldn't fill it — surface why, if we know.
             errorMessage = refreshError ?? "No se pudieron obtener los datos."
         }
         isLoading = false
+    }
+
+    /// Fetch (or reuse the ≤10-min cache of) the nearest regional radar frame and decode it for the
+    /// card. A miss just leaves `radar` nil, so the card is dropped rather than showing an empty box.
+    private func loadRadar(for location: Location, force: Bool) async {
+        guard let frame = await RadarService.frame(for: location, force: force),
+              let image = UIImage(data: frame.data) else { radar = nil; return }
+        radar = AuraRadarInfo(image: Image(uiImage: image), siteName: frame.siteName, time: frame.time)
     }
 }

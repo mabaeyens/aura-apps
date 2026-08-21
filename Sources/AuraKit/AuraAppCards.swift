@@ -72,12 +72,17 @@ public struct AuraForecastStack: View {
     /// Render-only escape hatch: the offline `aura-render` tool passes `false` so the hourly strip lays
     /// out without a scroll view (which `ImageRenderer` can't render). The apps always use the default.
     private let hoursScroll: Bool
+    /// Optional radar frame, fetched and passed by the app (kept out of the snapshot). Nil on the Watch
+    /// and until the image loads, so the radar card simply doesn't appear.
+    private let radar: AuraRadarInfo?
 
-    public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date(), hoursScroll: Bool = true) {
+    public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date(),
+                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil) {
         self.snapshot = snapshot
         self.size = size
         self.now = now
         self.hoursScroll = hoursScroll
+        self.radar = radar
     }
 
     public var body: some View {
@@ -99,6 +104,7 @@ public struct AuraForecastStack: View {
             if let uvIndex = snapshot.uvIndex {
                 AuraUVCard(uvIndex: uvIndex, size: size)
             }
+            if let radar { AuraRadarCard(radar: radar, size: size, now: now) }
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
@@ -695,6 +701,57 @@ public struct AuraUVCard: View {
             }
         }
         .auraSectionTitle("Índice UV".uppercased(), size)
+    }
+}
+
+// MARK: - Radar
+
+/// A fetched radar frame plus the context the card shows around it. Not stored in `WeatherSnapshot` (its
+/// image bytes would bloat the cached/Watch-synced snapshot) — the app fetches and passes it separately.
+public struct AuraRadarInfo {
+    public let image: Image
+    /// Radar site name, e.g. "Madrid".
+    public let siteName: String
+    /// When the frame was fetched, for the freshness label.
+    public let time: Date
+    public init(image: Image, siteName: String, time: Date) {
+        self.image = image; self.siteName = siteName; self.time = time
+    }
+}
+
+/// The nearest regional radar's latest reflectivity frame — already a ~240 km circle around a nearby
+/// city, so it needs no cropping. Shown large, with the site name and how fresh the frame is. iOS only
+/// for now (the app doesn't ship radar images to the Watch).
+public struct AuraRadarCard: View {
+    let radar: AuraRadarInfo
+    let size: AuraSize
+    let now: Date
+    public init(radar: AuraRadarInfo, size: AuraSize, now: Date = Date()) {
+        self.radar = radar; self.size = size; self.now = now
+    }
+
+    public var body: some View {
+        AuraCard(size: size) {
+            VStack(alignment: .leading, spacing: size == .phone ? 9 : 5) {
+                radar.image
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: max(size.cardCorner - 8, 6),
+                                                style: .continuous))
+                Text(subtitle)
+                    .font(.system(size: size.smallSize))
+                    .foregroundStyle(.white.opacity(0.65))
+            }
+        }
+        .auraSectionTitle("Radar".uppercased(), size)
+    }
+
+    /// "Radar de Madrid · hace 6 min", or "· ahora" for a just-fetched frame.
+    private var subtitle: String {
+        let mins = Int(now.timeIntervalSince(radar.time) / 60)
+        let freshness = mins <= 0 ? "ahora" : "hace \(mins) min"
+        return "Radar de \(radar.siteName) · \(freshness)"
     }
 }
 
