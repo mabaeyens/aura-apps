@@ -1,9 +1,15 @@
 # Aura — build plan
 
+> **Archived (2026-08-21).** This is the original pre-implementation build plan, kept as a record.
+> Phases 0–4 have shipped. Two things here did **not** land as written: the "Home Screen (small /
+> medium / large) + StandBy + Mac widgets" and the per-metric widget configuration — Aura shipped as a
+> **Lock Screen + Watch-complication** product, location-configurable only, with the rich UI living in
+> the app's "Hoy" screen instead. For the current state and live work, see `BACKLOG.md` at the repo root.
+
 Personal Apple-ecosystem weather app for Spain, powered by my AEMET OpenData API key.
-It fills the gaps the official AEMET app leaves: **Apple Watch complications, a rich widget
-set, and macOS / Lock Screen coverage.** The app itself is a thin "settings + locations"
-shell; the product is the widgets and complications.
+It fills the gaps the official AEMET app leaves: a rich **"Hoy"** screen, **Apple Watch
+complications**, and **Lock Screen widgets**. The product is the app's card stack, mirrored to the
+Watch and the small surfaces.
 
 - Name: **Aura** (Latin/Greek — breeze, air), matching the Mira / Vera family.
 - Fetch architecture: **on-device hub** (no backend, no hosting, key stays on my devices).
@@ -140,7 +146,8 @@ widget/complication is App-Intent-configurable (location + which metric(s)). Met
 temp gauge with min/max range, hourly strip (icon+temp+precip%), wind rose + bearing, UV gauge,
 precip-probability gauge, sun/daylight-remaining, and avisos banners.
 
-## Next session (implementation)
+## Next session (implementation) — done
 
-Kept separate from this planning session. Start at Phase 0: scaffold `aura-apps` repo, create
-the shared package, stand up the AEMET client with a live smoke test against my key.
+This was the hand-off from planning to build. It has all happened: the `aura-apps` repo, the shared
+package, the AEMET client and the smoke test all exist and are on `main`. Ongoing work is tracked in
+`BACKLOG.md`.

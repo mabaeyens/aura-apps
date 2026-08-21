@@ -18,7 +18,7 @@ design that makes those numbers small.
 | Watch sync | after a successful app refresh | one `updateApplicationContext` | coalesced, OS-scheduled |
 | Location | adding/using "current location" | `requestLocation()` **one-shot**, `kCLLocationAccuracyKilometer` | coarse, no GPS fix, no tracking |
 | Radar frame | radar card shown | **10-min** disk cache | at most one image / 10 min |
-| News (RTVE + AEMET) | "Hoy" refresh | **30-min** disk cache, separate hosts | at most one fetch / 30 min |
+| News (RTVE, AEMET, Meteored, AEMET Blog) | "Hoy" refresh | **30-min** disk cache, separate hosts | at most one fetch / 30 min |
 
 ### Network burst, per refresh
 A cold three-location refresh is roughly: ~13 AEMET calls for the primary location, +4

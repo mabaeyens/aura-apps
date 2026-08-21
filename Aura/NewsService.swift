@@ -1,9 +1,10 @@
 import AuraKit
 import Foundation
 
-/// Fetches the "Noticias" stream — RTVE's weather desk + AEMET headlines — merged into one recency-
-/// sorted list and cached on disk with a 30-minute TTL. Separate from the AEMET forecast refresh: these
-/// are public RSS feeds on other hosts, so they don't count against AEMET's request budget. iOS only.
+/// Fetches the "Noticias" stream — several public weather RSS feeds (RTVE, AEMET, Meteored, AEMET Blog,
+/// see `NewsSource`) — merged into one recency-sorted list and cached on disk with a 30-minute TTL.
+/// Separate from the AEMET forecast refresh: these are public RSS feeds on other hosts, so they don't
+/// count against AEMET's request budget. iOS only.
 enum NewsService {
     /// News turns over far more slowly than weather; a 30-minute cache is plenty and keeps the feeds light.
     private static let ttl: TimeInterval = 30 * 60

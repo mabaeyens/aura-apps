@@ -1,5 +1,14 @@
 # Aura — widgets & complications spec
 
+> **Aspirational design spec (2026-08-19), not shipped reality.** What actually shipped is narrower
+> than this document: **Lock Screen accessory widgets** (`.accessoryCircular / .accessoryRectangular
+> / .accessoryInline`) and a **Watch complication** (those three plus `.accessoryCorner`), each
+> configurable by **location only** — there is no per-metric configuration, and no Home Screen /
+> StandBy / Mac widgets (the Home Screen is left to AEMET's own app). The rich per-metric UI described
+> here landed instead as the app's **"Hoy" card stack** (see the README and `AuraAppCards.swift`). The
+> metric/colour-scale tables below are still a useful design reference; read the rest as intent, not
+> as a description of the code.
+
 Derived from the two watch faces I use today (Modular Ultra + California/analog Ultra) and
 three style anchors: **Apple Weather** (clean, colorful), the **new AEMET app** (simplicity),
 and **Carrot Weather** (deep customizability). Aura is meant to replace my Carrot family

@@ -7,8 +7,9 @@ so the complication is identical to the iPhone Lock Screen widgets.
 ## Targets & layout
 
 - **`AuraWatch/`** — `AuraWatchApp.swift` (the `@main` app; calls `WatchSync.activate()`),
-  `WatchRootView.swift` (reads the latest snapshot from `SharedCache` and shows localidad, hero
-  temperature, condition, active aviso and today's range), `Info.plist`
+  `WatchRootView.swift` (reads the latest snapshot from `SharedCache` and renders the full shared
+  `AuraForecastStack` at `.watch` size over `AuraSky` — the same cards, in the same order, as the
+  iPhone's "Hoy" screen, resized to the wrist), `Info.plist`
   (`WKApplication`, `WKCompanionAppBundleIdentifier = com.mab.Aura`), `AuraWatch.entitlements`
   (App Group `group.com.mab.Aura`). Bundle id `com.mab.Aura.watchkitapp`.
 - **`AuraWatchComplication/`** — `AuraComplicationBundle.swift` (`@main` bundle),

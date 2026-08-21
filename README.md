@@ -1,24 +1,26 @@
 # Aura
 
 Personal Apple-ecosystem weather app for Spain, powered by the [AEMET OpenData](https://opendata.aemet.es/) API.
-It fills the gaps in the official AEMET app: **Apple Watch complications, a rich widget set, and
-macOS / Lock Screen coverage.**
+It fills the gaps in the official AEMET app: **a rich "Hoy" screen, Apple Watch complications, and
+Lock Screen widgets** — all over a live, sun-tracking SwiftUI sky.
 
 Targets iOS, iPadOS, macOS and watchOS from one shared Swift package, so every widget and
 complication renders from identical code.
 
 ## Status
 
-Active development. The **iPhone app, the widget set, and the Apple Watch app + complication** are
-working and verified on device, all rendering from the shared `AuraKit`:
+Active development. The **iPhone app, the Lock Screen widgets, and the Apple Watch app + complication**
+are working and verified on device, all rendering from the shared `AuraKit`:
 
-- **iOS app** — location management with favorites, the numeric "today" forecast, and the official
-  AEMET narrative bulletin.
-- **Widgets** — home-screen (small / medium / large) and Lock Screen (circular / rectangular /
-  inline) families, each configurable to a specific saved location via App Intents.
-- **Apple Watch** — the watch app and a face complication (corner / circular / rectangular / inline),
-  fed live from the phone over WatchConnectivity; the app screen and complication both update in place
-  as the phone syncs.
+- **iOS app** — location management with favorites and a full **"Hoy" card stack**: current conditions,
+  the hourly strip, the multi-day outlook, a sunrise→sunset arc, wind, air quality, UV index, radar, the
+  official AEMET narrative bulletin, and a news stream — over a live sun-tracking sky.
+- **Widgets** — Lock Screen (circular / rectangular / inline) families, each configurable to a specific
+  saved location via App Intents. Aura is a Lock Screen + complication product; the Home Screen is left
+  to AEMET's own app.
+- **Apple Watch** — the watch app (the same card stack, resized to the wrist) and a face complication
+  (corner / circular / rectangular / inline), fed live from the phone over WatchConnectivity; both
+  update in place as the phone syncs.
 - **Real observed temperature** from the nearest AEMET station, and **avisos** (CAP warnings) matched
   to each location by province.
 
@@ -28,20 +30,25 @@ Still to come: a dedicated **macOS** app (the shared code already builds for it)
 
 A thin shell over `AuraKit`, Spanish-only, four tabs:
 
-- **Hoy** — the numeric daily forecast (min/max temperature, humidity) for the selected
-  municipality, plus on-device sunrise/sunset.
+- **Hoy** — the full card stack for the selected municipality over a live sun-tracking sky: current
+  conditions (with the nearest station's observed temperature), the hourly strip, the multi-day
+  outlook, a sunrise→sunset arc, a wind compass, air quality (MITECO ICA), the UV index, the nearest
+  regional radar, the AEMET narrative bulletin, and a "Noticias" stream. Each card renders from the
+  shared `AuraKit`, so the Watch shows the same cards resized. The wind, air-quality and UV cards open
+  a tap-through reference-scale sheet (Beaufort, ICA levels, WHO UV bands).
 - **Predicción** — the official, human-written forecast bulletin AEMET issues for the
   autonomous community, with its issue date. Read from AEMET's OpenData normalized-text products,
   resolved to the bulletin that covers today (AEMET's `hoy` product is amendment-only, so this
-  falls back to the daily `manana` archive — see `AEMETClient.comunidadBulletin`).
+  falls back to the daily `manana` archive — see `AEMETClient.comunidadBulletin`). The same bulletin
+  also appears as a card in the Hoy stack.
 - **Ubicaciones** — favorites: pick the active location, add from the bundled list of provincial
   capitals, use the current GPS location (nearest bundled city), reorder, delete.
 - **Ajustes** — enter the AEMET API key (stored in the Keychain) and attribution.
 
 The app is the fetch hub: it caches every saved location's `WeatherSnapshot` to the App Group and
-mirrors the favourites list so the **widgets** can render any of them. Home-screen (small / medium /
-large) and Lock Screen (circular / rectangular / inline) families are supported, and each widget
-instance is **configurable to a specific location** via App Intents. An Apple Watch app and
+mirrors the favourites list so the **widgets** can render any of them. The Lock Screen (circular /
+rectangular / inline) families are supported, and each widget instance is **configurable to a specific
+location** via App Intents. An Apple Watch app and
 complication share the same layouts — targets `AuraWatch` and `AuraWatchComplication`, built from the
 same `AuraKit`; see [`docs/WATCHOS.md`](docs/WATCHOS.md) for running to a watch and placing the
 complication. Open `Aura.xcodeproj`, or build from the command line:
@@ -70,10 +77,13 @@ to install straight to a paired watch.
 - **`WindDirection`** — 16-point Spanish compass rose (`N`, `NNE`, … , `NNO`) with names and bearings.
 - **`SolarTimes`** — sunrise / sunset via the NOAA solar equations; offline and deterministic,
   matching the Observatorio Astronómico Nacional orto/ocaso tables to the minute.
-- **`WeatherSnapshot`** — the compact, `Codable` view model the widgets render from: current-hour
-  temperature and condition, today's range and humidity, the next hours (`HourSlot`) and the
-  multi-day outlook (`DaySnapshot`). Built by `make(location:daily:hourly:)` from AEMET's daily +
-  hourly municipal forecasts.
+- **`WeatherSnapshot`** — the compact, `Codable` view model every surface renders from: current-hour
+  temperature and condition, today's range and humidity, the nearest station's observed temperature,
+  wind (speed / direction / gust), air quality (`airQuality`), the UV index (`uvIndex`), sunrise /
+  sunset, an active aviso, the community bulletin, the next hours (`HourSlot`) and the multi-day
+  outlook (`DaySnapshot`). Built by `make(...)` from AEMET's daily + hourly municipal forecasts.
+  (Radar frames and news are intentionally *not* snapshot fields — image bytes / app-side data are
+  fetched separately and passed into the card stack.)
 - **`SharedCache`** — the App Group seam (`group.com.mab.Aura`): the app upserts snapshots, the
   widget extension reads them. No backend — the device is the hub.
 - **`SharedLocations`** — the favourites list mirrored to the same App Group, so the widget's
@@ -88,8 +98,22 @@ to install straight to a paired watch.
 - **`WeatherAlert`** / **`AvisoArea`** / **`CAPParser`** — the avisos pipeline: fetch a community's
   CAP-XML `.tar`, parse it, and match warnings to a location by province (the warning-zone code
   carries the province INE). `TarReader` unpacks the plain tar on-device.
-- **`AuraCard*`** — the shared SwiftUI cards (small / medium / large + empty state), so the app and
-  the widget extension render from identical code.
+- **`AirQuality`** / **`AirComponent`** / **`MitecoAirQuality`** — the air-quality pipeline off
+  MITECO's national ICA feed (CC-BY 4.0, a separate host): the composite 1–6 índice, per-pollutant
+  readings, and `breakdown(...)` / `composite(...)`, which pull each pollutant from the nearest station
+  that measures it and set the índice from the worst pollutant's band (MITECO's own method).
+- **`UVIndex`** / **`UVIForecast`** — AEMET's forecast clear-sky daily-max UV index, resolved per
+  location by INE and shown in its WHO band colour.
+- **`RadarSite`** — the 15 AEMET regional radars and nearest-site lookup; the app's `RadarService`
+  fetches the frame and `AuraRadarCard` shows it (kept out of the snapshot — image bytes).
+- **`NewsFeed`** / **`NewsSource`** / **`NewsItem`** — the "Noticias" pipeline: several public weather
+  RSS feeds (RTVE, AEMET, Meteored, AEMET Blog) parsed and round-robin-merged by recency; the app's
+  `NewsService` fetches and caches them.
+- **`AuraForecastStack`** and the **`Aura*Card`** suite (hero, hourly, daily, sun-arc, wind, air
+  quality, UV, radar, news, alert, bulletin) over **`AuraSky`** (the live sun-tracking SwiftUI sky) —
+  the shared card stack the iOS app and the Watch app both render, resized by `AuraSize`.
+- **`AuraScaleSheets`** — the tap-through reference-scale detail sheets (Beaufort, ICA levels, WHO UV
+  bands) the wind / air-quality / UV cards open on the phone.
 
 ### Smoke test
 
@@ -119,6 +143,11 @@ The tests cover the pure logic (wind rose, solar times) and need no network or A
 
 Weather data: **Elaborado con datos de AEMET.** An AEMET OpenData API key is required (free,
 tied to an email, renewed every three months). Sun times are computed on-device.
+
+Air quality: the national **ICA feed from MITECO** (Ministerio para la Transición Ecológica),
+licensed **CC-BY 4.0** — so the in-app credit reads "Elaborado con datos de AEMET y MITECO" whenever
+the air-quality card is shown. The "Noticias" stream links out to public RSS feeds (RTVE, AEMET,
+Meteored, AEMET Blog); each headline is credited to its source.
 
 ## Built with
 
