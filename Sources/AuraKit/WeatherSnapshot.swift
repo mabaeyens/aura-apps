@@ -39,6 +39,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     /// Current-hour wind direction (whence it blows), or nil when calm/unknown.
     public let windDirection: WindDirection?
     /// Sunrise, computed on-device for the location.
+    public let airQuality: AirQuality?
+
     public let sunrise: Date?
     /// Sunset, computed on-device for the location.
     public let sunset: Date?
@@ -62,6 +64,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 currentSky: String? = nil, currentSkyText: String? = nil,
                 currentHumidity: Int? = nil, currentPrecipProb: Int? = nil,
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
+                airQuality: AirQuality? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
                 alert: WeatherAlert? = nil,
@@ -82,6 +85,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.currentPrecipProb = currentPrecipProb
         self.windSpeed = windSpeed
         self.windDirection = windDirection
+        self.airQuality = airQuality
         self.sunrise = sunrise
         self.sunset = sunset
         self.days = days
@@ -222,6 +226,7 @@ public extension WeatherSnapshot {
                      hourly: MunicipioHourly?,
                      observed: StationObservation? = nil,
                      alert: WeatherAlert? = nil,
+                     airQuality: AirQuality? = nil,
                      bulletin: ForecastBulletin? = nil,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
@@ -264,6 +269,7 @@ public extension WeatherSnapshot {
             currentPrecipProb: precipNow,
             windSpeed: wind?.speed ?? nil,
             windDirection: wind?.direction ?? nil,
+            airQuality: airQuality,
             sunrise: sun.sunrise,
             sunset: sun.sunset,
             days: days,

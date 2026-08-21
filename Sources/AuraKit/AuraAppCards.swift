@@ -93,10 +93,16 @@ public struct AuraForecastStack: View {
             if !snapshot.days.isEmpty { AuraDailyCard(days: snapshot.days, size: size) }
             AuraSunArcCard(snapshot: snapshot, size: size, now: now)
             AuraWindCard(snapshot: snapshot, size: size)
+            if let airQuality = snapshot.airQuality {
+                AuraAirQualityCard(airQuality: airQuality, size: size)
+            }
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
-            Text("Elaborado con datos de AEMET")
+            // MITECO is credited alongside AEMET whenever the air-quality card is present (its ICA feed
+            // is CC-BY 4.0, which requires attribution); AEMET alone otherwise.
+            Text(snapshot.airQuality == nil ? "Elaborado con datos de AEMET"
+                                            : "Elaborado con datos de AEMET y MITECO")
                 .font(.system(size: size == .phone ? 14 : 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -583,6 +589,66 @@ public struct AuraWindCard: View {
     private var directionText: String {
         guard let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 else { return "En calma" }
         return "del \(dir.spanishName)"
+    }
+}
+
+// MARK: - Air quality
+
+/// Nearest-station air quality from MITECO's national ICA feed: the 1–6 category in its official colour,
+/// the category name, and — small — the pollutant that drove it plus which station and how far. Shown
+/// only when a reading resolved (the card is dropped otherwise), so it never displays a placeholder.
+public struct AuraAirQualityCard: View {
+    let airQuality: AirQuality
+    let size: AuraSize
+    public init(airQuality: AirQuality, size: AuraSize) {
+        self.airQuality = airQuality; self.size = size
+    }
+
+    public var body: some View {
+        let color = Palette.airQuality(airQuality.category)
+        let swatch: CGFloat = size == .phone ? 46 : 30
+        return AuraCard(size: size) {
+            HStack(spacing: size.stackSpacing) {
+                // The ICA colour swatch carrying the 1–6 category number.
+                ZStack {
+                    Circle().fill(color)
+                    Text("\(airQuality.category)")
+                        .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
+                                      weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: swatch, height: swatch)
+                .shadow(color: color.opacity(0.6), radius: 5)
+
+                VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
+                    Text(airQuality.categoryName)
+                        .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2).minimumScaleFactor(0.8)
+                    Text(detail)
+                        .font(.system(size: size.smallSize - 1))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1).minimumScaleFactor(0.65)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .auraSectionTitle("Calidad del aire".uppercased(), size)
+    }
+
+    /// "por O₃ · Retiro · a 1,7 km" — the driver pollutant, the station, and its distance (Spanish
+    /// decimal comma under 10 km, whole km beyond). `partial` (index computed from fewer pollutants) is
+    /// flagged with a trailing "·  parcial" so a lower-confidence category isn't shown as if it were full.
+    private var detail: String {
+        var parts: [String] = []
+        if let pollutant = airQuality.pollutantLabel { parts.append("por \(pollutant)") }
+        parts.append(airQuality.station)
+        let km = airQuality.distanceKm
+        parts.append(km < 10
+            ? "a " + String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",") + " km"
+            : "a \(Int(km.rounded())) km")
+        if airQuality.partial { parts.append("parcial") }
+        return parts.joined(separator: " · ")
     }
 }
 

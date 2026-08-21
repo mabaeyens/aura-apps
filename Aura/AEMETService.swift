@@ -49,6 +49,11 @@ enum AEMETService {
         var observations: [StationObservation] = []
         do { observations = try await client.observacionTodas() } catch { note(error) }
 
+        // Air quality comes from MITECO's national ICA feed (not AEMET), also one download for every
+        // location. It never throws — an empty result on a miteco outage just leaves the card hidden and
+        // never blocks the AEMET refresh.
+        let airStations = await MitecoAirQuality.stations()
+
         // Fetch each distinct avisos area at most once, then resolve per location by province.
         let areas = Set(stale.compactMap { AvisoArea.forProvincia($0.provinciaCode) })
         var alertsByArea: [String: [WeatherAlert]] = [:]
@@ -74,12 +79,16 @@ enum AEMETService {
             let observed = StationObservation.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
                                                       in: observations)
+            let airQuality = MitecoAirQuality.nearest(toLatitude: location.latitude,
+                                                      longitude: location.longitude,
+                                                      in: airStations)
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?
                 .topActive(forProvince: location.provinciaCode)
             let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                    observed: observed, alert: alert, bulletin: bulletin,
+                                                    observed: observed, alert: alert,
+                                                    airQuality: airQuality, bulletin: bulletin,
                                                     timeZone: location.timeZone))
             didUpdate = true
         }

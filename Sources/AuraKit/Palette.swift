@@ -79,6 +79,22 @@ public enum Palette {
         (130, 0.52, 0.28, 0.78),   // violent — violet
     ]
 
+    // MARK: Air quality (ICA category → colour)
+
+    /// The official MITECO ICA colour for a 1–6 category: blue (buena) → green → yellow → red → dark red
+    /// → violet (extremadamente desfavorable). Falls back to grey for an out-of-range/no-data value.
+    public static func airQuality(_ category: Int) -> Color {
+        switch category {
+        case 1: return Color(red: 0.31, green: 0.66, blue: 0.93)   // buena — azul
+        case 2: return Color(red: 0.30, green: 0.72, blue: 0.42)   // razonablemente buena — verde
+        case 3: return Color(red: 0.96, green: 0.80, blue: 0.25)   // regular — amarillo
+        case 4: return Color(red: 0.90, green: 0.29, blue: 0.24)   // desfavorable — rojo
+        case 5: return Color(red: 0.60, green: 0.13, blue: 0.15)   // muy desfavorable — granate
+        case 6: return Color(red: 0.60, green: 0.28, blue: 0.75)   // extremadamente desfavorable — violeta
+        default: return Color(white: 0.55)
+        }
+    }
+
     /// The full cold→hot scale, for `Gauge` tints and range bars.
     public static let temperatureGradient = Gradient(colors: [
         tempDeepBlue, tempBlue, tempTeal, tempGreen, tempYellow, tempOrange, tempRed, tempPurple,
