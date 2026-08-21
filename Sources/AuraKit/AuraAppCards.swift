@@ -209,7 +209,8 @@ public struct AuraHourlyCard: View {
     /// a dry day doesn't reserve an empty band.
     private var contentHeight: CGFloat {
         // The row stack (hour + icon + degree) is ~71pt tall on the Watch; give it a bit more than
-        // that so the temperature row breathes above the card's bottom edge instead of sitting flush.
+        // that so the temperature row breathes inside the card. The grid is centred in this box (see
+        // `body`), so the extra slack splits evenly top and bottom rather than pooling at the bottom.
         let rows: CGFloat = size == .phone ? 100 : 80      // hour + icon + degree
         let precipRow: CGFloat = size == .phone ? 34 : 20
         return showPrecip ? rows + precipRow : rows
@@ -221,12 +222,16 @@ public struct AuraHourlyCard: View {
                 // Five columns fit the card width; the strip scrolls horizontally to the rest of the day.
                 GeometryReader { geo in
                     ScrollView(.horizontal, showsIndicators: false) {
+                        // Centre the rows in the tall box so the slack in `contentHeight` sits equally
+                        // above and below, keeping the card's top and bottom padding symmetric.
                         grid(columnWidth: geo.size.width / 5)
+                            .frame(height: contentHeight)
                     }
                 }
                 .frame(height: contentHeight)
             } else {
                 grid(columnWidth: nil, cap: 5)   // offline preview: the first five, spread to fill
+                    .frame(height: contentHeight)
             }
         }
         .auraSectionTitle("Próximas horas".uppercased(), size)
