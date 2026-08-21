@@ -1,6 +1,23 @@
 # Backlog
 
 ## Done
+- 2026-08-21 — Tap-through scale sheets + per-pollutant air quality + single-needle wind (`40d45cd`):
+  the wind, air-quality and UV cards open a detail sheet (`AuraScaleSheets.swift`) built on Aura's own
+  idiom — a continuous colour ramp with a "you are here" marker plus a legend of levels (Beaufort force,
+  ICA 1–6, WHO UV bands), not a reproduction of reference charts — with a text-less `hand.tap` affordance
+  on the phone card (`.auraDetail(_:)`, phone-only). **Air quality reworked to match how MITECO builds the
+  ICA**: `MitecoAirQuality.breakdown(…)` probes stations nearest-first (one `sql1` each, cap 10 / 80 km)
+  and takes every pollutant from the nearest station that measures it (O₃/SO₂ rarely sit in the closest
+  urban-traffic station), each `AirComponent` carrying its own station/distance/time; `composite(…)` sets
+  the índice from the worst pollutant's band using the running means the ICA is built from
+  (`valor_media_movil`: 8 h O₃, 24 h particulates — a real correctness fix over the raw hourly value), and
+  falls back to the single-station published índice on a miss. The sheet names each pollutant's source +
+  freshness and spells out the method. **Wind rose**: a single continuous needle through the dial on both
+  app cards (was two detached tips); the watch card aligned to the phone (needle + clean centre, since the
+  speed is already spelled out beside it) on the plain 32-point rose, while the watch-face complication
+  keeps its centre number + tips. Breakpoints confirmed exact vs MITECO `rangos`. 35 tests pass; render +
+  new `app-wind-card-watch` preview verified. Cost note: up to ~10 MITECO POSTs/location/refresh (bounded,
+  separate host; a per-refresh station cache would cut it).
 - 2026-08-21 — Radar Phase 1 (`AuraRadarCard` + `AuraRadarInfo` in AuraKit, `RadarService` +
   `RadarSite` in the app): the **nearest regional radar** frame shown as-is (the 240 km circle is
   already local, so no georeferencing). `RadarSite.nearest(…)` picks 1 of the 15 sites by haversine;
@@ -124,6 +141,14 @@ near me now" surface (HARMONIE-AROME is forecast, not observation).
 
 ## Session log
 
+- **2026-08-21 (cont.)** — Added tap-through scale sheets to the wind/AQI/UV cards (Aura's own ramp
+  idiom, not copied charts), reworked air quality to per-pollutant nearest-station sourcing with a
+  transparent composite índice on the ICA running means, and turned the wind rose into a single needle —
+  aligning the watch card with the phone. All in `40d45cd`. A reported watch regression (empty wind rose,
+  hero missing humidity/precip) turned out to be a **stale watch snapshot**, cleared by a refresh — not a
+  code bug (hero code untouched; those fields all come from the one hourly slice, so they vanish together
+  while the separately-cached AQI still looked right). If it recurs *after* a normal refresh, harden
+  `WatchSync` to skip caching a snapshot whose current-hour fields are all nil.
 - **2026-08-21** — Shipped the sun arc, wind, air-quality (MITECO ICA) and UV cards, plus **Radar
   Phase 1** (nearest regional frame, iOS only) — all on `main`. Radar looks good on-device; **Phase 2
   (GeoTIFF crop) parked**. Tried a **fire-risk card off EFFIS/GWIS FWI and reverted it** — the anonymous
