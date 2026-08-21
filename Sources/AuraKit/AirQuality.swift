@@ -171,12 +171,11 @@ public enum MitecoAirQuality {
         // Query the whole UTC day the reading belongs to; the latest valid hour per pollutant is picked
         // locally, so a partly-filled day (early morning) still yields whatever has been measured.
         let day = backendDay.string(from: s.measured)
-        let sql = "sql1#\(s.code)#\(day) 00:00#\(day) 23:00"
-        guard let body = "sql=\(sql)".addingPercentEncoding(withAllowedCharacters: .alphanumerics) else { return [] }
+        guard let body = requestBody(code: s.code, day: day) else { return [] }
         var request = URLRequest(url: backendURL)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.httpBody = Data(body.utf8)
+        request.httpBody = body
         do {
             let (data, response) = try await session.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
@@ -184,6 +183,15 @@ public enum MitecoAirQuality {
         } catch {
             return []
         }
+    }
+
+    /// The `application/x-www-form-urlencoded` body for the `sql1` query. Only the *value* is percent-
+    /// encoded (the '#', space and ':' must be escaped); the "sql=" separator stays literal — encoding it
+    /// too turns '=' into %3D, the backend then sees no parameter and answers "Consulta incorrecta".
+    static func requestBody(code: Int, day: String) -> Data? {
+        let sql = "sql1#\(code)#\(day) 00:00#\(day) 23:00"
+        guard let value = sql.addingPercentEncoding(withAllowedCharacters: .alphanumerics) else { return nil }
+        return Data("sql=\(value)".utf8)
     }
 
     /// One hourly reading row from the backend `sql1` query. `valor_medido` is the raw hourly

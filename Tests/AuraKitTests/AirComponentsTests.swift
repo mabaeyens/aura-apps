@@ -69,6 +69,19 @@ final class AirComponentsTests: XCTestCase {
         XCTAssertEqual(AirComponent(pollutant: "O3", value: 60.0).valueText, "60")
     }
 
+    // The request body must keep a literal "sql=" separator and escape the value's '#', space and ':'.
+    // Encoding the whole "sql=…" string (the original bug) turns '=' into %3D, and the backend then
+    // answers "Consulta incorrecta" — the card silently loses its breakdown.
+    func testRequestBodyKeepsLiteralSeparator() {
+        let body = MitecoAirQuality.requestBody(code: 1055001, day: "20260821")
+        let s = String(decoding: body ?? Data(), as: UTF8.self)
+        XCTAssertTrue(s.hasPrefix("sql=sql1"), "the 'sql=' separator stays literal, not %3D-encoded")
+        XCTAssertFalse(s.contains("%3D"), "the '=' must never be percent-encoded")
+        XCTAssertFalse(s.contains("#"), "the '#' delimiters must be escaped to %23")
+        XCTAssertFalse(s.contains(" "), "the space must be escaped to %20")
+        XCTAssertTrue(s.contains("%231055001%23"), "station code sits between escaped '#' delimiters")
+    }
+
     func testLabels() {
         XCTAssertEqual(AirComponent(pollutant: "NO2", value: 1).label, "NO₂")
         XCTAssertEqual(AirComponent(pollutant: "O3", value: 1).label, "O₃")
