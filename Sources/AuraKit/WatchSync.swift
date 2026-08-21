@@ -56,6 +56,17 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     private func cache(_ context: [String: Any]) {
         guard let data = context[payloadKey] as? Data,
               let snapshot = try? Self.decoder.decode(WeatherSnapshot.self, from: data) else { return }
+        // Don't let a "thin" snapshot overwrite a good one already cached for the same location. When the
+        // phone's hourly fetch comes back empty the snapshot still carries the daily outlook, air quality
+        // and UV, but its current-hour fields (hero temp/humidity/precip, wind) are all nil — so the hero
+        // and wind rose would blank out while the rest looked fine. Keep the last good current-hour data
+        // instead; the next refresh (within the hour) restores a full snapshot. Guarded per-INE so a real
+        // location switch, or a first-ever sync, is never blocked.
+        if !snapshot.hasCurrentHourData,
+           let existing = SharedCache.snapshot(forINE: snapshot.ine),
+           existing.hasCurrentHourData {
+            return
+        }
         SharedCache.upsert(snapshot)
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()

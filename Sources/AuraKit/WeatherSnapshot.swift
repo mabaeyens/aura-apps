@@ -116,6 +116,16 @@ public extension WeatherSnapshot {
     /// Whether the hero is a real station observation. Now always false — kept for API compatibility.
     var heroIsObserved: Bool { false }
 
+    /// True when the snapshot carries current-hour data from the hourly feed — temperature, sky,
+    /// humidity, precip chance, wind. When the hourly fetch comes back empty these all go nil together
+    /// (the daily outlook, air quality and UV still populate), leaving a "thin" snapshot whose hero and
+    /// wind rose would render blank. `WatchSync` uses this to refuse to overwrite a good cached snapshot
+    /// with a thin one for the same location.
+    var hasCurrentHourData: Bool {
+        currentTemp != nil || currentSky != nil || currentHumidity != nil
+            || currentPrecipProb != nil || windSpeed != nil || windDirection != nil
+    }
+
     /// The hourly strip re-anchored to `now`: hours already past are dropped so the strip always begins
     /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours or a
     /// day later). The current hour itself is kept as the first column.
