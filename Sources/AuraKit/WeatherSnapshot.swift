@@ -58,6 +58,12 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let sunrise: Date?
     /// Sunset, computed on-device for the location.
     public let sunset: Date?
+    /// The location's coordinates, so night-spanning cards can compute the *adjacent* day's sun times
+    /// (tomorrow's orto, last night's ocaso) instead of reusing today's — today's sunset is 2–3 min off
+    /// the neighbouring day's. Optional: snapshots cached before this field decode as nil and fall back to
+    /// today's on-device times.
+    public let latitude: Double?
+    public let longitude: Double?
     /// The next few days' min/max, for the large widget's multi-day list.
     public let days: [DaySnapshot]
     /// The next few hours, for the hourly strip.
@@ -84,6 +90,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 airQuality: AirQuality? = nil,
                 uvIndex: UVIndex? = nil,
                 sunrise: Date?, sunset: Date?,
+                latitude: Double? = nil, longitude: Double? = nil,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
                 alert: WeatherAlert? = nil,
                 bulletin: String? = nil, bulletinPhenomenon: String? = nil,
@@ -112,6 +119,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.uvIndex = uvIndex
         self.sunrise = sunrise
         self.sunset = sunset
+        self.latitude = latitude
+        self.longitude = longitude
         self.days = days
         self.hours = hours
         self.alert = alert
@@ -319,6 +328,8 @@ public extension WeatherSnapshot {
             uvIndex: uvIndex,
             sunrise: sun.sunrise,
             sunset: sun.sunset,
+            latitude: location.latitude,
+            longitude: location.longitude,
             days: days,
             hours: resolved?.strip ?? [],
             alert: alert,
