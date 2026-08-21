@@ -111,7 +111,11 @@ public struct AuraForecastStack: View {
             }
             if !snapshot.days.isEmpty { AuraDailyCard(days: snapshot.days, size: size) }
             AuraSunArcCard(snapshot: snapshot, size: size, now: now)
-            AuraMoonArcCard(snapshot: snapshot, size: size, now: now)
+            // Only after dark: the moon card is the night companion to the Sol card, so it stays hidden
+            // by day rather than sitting redundantly below an active sun arc.
+            if snapshot.isNight(at: now) {
+                AuraMoonArcCard(snapshot: snapshot, size: size, now: now)
+            }
             AuraWindCard(snapshot: snapshot, size: size)
             if let airQuality = snapshot.airQuality {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
