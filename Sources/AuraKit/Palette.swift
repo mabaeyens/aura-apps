@@ -108,21 +108,6 @@ public enum Palette {
         }
     }
 
-    // MARK: Fire-danger class → colour
-
-    /// The EFFIS fire-danger colour, by 1–6 class: green (muy bajo) → lime → yellow → orange → red →
-    /// granate (extremo). Warmer/redder than the air-quality ramp so the two hazard cards read apart.
-    public static func fireRisk(_ dangerClass: Int) -> Color {
-        switch dangerClass {
-        case 1:  return Color(red: 0.30, green: 0.72, blue: 0.42)   // muy bajo — verde
-        case 2:  return Color(red: 0.62, green: 0.75, blue: 0.28)   // bajo — lima
-        case 3:  return Color(red: 0.96, green: 0.80, blue: 0.25)   // moderado — amarillo
-        case 4:  return Color(red: 0.97, green: 0.58, blue: 0.18)   // alto — naranja
-        case 5:  return Color(red: 0.90, green: 0.29, blue: 0.24)   // muy alto — rojo
-        default: return Color(red: 0.60, green: 0.13, blue: 0.15)   // extremo — granate
-        }
-    }
-
     /// The full cold→hot scale, for `Gauge` tints and range bars.
     public static let temperatureGradient = Gradient(colors: [
         tempDeepBlue, tempBlue, tempTeal, tempGreen, tempYellow, tempOrange, tempRed, tempPurple,

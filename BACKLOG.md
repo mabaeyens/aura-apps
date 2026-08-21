@@ -1,17 +1,6 @@
 # Backlog
 
 ## Done
-- 2026-08-21 — Fire-risk card (`AuraFireRiskCard`, `FireRisk` + `EFFISFireRisk` in
-  `Sources/AuraKit/FireRisk.swift`): a real **per-coordinate** forest-fire-danger reading — AEMET's own
-  fire risk is map-only, so the value comes from the EU's **EFFIS / GWIS** GeoServer via an anonymous
-  WMS `GetFeatureInfo` (`ecmwf.query`, `INFO_FORMAT=text/html`, no key). We parse the FWI float out of
-  the returned HTML table and bucket it ourselves into the classic EFFIS 1–6 danger scale (Muy bajo…
-  Extremo, `Palette.fireRisk`). FWI is a single float, so it rides in `WeatherSnapshot` (back-compatible)
-  and shows on phone **and** Watch. Fetched per location in the refresh loop, never throws (a miss —
-  outage, out-of-window date, sea pixel — just hides the card). Credit line now lists EFFIS when present.
-  Tests in `FireRiskTests` (bucket boundaries, HTML parse, URL shape). Verified in the render.
-  **On-device check:** confirm a live query for the real current date returns a value (the research
-  sandbox clock fell outside GWIS's rolling window).
 - 2026-08-21 — Radar Phase 1 (`AuraRadarCard` + `AuraRadarInfo` in AuraKit, `RadarService` +
   `RadarSite` in the app): the **nearest regional radar** frame shown as-is (the 240 km circle is
   already local, so no georeferencing). `RadarSite.nearest(…)` picks 1 of the 15 sites by haversine;
@@ -56,13 +45,32 @@
 
 ## Pending
 
+### Blocked
+- **Fire risk (EFFIS/GWIS FWI)** — BUILT then REVERTED 2026-08-21 (commit `cf2d7b9`, reverted). The
+  anonymous EFFIS/GWIS WMS `GetFeatureInfo` path (`ecmwf.query`, `INFO_FORMAT=text/html`, no key) works
+  only for a `TIME` that **exactly matches a currently-loaded slice**, and cannot reliably return "today":
+  - `ecmwf.query` is the only FWI layer that responds; `ecmwf_fwi_ens.query` returns empty and the
+    `fwi_gadm_admin1/2.*` (administrative-unit) layers are `LayerNotDefined`.
+  - The layer sets `nearestValue="0"` (the server refuses to snap to the nearest date) and advertises a
+    synthetic extent (`2018-01-01/2099-12-31`, `default="2019-01-01"`) instead of the real loaded dates —
+    so the valid slice can't be discovered from GetCapabilities.
+  - Live probing (2026-08-21): **every** explicit real date — 2026/2025/2024, date or full ISO datetime —
+    returns HTTP 200 with an **empty table**. Only *omitting* `TIME` returns a value, pinned to the frozen
+    `default="2019-01-01"` (FWI ≈ 2, a fixed winter day → always "Muy bajo"). The window also rolls with
+    short retention: dates that returned FWI during the initial research no longer do.
+  - Net: no anonymous way to request "the latest available FWI", which a live app needs. The card was
+    hidden on-device (fetch correctly returned nil for the computed date).
+  - The card/model/fetch were well isolated (`FireRisk.swift`, one `WeatherSnapshot` field, one card, one
+    per-location fetch) and reverted cleanly. If revisited: (a) find the EFFIS "Current Situation"
+    viewer's real REST/time-series API (it must resolve "latest" somehow), or (b) OpenWeatherMap's FWI
+    API — clean per-lat/lon JSON, 5-day, 6 classes, but needs an API key and is OWM's own computation,
+    not EFFIS data.
+
 ### Later
 - **Ozono card** — `/api/red/especial/ozono` is **total-column ozone in Dobson Units** (stratospheric,
   ~320 DU, *not* surface air quality), daily-mean, not produced on weekends/holidays. Low everyday
   value + JSON keys still unknown. Keep for later — only worth it as an "capa de ozono" angle, not as
   air quality (the ICA card already covers that).
-- **Radar Phase 2 (optional)** — precise crop/overlay from the EPSG:4326 GeoTIFF rasters; only worth it
-  if the regional frame isn't local enough. Full plan retained below.
 - **Other AEMET cards surveyed**: montaña/nivológica (mountain + freezing level + avalanche), marítima
   (coastal/altamar sea state), playa (beach: sky/waves/water temp + UV max). No pollen in AEMET
   (SEAIC/regional).

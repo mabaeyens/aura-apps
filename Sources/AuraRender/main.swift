@@ -99,8 +99,8 @@ func todayAt(_ h: Int, _ m: Int) -> Date {
 }
 for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
                       ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
-    let phone = CGSize(width: 300, height: 2000)   // tall enough to show the whole stack (device scrolls)
-    let watch = CGSize(width: 184, height: 1420)   // tall enough to show the full stack (device scrolls)
+    let phone = CGSize(width: 300, height: 1880)   // tall enough to show the whole stack (device scrolls)
+    let watch = CGSize(width: 184, height: 1320)   // tall enough to show the full stack (device scrolls)
     write(appScreen(size: phone, now: when), name: "app-phone-\(label)", size: phone)
     write(appScreen(size: watch, now: when), name: "app-watch-\(label)", size: watch)
 }
