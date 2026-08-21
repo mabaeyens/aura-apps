@@ -22,6 +22,7 @@ struct WatchRootView: View {
                     .environment(\.colorScheme, .dark)
             }
         }
+        .fontDesign(.rounded)   // one typeface across phone and watch (see RootView)
         .onAppear { snapshot = SharedCache.read().first }
         .onReceive(NotificationCenter.default.publisher(for: WatchSync.snapshotDidUpdate)) { _ in
             snapshot = SharedCache.read().first

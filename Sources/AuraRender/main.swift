@@ -91,6 +91,7 @@ func appScreen(size: CGSize, now: Date) -> some View {
     .frame(width: size.width, height: size.height)
     .clipShape(RoundedRectangle(cornerRadius: isPhone ? 32 : 40, style: .continuous))
     .environment(\.colorScheme, .dark)
+    .fontDesign(.rounded)   // mirror RootView so the preview reflects the app's single typeface
 }
 
 let renderCal = Calendar.current

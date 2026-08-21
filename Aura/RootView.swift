@@ -25,5 +25,9 @@ struct RootView: View {
                 .tabItem { Label("Ajustes", systemImage: "gearshape") }
                 .tag(3)
         }
+        // One typeface across the whole app: SF Rounded, the app's signature (already used for the hero
+        // temperature and the wind speed). Cascades to every `.system(...)` and semantic text style that
+        // doesn't pin its own design, so the cards and the screens read as one family.
+        .fontDesign(.rounded)
     }
 }
