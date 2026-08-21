@@ -8,6 +8,16 @@ struct SettingsView: View {
     @State private var keyInput = ""
     @State private var justSaved = false
 
+    /// The chosen hero background family, persisted across launches. Read elsewhere via
+    /// `HeroBackground.Family(storage:)`; the switch below only appears once cityscape art ships.
+    @AppStorage("heroFamily") private var heroFamily = HeroBackground.Family.landscape.rawValue
+
+    /// Whether any `city_*` art is actually in the bundle. Until it is, there's nothing to switch to, so
+    /// the picker stays hidden and the app is landscape-only (procedural sky underneath either way).
+    private var hasCityscapeArt: Bool {
+        HeroBackground.assetNames(for: .cityscape).contains { UIImage(named: $0) != nil }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -32,6 +42,21 @@ struct SettingsView: View {
                             Text("Clave actualizada.").foregroundStyle(.green)
                         }
                         Text("La clave de AEMET caduca a los 3 meses. Si la predicción deja de actualizarse, renuévala en opendata.aemet.es y pégala aquí.")
+                    }
+                }
+
+                if hasCityscapeArt {
+                    Section {
+                        Picker("Fondo", selection: $heroFamily) {
+                            ForEach(HeroBackground.Family.allCases, id: \.rawValue) { family in
+                                Text(family.displayName).tag(family.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    } header: {
+                        Text("Fondo del cielo")
+                    } footer: {
+                        Text("Elige el paisaje que acompaña al cielo. El sol y la luna se dibujan siempre en su posición real, sea cual sea el fondo.")
                     }
                 }
 

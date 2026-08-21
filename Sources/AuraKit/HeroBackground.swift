@@ -61,26 +61,47 @@ public enum HeroBackground {
         }
     }
 
-    // MARK: Resolver
+    /// The art *family* — a whole alternate set of 48 (same 8×6 grid) with different scenery. The user
+    /// picks one and it persists (`@AppStorage("heroFamily")`). Landscape keeps the **bare** name so its
+    /// 48 assets never need renaming; cityscape carries a `city_` prefix on the same flat name.
+    public enum Family: String, CaseIterable, Sendable {
+        case landscape, cityscape
 
-    /// Canonical asset name, e.g. `"few_clouds_dawn"`, `"clear_night"`.
-    public static func assetName(_ condition: Condition, _ time: Time) -> String {
-        "\(condition.rawValue)_\(time.rawValue)"
+        /// Prepended to the `condition_time` token so both families coexist in one flat asset catalog.
+        var assetPrefix: String { self == .cityscape ? "city_" : "" }
+
+        /// Spanish label for the settings switch.
+        public var displayName: String { self == .cityscape ? "Ciudad" : "Paisaje" }
+
+        /// Decode the persisted `@AppStorage` string; any unknown value falls back to `.landscape`.
+        public init(storage: String?) { self = Family(rawValue: storage ?? "") ?? .landscape }
     }
 
-    /// Every name the full 8×6 grid would contain (48). The app probes these against its bundle to learn
-    /// which art actually shipped, then passes the surviving set to `resolve`.
-    public static let allAssetNames: [String] =
-        Condition.allCases.flatMap { c in Time.allCases.map { assetName(c, $0) } }
+    // MARK: Resolver
 
-    /// Resolve the best background for a sky + time, given which assets exist.
+    /// Canonical asset name, e.g. `"few_clouds_dawn"` (landscape) or `"city_clear_night"` (cityscape).
+    public static func assetName(_ family: Family, _ condition: Condition, _ time: Time) -> String {
+        "\(family.assetPrefix)\(condition.rawValue)_\(time.rawValue)"
+    }
+
+    /// Every name one family's full 8×6 grid would contain (48).
+    public static func assetNames(for family: Family) -> [String] {
+        Condition.allCases.flatMap { c in Time.allCases.map { assetName(family, c, $0) } }
+    }
+
+    /// Every name across all families (96). The app probes these against its bundle to learn which art
+    /// actually shipped, then passes the surviving set to `resolve`.
+    public static let allAssetNames: [String] = Family.allCases.flatMap { assetNames(for: $0) }
+
+    /// Resolve the best background for a sky + time **within the chosen family**, given which assets exist.
     ///
-    /// Chain: exact `(condition, time)` → nearest existing time for the **same** condition → `nil`
-    /// (procedural). It never borrows another condition's art — a missing rainy set falls to the
-    /// procedural sky, not to a sunny image.
-    public static func resolve(sky: Palette.Sky, time: Time, available: Set<String>) -> String? {
+    /// Chain: exact `(family, condition, time)` → nearest existing time for the **same** condition in the
+    /// **same** family → `nil` (procedural). It never borrows another condition's art, and never the other
+    /// family's — a family with no art for this sky falls to the procedural sky, not to the other family.
+    public static func resolve(sky: Palette.Sky, time: Time, family: Family = .landscape,
+                               available: Set<String>) -> String? {
         guard let condition = Condition(sky) else { return nil }
-        let exact = assetName(condition, time)
+        let exact = assetName(family, condition, time)
         if available.contains(exact) { return exact }
 
         // Nearest existing time bucket for the same condition, over the daily cycle (so `dawn` is a
@@ -88,17 +109,17 @@ public enum HeroBackground {
         let order = Time.allCases
         guard let want = order.firstIndex(of: time) else { return nil }
         let best = order.indices
-            .filter { available.contains(assetName(condition, order[$0])) }
+            .filter { available.contains(assetName(family, condition, order[$0])) }
             .min { cyclicDistance($0, want, order.count) < cyclicDistance($1, want, order.count) }
-        return best.map { assetName(condition, order[$0]) }
+        return best.map { assetName(family, condition, order[$0]) }
     }
 
     /// Convenience straight from a snapshot.
     public static func resolve(for snapshot: WeatherSnapshot, now: Date = Date(),
-                               available: Set<String>) -> String? {
+                               family: Family = .landscape, available: Set<String>) -> String? {
         let (category, _) = Palette.sky(forCode: snapshot.currentSky)
         let time = Time(now: now, sunrise: snapshot.sunrise, sunset: snapshot.sunset)
-        return resolve(sky: category, time: time, available: available)
+        return resolve(sky: category, time: time, family: family, available: available)
     }
 
     private static func cyclicDistance(_ a: Int, _ b: Int, _ n: Int) -> Int {

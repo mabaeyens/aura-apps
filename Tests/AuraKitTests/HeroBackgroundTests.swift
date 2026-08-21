@@ -3,14 +3,50 @@ import XCTest
 
 final class HeroBackgroundTests: XCTestCase {
 
-    // MARK: The 8×6 grid
+    // MARK: The 8×6 grid, across families
 
-    func testGridIsFortyEightCanonicalNames() {
-        XCTAssertEqual(HeroBackground.allAssetNames.count, 48)
-        XCTAssertEqual(Set(HeroBackground.allAssetNames).count, 48, "names must be unique")
+    func testGridIsCanonicalNames() {
+        // Two families × 8 conditions × 6 times = 96, all unique; 48 per family.
+        XCTAssertEqual(HeroBackground.allAssetNames.count, 96)
+        XCTAssertEqual(Set(HeroBackground.allAssetNames).count, 96, "names must be unique")
+        XCTAssertEqual(HeroBackground.assetNames(for: .landscape).count, 48)
+        XCTAssertEqual(HeroBackground.assetNames(for: .cityscape).count, 48)
+        // Landscape names stay bare (no prefix — existing assets never rename); cityscape is prefixed.
         XCTAssertTrue(HeroBackground.allAssetNames.contains("few_clouds_dawn"))
         XCTAssertTrue(HeroBackground.allAssetNames.contains("clear_night"))
-        XCTAssertTrue(HeroBackground.allAssetNames.contains("stormy_afternoon"))
+        XCTAssertTrue(HeroBackground.allAssetNames.contains("city_stormy_afternoon"))
+        XCTAssertFalse(HeroBackground.assetNames(for: .landscape).contains { $0.hasPrefix("city_") })
+        XCTAssertTrue(HeroBackground.assetNames(for: .cityscape).allSatisfy { $0.hasPrefix("city_") })
+    }
+
+    // MARK: Family axis
+
+    func testCityscapeResolvesWithinItsFamily() {
+        let have: Set = ["city_clear_noon", "clear_noon"]
+        XCTAssertEqual(HeroBackground.resolve(sky: .clear, time: .noon, family: .cityscape, available: have),
+                       "city_clear_noon")
+        XCTAssertEqual(HeroBackground.resolve(sky: .clear, time: .noon, family: .landscape, available: have),
+                       "clear_noon")
+    }
+
+    func testFamilyNeverLeaksAcross() {
+        // Only landscape art exists; selecting cityscape must fall to procedural, not borrow landscape.
+        let have = Set(HeroBackground.assetNames(for: .landscape))
+        XCTAssertNil(HeroBackground.resolve(sky: .clear, time: .noon, family: .cityscape, available: have))
+    }
+
+    func testCityscapeNearestTimeStaysInFamily() {
+        // city noon missing; nearest city time wins, never the landscape noon that does exist.
+        let have: Set = ["city_clear_morning", "clear_noon"]
+        XCTAssertEqual(HeroBackground.resolve(sky: .clear, time: .noon, family: .cityscape, available: have),
+                       "city_clear_morning")
+    }
+
+    func testFamilyStorageDecodeFallsBackToLandscape() {
+        XCTAssertEqual(HeroBackground.Family(storage: "cityscape"), .cityscape)
+        XCTAssertEqual(HeroBackground.Family(storage: "landscape"), .landscape)
+        XCTAssertEqual(HeroBackground.Family(storage: nil), .landscape)
+        XCTAssertEqual(HeroBackground.Family(storage: "bogus"), .landscape)
     }
 
     // MARK: Resolver chain
