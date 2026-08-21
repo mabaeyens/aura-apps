@@ -38,6 +38,9 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let windSpeed: Int?
     /// Current-hour wind direction (whence it blows), or nil when calm/unknown.
     public let windDirection: WindDirection?
+    /// Current-hour peak wind gust (racha máxima), km/h, from the hourly feed. Nil when AEMET
+    /// omits it. Optional — an older cached snapshot decodes this as nil.
+    public let windGust: Int?
     /// Sunrise, computed on-device for the location.
     public let airQuality: AirQuality?
 
@@ -66,6 +69,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 currentSky: String? = nil, currentSkyText: String? = nil,
                 currentHumidity: Int? = nil, currentPrecipProb: Int? = nil,
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
+                windGust: Int? = nil,
                 airQuality: AirQuality? = nil,
                 uvIndex: UVIndex? = nil,
                 sunrise: Date?, sunset: Date?,
@@ -88,6 +92,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.currentPrecipProb = currentPrecipProb
         self.windSpeed = windSpeed
         self.windDirection = windDirection
+        self.windGust = windGust
         self.airQuality = airQuality
         self.uvIndex = uvIndex
         self.sunrise = sunrise
@@ -173,6 +178,7 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
     public let sky: String?       // AEMET estadoCielo code
     public let precipProb: Int?   // %
     public let windSpeed: Int?    // km/h, for the hourly card's wind row
+    public let windGust: Int?     // km/h, peak gust for the hour; nil when not reported
     /// The absolute instant this hour begins, so the strip can be re-anchored to the *real* current
     /// hour at display time — a snapshot built at 20:00 and served from cache at 09:55 the next day
     /// must still start at 09h, not 20h. Optional: snapshots cached before this field decode it as nil.
@@ -181,12 +187,13 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
     public var id: Int { hour }
 
     public init(hour: Int, temp: Int?, sky: String?, precipProb: Int?, windSpeed: Int? = nil,
-                date: Date? = nil) {
+                windGust: Int? = nil, date: Date? = nil) {
         self.hour = hour
         self.temp = temp
         self.sky = sky
         self.precipProb = precipProb
         self.windSpeed = windSpeed
+        self.windGust = windGust
         self.date = date
     }
 }
@@ -274,6 +281,7 @@ public extension WeatherSnapshot {
             currentPrecipProb: precipNow,
             windSpeed: wind?.speed ?? nil,
             windDirection: wind?.direction ?? nil,
+            windGust: wind?.gust ?? nil,
             airQuality: airQuality,
             uvIndex: uvIndex,
             sunrise: sun.sunrise,
@@ -308,9 +316,9 @@ public extension WeatherSnapshot {
         return (current, text, Array(upcoming.prefix(24)))
     }
 
-    /// The wind for the current hour (or the next available reading), as speed km/h + direction.
+    /// The wind for the current hour (or the next available reading): speed km/h, direction, and peak gust.
     private static func currentWind(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date)
-        -> (speed: Int?, direction: WindDirection?) {
+        -> (speed: Int?, direction: WindDirection?, gust: Int?) {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
         let currentHour = cal.component(.hour, from: now)
@@ -326,10 +334,24 @@ public extension WeatherSnapshot {
             return (match.speed, match.dir)
         }
 
+        // Gust entries carry a scalar `value` and no direccion/velocidad. Same at/after-`from` preference.
+        func gust(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
+            let readings = (dia.vientoAndRachaMax ?? []).compactMap { w -> (hour: Int, gust: Int)? in
+                guard let raw = w.value, w.velocidad == nil,
+                      let hour = Int(w.periodo), let g = Int(raw) else { return nil }
+                return (hour, g)
+            }.sorted { $0.hour < $1.hour }
+            return (readings.first { $0.hour >= from } ?? readings.first)?.gust
+        }
+
         let dias = forecast.prediccion.dia
-        if let day0 = dias.first, let w = wind(in: day0, from: currentHour) { return w }
-        if dias.count > 1, let w = wind(in: dias[1], from: 0) { return w }
-        return (nil, nil)
+        if let day0 = dias.first, let w = wind(in: day0, from: currentHour) {
+            return (w.0, w.1, gust(in: day0, from: currentHour))
+        }
+        if dias.count > 1, let w = wind(in: dias[1], from: 0) {
+            return (w.0, w.1, gust(in: dias[1], from: 0))
+        }
+        return (nil, nil, nil)
     }
 
     /// The relative humidity for the current hour (or the next available reading), %.
@@ -382,7 +404,7 @@ public extension WeatherSnapshot {
 
     /// Merge one day's parallel hourly arrays into ordered `HourSlot`s, each stamped with the absolute
     /// instant it begins (in `timeZone`) so the strip can be re-anchored to the current hour at display.
-    private static func slots(for dia: MunicipioHourly.Dia, timeZone: TimeZone) -> [HourSlot] {
+    static func slots(for dia: MunicipioHourly.Dia, timeZone: TimeZone) -> [HourSlot] {
         let temps = pairs(dia.temperatura)
         let skies = Dictionary(dia.estadoCielo.compactMap { s -> (Int, String)? in
             guard let h = Int(s.periodo) else { return nil }
@@ -403,6 +425,12 @@ public extension WeatherSnapshot {
             return (h, v)
         }, uniquingKeysWith: { a, _ in a })
 
+        // Per-hour peak gust, from the same array (gust entries carry a scalar `value`, no `velocidad`).
+        let gusts = Dictionary((dia.vientoAndRachaMax ?? []).compactMap { w -> (Int, Int)? in
+            guard let raw = w.value, w.velocidad == nil, let h = Int(w.periodo), let g = Int(raw) else { return nil }
+            return (h, g)
+        }, uniquingKeysWith: { a, _ in a })
+
         let dayStart = dayMidnight(dia.fecha, timeZone: timeZone)
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
@@ -412,7 +440,7 @@ public extension WeatherSnapshot {
             let prob = blocks.first { $0.start <= hour && hour < $0.end }?.value
             let date = dayStart.flatMap { cal.date(byAdding: .hour, value: hour, to: $0) }
             return HourSlot(hour: hour, temp: temps[hour], sky: skies[hour], precipProb: prob,
-                            windSpeed: winds[hour], date: date)
+                            windSpeed: winds[hour], windGust: gusts[hour], date: date)
         }
     }
 

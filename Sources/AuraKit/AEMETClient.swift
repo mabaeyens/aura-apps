@@ -47,10 +47,7 @@ public struct AEMETClient: Sendable {
         guard !apiKey.isEmpty else { throw ClientError.missingAPIKey }
         var comps = URLComponents(string: base + path)!
         comps.queryItems = [URLQueryItem(name: "api_key", value: apiKey)]
-        let (data, response) = try await session.data(from: comps.url!)
-        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-        if code == 429 { throw ClientError.rateLimited }
-        guard code == 200 else { throw ClientError.http(code) }
+        let data = try await perform(comps.url!)
         do {
             return try JSONDecoder().decode(Envelope.self, from: data)
         } catch {
@@ -59,10 +56,29 @@ public struct AEMETClient: Sendable {
     }
 
     private func fetchData(url: URL) async throws -> Data {
-        let (data, response) = try await session.data(from: url)
-        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard code == 200 else { throw ClientError.http(code) }
-        return data
+        try await perform(url)
+    }
+
+    /// Performs one GET, paced through the shared limiter and retried on a 429 with exponential
+    /// backoff. Both AEMET calls in the two-step model funnel through here, so every product —
+    /// envelope and `datos` payload alike — counts against the same per-key budget. Returns the
+    /// body on 200; throws `.rateLimited` after exhausting retries, `.http(code)` for anything else.
+    private func perform(_ url: URL) async throws -> Data {
+        var attempt = 0
+        while true {
+            await RequestPacer.shared.waitForSlot()
+            let (data, response) = try await session.data(from: url)
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if code == 200 { return data }
+            if code == 429, attempt < 2 {
+                attempt += 1
+                let backoff = pow(2.0, Double(attempt))   // 2 s, then 4 s
+                try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                continue
+            }
+            if code == 429 { throw ClientError.rateLimited }
+            throw ClientError.http(code)
+        }
     }
 
     /// Runs the two-call model for `path` where the payload is a plain-text bulletin
@@ -168,5 +184,42 @@ public extension AEMETClient {
     /// maintains it even less consistently. Kept for diagnostics.
     func prediccionProvinciaHoy(_ provincia: String) async throws -> String {
         try await fetchText("/prediccion/provincia/hoy/\(provincia)")
+    }
+}
+
+/// Process-wide sliding-window limiter for outbound AEMET calls.
+///
+/// AEMET caps a key at 50 requests/minute. A single cold refresh spends ~13 calls for one location
+/// and +4 per extra location (≈21 for three), plus radar on demand — comfortably under the ceiling,
+/// but with no spacing a burst (many locations, or a refresh landing on top of a radar fetch) could
+/// approach it. This allows bursts up to `limit` within `window` at full speed, then blocks the next
+/// caller only until the oldest in-window request expires — so a normal refresh is never slowed, and
+/// the limit simply cannot be tripped. `limit` sits below 50 to leave headroom.
+actor RequestPacer {
+    static let shared = RequestPacer()
+
+    private let limit: Int
+    private let window: TimeInterval
+    private var recent: [Date] = []
+
+    init(limit: Int = 45, window: TimeInterval = 60) {
+        self.limit = limit
+        self.window = window
+    }
+
+    /// Reserves the next slot, sleeping only if `limit` requests already fired inside `window`.
+    func waitForSlot() async {
+        while true {
+            let now = Date()
+            recent.removeAll { now.timeIntervalSince($0) >= window }
+            if recent.count < limit {
+                recent.append(now)
+                return
+            }
+            if let oldest = recent.first {
+                let wait = window - now.timeIntervalSince(oldest)
+                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+            }
+        }
     }
 }
