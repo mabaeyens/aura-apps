@@ -97,7 +97,15 @@ struct AuraSunView: View {
             case .accessoryCorner:
                 AuraSunCorner(snapshot: snapshot, now: entry.date)
                     .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
-            default: AuraSunCircular(snapshot: snapshot, now: entry.date)
+            default:
+                // The circular face shows only the icon + time so it fits; the time-until rides the
+                // curved bezel via `.widgetLabel` (was a third stacked line that overflowed).
+                if let remaining = AuraSunCircular(snapshot: snapshot, now: entry.date).remainingLabel {
+                    AuraSunCircular(snapshot: snapshot, now: entry.date)
+                        .widgetLabel(remaining)
+                } else {
+                    AuraSunCircular(snapshot: snapshot, now: entry.date)
+                }
             }
         } else {
             AuraAccessoryEmpty()
@@ -126,6 +134,61 @@ struct AuraWindView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             AuraWindCircular(snapshot: snapshot)
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+// MARK: - Rain chance
+
+/// Precipitation probability for the current hour — a ring fill with a raindrop and the percentage.
+struct AuraRainComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraRain", provider: AuraComplicationProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraRainCircular(snapshot: snapshot)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Lluvia")
+        .description("La probabilidad de precipitación de la hora actual.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+// MARK: - UV index
+
+/// The day's maximum UV index — a ring fill with a sun and the index number, plus the band on the bezel.
+struct AuraUVComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraUV", provider: AuraComplicationProvider()) { entry in
+            AuraUVView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("UV máximo")
+        .description("El índice UV máximo del día (cielo despejado).")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+struct AuraUVView: View {
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            // The band name ("Muy alto"…) rides the curved bezel, keeping the ring honest that the
+            // number is a daily maximum rather than a live value.
+            if let band = AuraUVCircular(snapshot: snapshot).bandLabel {
+                AuraUVCircular(snapshot: snapshot)
+                    .widgetLabel(band)
+            } else {
+                AuraUVCircular(snapshot: snapshot)
+            }
         } else {
             AuraAccessoryEmpty()
         }

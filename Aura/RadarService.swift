@@ -42,6 +42,23 @@ enum RadarService {
         }
     }
 
+    /// Delete radar frames left in the Caches directory that are older than `maxAge` (default 24 h).
+    /// The live TTL is 10 minutes, so anything this old is dead weight; one file accumulates per radar
+    /// site the user has ever been near. The OS already purges Caches under pressure — this just keeps
+    /// it tidy between those. Safe to call on launch; silently ignores a missing directory.
+    static func pruneCache(olderThan maxAge: TimeInterval = 24 * 60 * 60) {
+        let fm = FileManager.default
+        let dir = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        guard let files = try? fm.contentsOfDirectory(at: dir,
+                                                      includingPropertiesForKeys: [.contentModificationDateKey]) else { return }
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        for file in files where file.lastPathComponent.hasPrefix("radar-") {
+            guard let modified = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
+                  modified < cutoff else { continue }
+            try? fm.removeItem(at: file)
+        }
+    }
+
     /// The cached frame at `url` if it exists and is younger than `maxAge`.
     private static func cachedFrame(at url: URL, site: RadarSite, maxAge: TimeInterval) -> Frame? {
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),

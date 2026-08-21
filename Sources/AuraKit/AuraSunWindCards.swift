@@ -19,21 +19,28 @@ public struct AuraSunCircular: View {
     }
 
     public var body: some View {
+        // Icon + precise time only. Three stacked lines (icon, time, remaining) overflowed the tiny
+        // circular safe area, so the "time remaining" moves to the curved bezel via `.widgetLabel`
+        // (see `remainingLabel`, applied by the complication). Semantic fonts + `minimumScaleFactor`
+        // keep the two lines fitting instead of clipping to "…".
         let event = snapshot.nextSunEvent(now: now)
         let date = SunFormat.date(event)
-        VStack(spacing: 1) {
+        VStack(spacing: 0) {
             Image(systemName: SunFormat.icon(event))
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.yellow, .orange)
-                .font(.title2)
+                .font(.title3)
             Text(date.map(SunFormat.hhmm) ?? "—")
                 .font(.caption).fontWeight(.semibold)
-            if let date, let remaining = SunFormat.remaining(from: now, to: date) {
-                Text("· \(remaining)")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-            }
+                .lineLimit(1).minimumScaleFactor(0.7)
         }
+    }
+
+    /// How long until the next sun event, e.g. "2h51m" or "43m" — for the curved bezel label, so the
+    /// tight circular face keeps only the icon and the time. Nil when the event time is unknown.
+    public var remainingLabel: String? {
+        guard let date = SunFormat.date(snapshot.nextSunEvent(now: now)) else { return nil }
+        return SunFormat.remaining(from: now, to: date)
     }
 }
 
@@ -69,6 +76,64 @@ public struct AuraSunCorner: View {
         if let remaining = SunFormat.remaining(from: now, to: date) { return "\(time) · \(remaining)" }
         return time
     }
+}
+
+// MARK: - Rain chance
+
+/// `.accessoryCircular`: the precipitation probability for the current hour as a ring fill, with a
+/// raindrop glyph and the percentage in the centre. Probability is encoded by the ring's fill (shape,
+/// not hue) so it still reads on the desaturated Lock Screen; the blue tint comes through on
+/// full-colour watch faces. Reads `currentPrecipProb` — the same field the rectangular card uses.
+public struct AuraRainCircular: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    /// Precipitation probability for the current hour, %, or nil on a thin snapshot (no hourly feed).
+    private var prob: Int? { snapshot.currentPrecipProb }
+
+    public var body: some View {
+        Gauge(value: Double(prob ?? 0), in: 0...100) {
+            Image(systemName: "drop.fill")
+        } currentValueLabel: {
+            Text(prob.map { "\($0)" } ?? "—")
+                .fontWeight(.semibold).fontDesign(.rounded)
+                .foregroundStyle(.white)
+        }
+        .gaugeStyle(.accessoryCircular)
+        .tint(Palette.tempBlue)
+    }
+}
+
+// MARK: - UV index
+
+/// `.accessoryCircular`: the day's maximum UV index as a ring fill on the WHO 0…11 scale, with a sun
+/// glyph and the index number in the centre. AEMET publishes a clear-sky *daily maximum*, not an
+/// hourly value, so this is honestly the day's peak — the complication's description and the curved
+/// `bandLabel` (e.g. "Muy alto") say so rather than implying "now". The band colour comes through on
+/// full-colour faces; the ring fill carries the level when colour is dropped.
+public struct AuraUVCircular: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    /// The day's clear-sky maximum UV index, or nil when the UV product hasn't loaded.
+    private var uv: UVIndex? { snapshot.uvIndex }
+
+    public var body: some View {
+        Gauge(value: Double(min(uv?.value ?? 0, 11)), in: 0...11) {
+            Image(systemName: "sun.max.fill")
+        } currentValueLabel: {
+            Text(uv.map { "\($0.value)" } ?? "—")
+                .fontWeight(.semibold).fontDesign(.rounded)
+                .foregroundStyle(.white)
+        }
+        .gaugeStyle(.accessoryCircular)
+        .tint(Palette.uvIndex(uv?.value ?? 0))
+    }
+
+    /// The WHO band name for the curved bezel label — honest about the value being a daily maximum.
+    public var bandLabel: String? { uv?.bandName }
 }
 
 private enum SunFormat {

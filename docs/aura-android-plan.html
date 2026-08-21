@@ -1,0 +1,672 @@
+<meta charset="utf-8">
+<title>Aura for Android</title>
+<style>
+  :root {
+    --bg: #eef1f6;
+    --surface: #ffffff;
+    --surface-2: #f5f7fb;
+    --ink: #151b26;
+    --ink-soft: #3a4353;
+    --muted: #626c7e;
+    --border: #dde2ec;
+    --border-strong: #c8cfdd;
+    --sky: #2f6fb0;
+    --sky-soft: #e4eefb;
+    --sun: #d9822b;
+    --sun-soft: #fbeddc;
+    --ok: #2c8f5f;
+    --ok-soft: #e0f2e8;
+    --warn: #bd7d1f;
+    --warn-soft: #f8eed7;
+    --drop: #7d8698;
+    --drop-soft: #eceef3;
+    --shadow: 0 1px 2px rgba(20,27,38,.04), 0 6px 20px rgba(20,27,38,.06);
+    --shadow-lift: 0 2px 6px rgba(20,27,38,.06), 0 18px 44px rgba(20,27,38,.10);
+    --maxw: 1080px;
+    --readw: 72ch;
+    --sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Bricolage Grotesque", var(--sans);
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #0d1119;
+      --surface: #161c27;
+      --surface-2: #1b2230;
+      --ink: #e7ebf2;
+      --ink-soft: #c3cad7;
+      --muted: #939db1;
+      --border: #262e3d;
+      --border-strong: #333d4f;
+      --sky: #5f9cda;
+      --sky-soft: #16273b;
+      --sun: #e8a44e;
+      --sun-soft: #2e2313;
+      --ok: #4fbd85;
+      --ok-soft: #14291f;
+      --warn: #d69a3f;
+      --warn-soft: #2b2411;
+      --drop: #8a94a7;
+      --drop-soft: #1f2634;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+      --shadow-lift: 0 2px 6px rgba(0,0,0,.35), 0 18px 44px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1119;
+    --surface: #161c27;
+    --surface-2: #1b2230;
+    --ink: #e7ebf2;
+    --ink-soft: #c3cad7;
+    --muted: #939db1;
+    --border: #262e3d;
+    --border-strong: #333d4f;
+    --sky: #5f9cda;
+    --sky-soft: #16273b;
+    --sun: #e8a44e;
+    --sun-soft: #2e2313;
+    --ok: #4fbd85;
+    --ok-soft: #14291f;
+    --warn: #d69a3f;
+    --warn-soft: #2b2411;
+    --drop: #8a94a7;
+    --drop-soft: #1f2634;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    --shadow-lift: 0 2px 6px rgba(0,0,0,.35), 0 18px 44px rgba(0,0,0,.5);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- header ---------- */
+  header.hero {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(120% 90% at 82% -20%, var(--sun-soft) 0%, transparent 55%),
+      linear-gradient(180deg, var(--sky-soft) 0%, transparent 62%),
+      var(--bg);
+  }
+  .hero-inner { max-width: var(--maxw); margin: 0 auto; padding: 60px 24px 40px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--sky);
+    margin: 0 0 18px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sun); display: inline-block; }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  h1 .accent { color: var(--sky); }
+  .lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0 0 22px;
+    line-height: 1.5;
+  }
+  .meta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    border: 1px solid var(--border-strong);
+    border-radius: 100px;
+    padding: 5px 12px;
+    background: var(--surface);
+  }
+
+  /* ---------- recommendation callout ---------- */
+  .reco {
+    margin-top: 34px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--sun);
+    border-radius: 14px;
+    padding: 22px 26px;
+    box-shadow: var(--shadow);
+  }
+  .reco .label {
+    font-family: var(--mono);
+    font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--sun); margin: 0 0 8px;
+  }
+  .reco p { margin: 0; font-size: 1.05rem; color: var(--ink); }
+  .reco strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  main { padding: 8px 0 40px; }
+  section { padding: 40px 0 4px; scroll-margin-top: 20px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin: 0 0 6px; }
+  .sec-num {
+    font-family: var(--mono); font-size: 13px; color: var(--sky);
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 2px 8px; flex: none; background: var(--surface-2);
+  }
+  h2 {
+    font-family: var(--display); font-weight: 650;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    letter-spacing: -.015em; line-height: 1.1; margin: 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--display); font-weight: 600;
+    font-size: 1.18rem; letter-spacing: -.01em;
+    margin: 30px 0 10px;
+  }
+  section > .wrap > p, .prose p { max-width: var(--readw); color: var(--ink-soft); }
+  p { margin: 0 0 16px; }
+  a { color: var(--sky); text-underline-offset: 2px; }
+  strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--mono); font-size: .86em;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 5px; color: var(--ink);
+    white-space: nowrap;
+  }
+  .rule { height: 1px; background: var(--border); border: 0; margin: 0; }
+
+  /* ---------- quick-answers grid ---------- */
+  .answers {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px; margin-top: 6px;
+  }
+  .ans {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 18px 16px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ans .k {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .ans .v { font-family: var(--display); font-weight: 650; font-size: 1.5rem; letter-spacing: -.01em; line-height: 1.05; }
+  .ans .v.sky { color: var(--sky); }
+  .ans .v.sun { color: var(--sun); }
+  .ans .n { font-size: .92rem; color: var(--ink-soft); line-height: 1.45; }
+
+  /* ---------- cards / columns ---------- */
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 8px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; box-shadow: var(--shadow);
+  }
+  .card h3 { margin-top: 0; }
+  .card.rec { border-color: var(--sky); box-shadow: var(--shadow-lift); }
+  .card .badge {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .1em; text-transform: uppercase; font-weight: 500;
+    padding: 3px 9px; border-radius: 100px; margin-bottom: 10px;
+  }
+  .badge.pick { background: var(--sky-soft); color: var(--sky); border: 1px solid color-mix(in srgb, var(--sky) 30%, transparent); }
+  .badge.no { background: var(--drop-soft); color: var(--drop); border: 1px solid var(--border-strong); }
+  .card ul, .prose ul { margin: 10px 0 0; padding-left: 18px; color: var(--ink-soft); }
+  .card li, .prose li { margin: 6px 0; }
+  .card p { color: var(--ink-soft); }
+
+  /* ---------- callout box ---------- */
+  .box {
+    border-radius: 14px; padding: 18px 22px; margin-top: 18px;
+    border: 1px solid var(--border);
+  }
+  .box .t { font-family: var(--display); font-weight: 600; font-size: 1.05rem; margin: 0 0 6px; display: flex; align-items: center; gap: 9px; }
+  .box p { margin: 0; color: var(--ink-soft); }
+  .box p + p { margin-top: 10px; }
+  .box.catch { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+  .box.catch .t { color: var(--warn); }
+  .box.note { background: var(--surface-2); }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap { overflow-x: auto; margin-top: 12px; border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: .94rem; background: var(--surface); }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  thead th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); background: var(--surface-2); position: sticky; top: 0;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--surface-2); }
+  td .m, th .m { font-family: var(--mono); font-size: .85em; color: var(--ink-soft); }
+  td strong { color: var(--ink); }
+  td.note-cell { color: var(--muted); font-size: .9rem; }
+
+  /* status + effort pills */
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 100px;
+    white-space: nowrap;
+  }
+  .pill.kept { background: var(--ok-soft); color: var(--ok); }
+  .pill.adapt { background: var(--warn-soft); color: var(--warn); }
+  .pill.drop { background: var(--drop-soft); color: var(--drop); }
+  .pill.eff-s { background: var(--ok-soft); color: var(--ok); }
+  .pill.eff-m { background: var(--warn-soft); color: var(--warn); }
+  .pill.eff-l { background: var(--sun-soft); color: var(--sun); }
+
+  /* ---------- roadmap ---------- */
+  .road { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; counter-reset: step; }
+  .step {
+    display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 20px; box-shadow: var(--shadow);
+  }
+  .step .idx {
+    font-family: var(--display); font-weight: 700; font-size: 1.5rem; color: var(--sky);
+    line-height: 1; padding-top: 2px;
+  }
+  .step .b { display: flex; flex-direction: column; gap: 4px; }
+  .step .b .top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .step .b h3 { margin: 0; font-size: 1.06rem; }
+  .step .b p { margin: 0; color: var(--ink-soft); font-size: .95rem; max-width: none; }
+
+  /* ---------- faq ---------- */
+  .faq { display: flex; flex-direction: column; gap: 0; margin-top: 10px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+  .faq details { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .faq details:last-child { border-bottom: 0; }
+  .faq summary {
+    cursor: pointer; padding: 16px 20px; font-family: var(--display); font-weight: 600;
+    font-size: 1.02rem; list-style: none; display: flex; justify-content: space-between; gap: 16px; align-items: center;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; font-family: var(--mono); color: var(--sky); font-size: 1.3rem; flex: none; transition: transform .2s ease; }
+  .faq details[open] summary::after { transform: rotate(45deg); }
+  .faq .a { padding: 0 20px 18px; color: var(--ink-soft); font-size: .96rem; }
+  .faq .a p { margin: 0; max-width: none; }
+  @media (prefers-reduced-motion: reduce) { .faq summary::after { transition: none; } }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--border); margin-top: 30px; }
+  .foot-inner { max-width: var(--maxw); margin: 0 auto; padding: 28px 24px 48px; color: var(--muted); font-size: .9rem; display: flex; flex-direction: column; gap: 8px; }
+  .foot-inner code { font-size: .85em; }
+
+  .kicker { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--sun); margin: 0 0 4px; }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .hero-inner { padding: 44px 20px 32px; }
+    .wrap { padding: 0 20px; }
+    .step { grid-template-columns: 32px 1fr; gap: 12px; padding: 14px 16px; }
+  }
+</style>
+
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow"><span class="dot"></span> Porting plan · Phone-only · August 2026</p>
+    <h1>Aura for <span class="accent">Android</span></h1>
+    <p class="lede">Bringing my AEMET weather app to Android as its own native app — as identical to the iPhone version as it can be, phones only, no watch and no tablet.</p>
+    <div class="meta-row">
+      <span class="tag">Native Kotlin + Compose</span>
+      <span class="tag">minSdk 26</span>
+      <span class="tag">no backend</span>
+      <span class="tag">Spanish-only</span>
+    </div>
+
+    <div class="reco">
+      <p class="label">The recommendation, in one breath</p>
+      <p>Build it as a <strong>native Kotlin + Jetpack Compose</strong> app, hand-porting <code>AuraKit</code>'s logic into a Kotlin <code>:core</code> module. Ship home-screen widgets with <strong>Jetpack Glance</strong>. Target a wide, modern floor. And skip the Play Store at first — hand family a <strong>signed APK link</strong>, graduating to Play's internal-testing track once the circle widens.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- QUICK ANSWERS -->
+  <section id="answers">
+    <div class="wrap">
+      <p class="kicker">Straight answers first</p>
+      <h2 style="margin-bottom:18px;">The questions I actually asked</h2>
+      <div class="answers">
+        <div class="ans">
+          <span class="k">Developer account?</span>
+          <span class="v sky">Only for Play</span>
+          <span class="n">Required for any Play Store track. <strong>Not needed</strong> for direct APK sideload or Firebase App Distribution.</span>
+        </div>
+        <div class="ans">
+          <span class="k">Does it cost?</span>
+          <span class="v sun">$25 once</span>
+          <span class="n">One-time Play registration, unlimited apps forever. Non-refundable. Sideload &amp; Firebase are free.</span>
+        </div>
+        <div class="ans">
+          <span class="k">The catch (new accounts)</span>
+          <span class="v">12 × 14 days</span>
+          <span class="n">New personal accounts must run a closed test — 12 testers opted in for 14 continuous days — before production. Internal testing &amp; sideload are exempt.</span>
+        </div>
+        <div class="ans">
+          <span class="k">Test device</span>
+          <span class="v sky">Used Pixel a</span>
+          <span class="n">A 6a / 7a / 8a (well under $200 used): stock Android, cheap, updates first. Add a Samsung A-series later for OEM quirks.</span>
+        </div>
+        <div class="ans">
+          <span class="k">OS support</span>
+          <span class="v">~96–98%</span>
+          <span class="n"><code>minSdk 26</code> (Android 8.0, 2017) reaches almost every active phone without pre-Compose baggage.</span>
+        </div>
+        <div class="ans">
+          <span class="k">Easiest install for family</span>
+          <span class="v sun">APK link → Play</span>
+          <span class="n">Start with a one-tap signed APK link; move to Play internal testing so they install the normal Play-Store way.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. TECH STACK -->
+  <section id="stack">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">01</span><h2>The tech-stack call</h2></div>
+      <div class="prose">
+        <p>Three options weighed. The winner is the one with the smallest conceptual gap from what I already know and the least framework risk — which matters a lot starting with limited Android experience.</p>
+      </div>
+      <div class="cols">
+        <div class="card rec">
+          <span class="badge pick">Recommended</span>
+          <h3>Native Kotlin + Compose</h3>
+          <p>Kotlin is Android's Swift; Compose is Android's SwiftUI. Every 2026 tutorial, sample and tool assumes this pair, and Glance (Compose-based widgets) comes as a first-class sibling. Smallest mental gap, no bridge layer that can lag platform releases.</p>
+        </div>
+        <div class="card">
+          <span class="badge no">Rejected</span>
+          <h3>Kotlin Multiplatform</h3>
+          <p><code>AuraKit</code> already exists and works in Swift. KMP only pays off writing shared logic <em>once, going forward, for both</em> — adopting it now means a third rewrite or two parallel logic layers. More infrastructure to learn, worse for this situation.</p>
+        </div>
+        <div class="card">
+          <span class="badge no">Rejected</span>
+          <h3>Flutter</h3>
+          <p>A third UI paradigm and toolchain on top of Swift and Kotlin. Its platform-channel bridge makes the small native things (Glance, permissions, WorkManager) more awkward. I'm building two native apps that share a design language, not one shared binary.</p>
+        </div>
+      </div>
+
+      <h3>SwiftUI → Compose, as reassurance</h3>
+      <div class="prose"><p>Most of what I know transfers as vocabulary, not new ideas. The real learning curve isn't the UI — it's the <em>surrounding</em> platform (the Activity/lifecycle model, permissions, background execution, Gradle), which has no SwiftUI equivalent.</p></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>SwiftUI</th><th>Jetpack Compose</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td><span class="m">@State</span></td><td><span class="m">remember { mutableStateOf() }</span></td><td class="note-cell">Recomposition-scoped local state</td></tr>
+            <tr><td><span class="m">VStack / HStack / ZStack</span></td><td><span class="m">Column / Row / Box</span></td><td class="note-cell">Same three-primitive layout model</td></tr>
+            <tr><td>View modifier chain</td><td><span class="m">Modifier</span> chain</td><td class="note-cell">The closest 1:1 in the whole mapping</td></tr>
+            <tr><td><span class="m">Canvas</span></td><td><span class="m">Canvas</span> / DrawScope</td><td class="note-cell"><code>AuraSky</code> ports concept-for-concept</td></tr>
+            <tr><td><span class="m">Codable</span></td><td><span class="m">kotlinx.serialization</span></td><td class="note-cell">Both compiler-plugin driven, both idiomatic</td></tr>
+            <tr><td>Keychain</td><td>Keystore + EncryptedSharedPreferences</td><td class="note-cell">Same hardware-backed secret store job</td></tr>
+            <tr><td><span class="m">URLSession</span></td><td>Retrofit + OkHttp</td><td class="note-cell">Best-tutorialised HTTP client on Android</td></tr>
+            <tr><td>WidgetKit (Lock Screen)</td><td><strong>Glance</strong> (Home Screen)</td><td class="note-cell">Different OS surface — see scope</td></tr>
+            <tr><td>Swift Package Manager</td><td>Gradle</td><td class="note-cell">Far more config-heavy; budget real learning time</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. FEATURE SCOPE -->
+  <section id="scope">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">02</span><h2>Feature scope — phone only</h2></div>
+      <div class="prose"><p>The whole "Hoy" card stack comes over intact. The only real <em>move</em> is widgets: Android phones have no Lock-Screen-widget surface at all, so that feature relocates to the home screen via Glance. Watch and tablet are out by design.</p></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Surface / feature</th><th>Status</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td>"Hoy" card stack (hero → news)</td><td><span class="pill kept">Kept</span></td><td class="note-cell">The point of the port; every card is a Composable</td></tr>
+            <tr><td>Editorial hero + <code>ForecastPhrase</code> NLG</td><td><span class="pill kept">Kept · ported</span></td><td class="note-cell">Deterministic template engine; seeding needs care</td></tr>
+            <tr><td>Live procedural sky (<code>AuraSky</code>)</td><td><span class="pill kept">Kept · ported</span></td><td class="note-cell">Compose <code>Canvas</code> reproduces gradient/veil/disc</td></tr>
+            <tr><td>Predicción, Ubicaciones, Ajustes</td><td><span class="pill kept">Kept</span></td><td class="note-cell">Key-entry UX &amp; location permission adapted</td></tr>
+            <tr><td>Station temp, avisos, AQI, UV, radar, news</td><td><span class="pill kept">Kept</span></td><td class="note-cell">Same endpoints; watch the MITECO cert</td></tr>
+            <tr><td>Scale sheets (Beaufort/ICA/UV)</td><td><span class="pill kept">Kept</span></td><td class="note-cell"><code>ModalBottomSheet</code>, same content</td></tr>
+            <tr><td>Lock Screen widgets → Home Screen widgets</td><td><span class="pill adapt">Adapted</span></td><td class="note-cell">Built with Glance; a genuine feature move, not 1:1</td></tr>
+            <tr><td>Widget per-location config</td><td><span class="pill adapt">Adapted</span></td><td class="note-cell">Glance config flow; less seamless than App Intents</td></tr>
+            <tr><td>Background refresh cadence</td><td><span class="pill adapt">Re-implemented</span></td><td class="note-cell">WorkManager replaces BGTaskScheduler/timelines</td></tr>
+            <tr><td>Apple Watch app + complication</td><td><span class="pill drop">Dropped</span></td><td class="note-cell">No Wear OS — out of scope</td></tr>
+            <tr><td>iPad / tablet layout</td><td><span class="pill drop">Dropped</span></td><td class="note-cell">Phone only — out of scope</td></tr>
+            <tr><td>WatchConnectivity sync</td><td><span class="pill drop">Dropped</span></td><td class="note-cell">No watch target to sync to</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. ARCHITECTURE -->
+  <section id="arch">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">03</span><h2>Architecture translation</h2></div>
+      <div class="prose"><p>One Kotlin <code>:core</code> module feeds two consumers (app + Glance widget) — the same "compose once, render everywhere" shape, minus the watch. Notably, Android widgets run in the app's own process, so the whole App-Group sandbox dance disappears: one DataStore, read directly by both.</p></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>iOS / AuraKit</th><th>Android equivalent</th><th>Detail</th></tr></thead>
+          <tbody>
+            <tr><td><code>AuraKit</code> package</td><td>Kotlin <code>:core</code> module</td><td class="note-cell">Shared by <code>:app</code> and <code>:widget</code></td></tr>
+            <tr><td><code>WeatherSnapshot</code> + Codable</td><td><span class="m">data class</span> + kotlinx.serialization</td><td class="note-cell">Field-for-field port</td></tr>
+            <tr><td><code>AEMETClient</code> (URLSession)</td><td>Retrofit + OkHttp</td><td class="note-cell">Two-call envelope→<code>datos</code> as suspend fns</td></tr>
+            <tr><td>App-Group cache read by widgets</td><td>DataStore, one process</td><td class="note-cell"><strong>Simpler on Android</strong> — no App-Group concept needed</td></tr>
+            <tr><td><code>SolarTimes</code> (NOAA math)</td><td>Straight port</td><td class="note-cell">Zero conceptual change; test against known values</td></tr>
+            <tr><td><code>ForecastPhrase</code> (seeded NLG)</td><td>Ported + explicit stable seed</td><td class="note-cell"><strong>Gotcha:</strong> don't port Swift <code>Hasher</code> naively — it's randomised per launch. Reproduce the INE+date seed with a stable hash (FNV-1a)</td></tr>
+            <tr><td><code>AuraSky</code> Canvas</td><td>Compose <code>Canvas</code></td><td class="note-cell">Gradients, paths, blend modes all map</td></tr>
+            <tr><td>BGTaskScheduler / timelines</td><td>WorkManager</td><td class="note-cell">The one place Android is <em>stricter</em>, not looser</td></tr>
+            <tr><td>Radar fetch + disk cache</td><td>OkHttp → Bitmap, 10-min TTL</td><td class="note-cell">Coil optional; hand-rolled matches existing logic</td></tr>
+            <tr><td><code>WeatherIcon</code> (SF Symbols)</td><td>Material Symbols or custom art</td><td class="note-cell">SF Symbols don't exist on Android</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. OS SUPPORT + DEVICE -->
+  <section id="os">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">04</span><h2>OS support &amp; test device</h2></div>
+      <div class="cols">
+        <div class="card">
+          <h3><code>minSdk 26</code> · <code>targetSdk 36</code></h3>
+          <p>AndroidX itself raised its floor to API 23 in 2025, so Compose already assumes ≥ Android 6. Going below 26 buys a shrinking, low-value tail of old hardware that's expensive to test. API 26 reaches an estimated <strong>~96–98%</strong> of active devices.</p>
+          <p style="margin-bottom:0;"><code>targetSdk 36</code> from day one: Play requires new apps to target Android 16 by <strong>Aug 31, 2026</strong>. Start there and never think about the deadline.</p>
+        </div>
+        <div class="card">
+          <h3>Buy a used Pixel a-series</h3>
+          <p>A 6a / 7a / 8a, findable well under $200 secondhand: stock Android (matches Google's docs &amp; samples), gets OS versions first, no aggressive OEM battery-killer to fight. New option: Pixel 10a (~$499, 7 years of updates).</p>
+          <p style="margin-bottom:0;">Add a <strong>Samsung A-series</strong> later, only to catch Samsung's aggressive background-kill behaviour before a relative reports "the widget's stuck." Don't buy both up front.</p>
+        </div>
+      </div>
+      <div class="box note">
+        <p class="t">🖥️ Emulator vs real device</p>
+        <p>The bundled emulator covers almost everything — UI iteration, navigation, network, themes, densities, even simulated GPS. A <strong>physical device is essential</strong> for real Doze/battery-kill behaviour (the big one for a weather app), OEM skins, real permission prompts, widget placement gestures, and rehearsing "can my mother sideload this from a link" — fundamentally a real-human test.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. DISTRIBUTION -->
+  <section id="dist">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">05</span><h2>Google Play &amp; distribution — the crux</h2></div>
+      <div class="prose">
+        <p>A Play Developer account is required for <em>any</em> Play track — one <strong>$25 one-time</strong> fee, unlimited apps forever, non-refundable. Personal account (needs a government ID) is the right pick for a hobby project; the organization account (needs a free D-U-N-S number, up to 30 days) is exempt from the catch below but overkill here.</p>
+      </div>
+
+      <div class="box catch">
+        <p class="t">⚠︎ The new-account hurdle to understand precisely</p>
+        <p>Any <strong>personal</strong> account created after <strong>Nov 13, 2023</strong> must, before requesting production access, run a closed test with <strong>at least 12 testers opted in continuously for 14 days</strong>. The clock starts only once the release is approved and all 12 have opted in — drop-outs reset. (It was eased from 20 → 12 on Dec 11, 2024.)</p>
+        <p>This does <strong>not</strong> block internal testing or direct sideload — only full public production. An old pre-2023 personal account, if I have one, is grandfathered out — worth checking the Console before assuming I must clear it.</p>
+      </div>
+
+      <h3>Ranked for non-technical family &amp; friends</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Option</th><th>Ease for them</th><th>Cost to me</th><th>The trade-off</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>(a) Direct signed APK</strong><br><span class="m">sent as a link</span></td>
+              <td>One download + one "install from this source" tap</td>
+              <td><span class="pill eff-s">Free</span></td>
+              <td class="note-cell">No account on their end, works the day I have a build. But the "unknown source" prompt reads scary — a screenshot walkthrough helps — and I resend a link for every update (no auto-update).</td>
+            </tr>
+            <tr>
+              <td><strong>(b) Firebase App Distribution</strong></td>
+              <td>Install a small tester app once, then auto-notified of builds</td>
+              <td><span class="pill eff-s">Free</span></td>
+              <td class="note-cell">No Play account, real beta flow. But one more unfamiliar account/app for a non-technical audience; still an "unknown source" install underneath.</td>
+            </tr>
+            <tr>
+              <td><strong>(c) Play internal testing</strong><br><span class="m">the recommended step-up</span></td>
+              <td>Accept a link, then install via the <strong>real Play Store</strong> — no scary prompt</td>
+              <td><span class="pill eff-m">$25</span></td>
+              <td class="note-cell">Familiar Play flow, up to 100 testers, live in minutes, <strong>not gated by the 12-tester rule</strong>. Testers must accept a web opt-in link first (one fumbly step).</td>
+            </tr>
+            <tr>
+              <td><strong>(d) Full production</strong></td>
+              <td>Normal Play search + silent auto-updates forever</td>
+              <td><span class="pill eff-l">$25 + gate</span></td>
+              <td class="note-cell">Zero friction once live, but needs the full store listing, policy review <em>and</em> clearing the 12×14 closed-test gate first. Overkill for a handful of relatives.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cols" style="margin-top:18px;">
+        <div class="card">
+          <h3>.aab vs .apk</h3>
+          <p>Since Aug 2021, Play requires the <strong>App Bundle (<code>.aab</code>)</strong> upload format — Play's servers slice it into a per-device <code>.apk</code>. This only bites <em>on Play</em>; sideload and Firebase take a plain signed <code>.apk</code> directly.</p>
+        </div>
+        <div class="card">
+          <h3>App signing</h3>
+          <p>Use <strong>Play App Signing</strong>: I hold an <em>upload key</em>, Google custodies the real <em>signing key</em> — losing my upload key is recoverable now (it wasn't in the old model). For anything outside Play I sign with my own key and must never lose it.</p>
+        </div>
+      </div>
+
+      <div class="box note">
+        <p class="t">🕒 Recommended path</p>
+        <p>Start with <strong>(a) direct APK</strong> for the first one or two testers while it's rough — zero setup beyond a signed build. Once a wider family circle wants it day-to-day, move to <strong>(c) Play internal testing</strong>: the $25 buys the familiar "open the Play Store, tap install" flow without ever touching the production gate. Only chase full production if the app should be genuinely public — unlikely for a Spain-specific personal project.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. AEMET KEY -->
+  <section id="key">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">06</span><h2>The AEMET API-key wall</h2></div>
+      <div class="prose"><p>On iOS I'm the only user, so pasting my own free key once is a non-issue. The moment relatives run independent installs, that free-but-fiddly government-portal signup becomes a real onboarding wall that loses non-technical people before the app ever works.</p></div>
+      <div class="cols">
+        <div class="card">
+          <h3>Each user, own key</h3>
+          <p>Matches iOS exactly, no shared-quota risk. <strong>But</strong> it works directly against "easy for family" — the whole wall, per person.</p>
+        </div>
+        <div class="card rec">
+          <span class="badge pick">Recommended · this phase</span>
+          <h3>One shared key I own</h3>
+          <p>Baked in obfuscated (never plaintext, never committed, never printed). Zero friction — install and it just works. I'm the single point of failure if AEMET rate-limits, but the audience is a handful of households and the per-refresh call volume is modest.</p>
+        </div>
+        <div class="card">
+          <h3>A tiny proxy</h3>
+          <p>Real key stays server-side, central control to rate-limit or swap. <strong>But</strong> it reintroduces a backend into an app whose whole philosophy is "no backend, the device is the hub." Revisit only if usage really grows.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. RISKS -->
+  <section id="risks">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">07</span><h2>Risks &amp; gotchas</h2></div>
+      <div class="cols">
+        <div class="card">
+          <h3>MITECO's incomplete cert chain</h3>
+          <p>The server doesn't send a complete chain (iOS needed <code>curl -k</code>). Fix with a narrowly-scoped <strong>Network Security Config</strong> adding the missing anchor for that one host — not a global "trust everything." Confirm the exact missing intermediate first.</p>
+        </div>
+        <div class="card">
+          <h3>Background refresh &amp; Doze</h3>
+          <p>Android kills background work harder than iOS, and OEMs (Samsung especially) pile on their own battery-killers. WorkManager is the right tool, but the 3-hour widget refresh needs real-device testing for silent stalls after idle — the most likely "it's stuck" report.</p>
+        </div>
+        <div class="card">
+          <h3>Spanish NLG parity + locale</h3>
+          <p>Beyond the seed gotcha, force <code>es-ES</code> formatting explicitly (decimal commas, dates) rather than trusting device locale — a relative's phone may be set to another language entirely. The app is Spanish-only regardless.</p>
+        </div>
+        <div class="card">
+          <h3>Location permission</h3>
+          <p>Ask <strong>coarse, foreground-only</strong> (<code>ACCESS_COARSE_LOCATION</code>) — kilometre accuracy is all the nearest-city logic needs. Never request background location: it triggers a separate, scrutinised Play review Aura doesn't need.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. ROADMAP -->
+  <section id="road">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">08</span><h2>Phased roadmap</h2></div>
+      <div class="prose"><p>Relative effort, not a schedule — <span class="pill eff-s">small</span> <span class="pill eff-m">medium</span> <span class="pill eff-l">large</span>.</p></div>
+      <div class="road">
+        <div class="step"><div class="idx">1</div><div class="b"><div class="top"><h3>Setup</h3><span class="pill eff-s">small</span></div><p>Android Studio, Compose empty-activity project at <code>minSdk 26</code>/<code>targetSdk 36</code>, Hello-World on emulator + physical device, <code>:core</code> module skeleton.</p></div></div>
+        <div class="step"><div class="idx">2</div><div class="b"><div class="top"><h3>Core data &amp; logic port</h3><span class="pill eff-l">large — the bulk</span></div><p>Models → kotlinx.serialization; <code>AEMETClient</code> → Retrofit; <code>SolarTimes</code> (lowest risk); <code>ForecastPhrase</code> (seed parity); AQI/UV/wind + MITECO client (cert fix); CAP + RSS parsing. Unit tests against the existing fixtures.</p></div></div>
+        <div class="step"><div class="idx">3</div><div class="b"><div class="top"><h3>UI card stack</h3><span class="pill eff-l">large</span></div><p>Compose equivalents of the <code>Aura*Card</code> suite over a ported <code>AuraSky</code>. Where the SwiftUI→Compose mapping does the most work — expect this to feel the most familiar.</p></div></div>
+        <div class="step"><div class="idx">4</div><div class="b"><div class="top"><h3>Widgets</h3><span class="pill eff-m">medium</span></div><p>Glance home-screen widget(s), DataStore as the shared read path, WorkManager periodic refresh — validated against Doze on the real device. Most likely to surface Android-specific surprises.</p></div></div>
+        <div class="step"><div class="idx">5</div><div class="b"><div class="top"><h3>Distribution</h3><span class="pill eff-s">small effort · waiting cost</span></div><p>Register the account ($25), set up signing, ship a signed APK to myself + a tester, then stand up Play internal testing for the wider circle. Budget calendar time for opt-in flows.</p></div></div>
+        <div class="step"><div class="idx">6</div><div class="b"><div class="top"><h3>Polish</h3><span class="pill eff-m">ongoing</span></div><p>Icon/art parity, locale edge cases, OEM battery-optimization guidance for testers, and closing the feel-gap once real family feedback lands.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. FAQ -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="sec-head"><span class="sec-num">09</span><h2>Quick FAQ</h2></div>
+      <div class="faq">
+        <details open>
+          <summary>Do I need a developer account?</summary>
+          <div class="a"><p>Yes, for any Google Play distribution — even the lightest testing track. Not required at all for direct APK sideload or Firebase App Distribution.</p></div>
+        </details>
+        <details>
+          <summary>Does it cost money? How much?</summary>
+          <div class="a"><p>$25, one time, for the Play Developer account — covers unlimited apps forever, non-refundable. Firebase App Distribution and direct APK sideload are both free.</p></div>
+        </details>
+        <details>
+          <summary>What's the catch for a brand-new personal account?</summary>
+          <div class="a"><p>Before publishing to full production, Play requires a closed test with 12 testers opted in continuously for 14 days, and the clock only starts once the release is approved and all 12 have opted in. It does <em>not</em> block internal testing or direct sideload. Organization accounts and pre-Nov-2023 personal accounts are exempt.</p></div>
+        </details>
+        <details>
+          <summary>What device should I buy?</summary>
+          <div class="a"><p>A used or refurbished Pixel a-series (6a/7a/8a) as the primary — stock Android, cheap, closest to what Google's tooling assumes. Add a Samsung A-series later only to catch aggressive battery-optimization behaviour before a relative hits it.</p></div>
+        </details>
+        <details>
+          <summary>How much OS-version support?</summary>
+          <div class="a"><p><code>minSdk 26</code> (Android 8.0, 2017), reaching an estimated ~96–98% of active devices in 2026, without compatibility baggage for anything older than Compose's own dependencies already assume.</p></div>
+        </details>
+        <details>
+          <summary>How do family and friends actually install it?</summary>
+          <div class="a"><p>Easiest first: a direct signed APK link (one install-permission tap, no account on their end) while the app is rough. Once it's ready for a wider circle, move to Play internal testing so they install it the normal Play-Store way, with no "unknown sources" prompt.</p></div>
+        </details>
+        <details>
+          <summary>What about the AEMET key every user needs?</summary>
+          <div class="a"><p>Ship one shared key I own for this phase rather than making each relative register their own. Revisit toward per-user keys or a proxy only if usage grows meaningfully past a handful of households.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <span>Full source plan: <code>specs/android-port.md</code> (local, gitignored).</span>
+    <span>Aura — personal AEMET weather app for Spain. Android port · phone-only · researched August 2026. Play policy figures shift; re-check when actually distributing.</span>
+  </div>
+</footer>

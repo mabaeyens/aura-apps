@@ -187,14 +187,17 @@ private struct DownTriangle: Shape {
     }
 }
 
-/// One level of a scale: a colour swatch carrying its short label, the level name (with an "Ahora" pill
-/// when it's the current reading), and a line of what it means. The current row is ringed and lifted.
+/// One level of a scale: a colour swatch carrying its short label, the level name (with a "current"
+/// pill when it's the reading in effect), and a line of what it means. The current row is ringed and
+/// lifted. `currentLabel` is the pill text — "Ahora" for live readings (wind, air), but the UV sheet
+/// passes "Máx. hoy" because AEMET's UV is a daily-max forecast, not a live hourly value.
 private struct AuraScaleRow: View {
     let color: Color
     let badge: String
     let name: String
     let detail: String
     let isCurrent: Bool
+    var currentLabel: String = "Ahora"
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -213,7 +216,7 @@ private struct AuraScaleRow: View {
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
                     if isCurrent {
-                        Text("Ahora")
+                        Text(currentLabel)
                             .font(.system(size: 12, weight: .heavy))
                             .foregroundStyle(.black.opacity(0.85))
                             .padding(.horizontal, 7).padding(.vertical, 2)
@@ -508,7 +511,7 @@ public struct AuraUVSheet: View {
     public var body: some View {
         AuraScaleSheet(
             title: "Índice ultravioleta",
-            subtitle: "Ahora: \(uvIndex.value) — \(uvIndex.bandName.lowercased()).",
+            subtitle: "Máximo de hoy: \(uvIndex.value) — \(uvIndex.bandName.lowercased()).",
             footnote: "Índice UV de la OMS: la radiación solar máxima prevista para hoy con cielo despejado. Cuanto más alto, antes se quema la piel. Las nubes lo bajan; la nieve, el agua y la altitud lo suben.",
             barColors: UVBands.bands.map { Palette.uvIndex($0.mid) },
             markerFraction: min(Double(uvIndex.value), 11) / 11,
@@ -520,7 +523,8 @@ public struct AuraUVSheet: View {
                              badge: band.rangeText,
                              name: band.name,
                              detail: band.advice,
-                             isCurrent: band.contains(uvIndex.value))
+                             isCurrent: band.contains(uvIndex.value),
+                             currentLabel: "Máx. hoy")
             }
         }
     }

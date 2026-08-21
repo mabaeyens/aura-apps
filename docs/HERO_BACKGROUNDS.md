@@ -83,9 +83,41 @@ Add one too. Conditions only **dull and veil** the sky; they never add a light s
 - `AuraSky` then draws the image behind the **glow + live sun/moon disc**, skipping its own gradient, veil, stars and scenery. The disc still dims under cloud/rain via `veil`.
 - **Fallback chain:** exact `condition_time` → nearest existing time for the same condition → procedural `AuraSky`. So I can ship art incrementally — a half-full grid still looks right, and shipping zero images costs nothing (it's all procedural until then).
 
-## Future: a second family (cityscape)
+## Cityscape family
 
-I plan a second set of 48 with a **cityscape** instead of the landscape, switchable and persisted (the choice stays until I switch back). Same 8×6 grid, same times/conditions, same sunless rule and calm-top framing — only the scenery changes (flat building skyline, windows that could light at night). Naming gets a family axis (a prefix or folder, e.g. `cityscape/clear_noon`); see `specs/cityscape-background-switch.md`. Keep the horizon line and the text/sun zones identical to the landscape family so switching is seamless.
+The second family of 48 is a **cityscape** instead of the landscape — switchable in Ajustes and persisted (`@AppStorage("heroFamily")`, values `landscape`/`cityscape`, labelled *Paisaje*/*Ciudad*). It's the same 8×6 grid, the same times and conditions, the same sunless rule and calm-top framing; only the scenery changes — a flat, layered building skyline with a low roofline, windows that can warm at night, the same calm water ribbon where the landscape has its river. The two families coexist in one flat asset catalog, so I keep the landscape names bare and give the cityscape a **`city_` prefix** on the otherwise identical `condition_time` token (see `HeroBackground.Family.assetPrefix`). The resolver only ever probes the chosen family's 48 names, and a family with no art for the current sky falls straight to the procedural `AuraSky` — never to the other family — so I can ship the cityscape set incrementally, or before it's finished, at no cost.
+
+### The 48-name grid
+
+Every cell is `city_<condition>_<time>.png`, the same axes as the landscape family:
+
+- **Conditions:** `clear · few_clouds · cloudy · overcast · rainy · stormy · snowy · foggy`
+- **Times:** `dawn · morning · noon · afternoon · dusk · night`
+
+So the filenames run `city_clear_dawn`, `city_clear_morning`, … `city_foggy_night` — e.g. `city_few_clouds_dusk`, `city_rainy_afternoon`, `city_clear_night`. These are exactly `HeroBackground.assetNames(for: .cityscape)`.
+
+### The edge/occlusion constraint — keep the skyline clear of the disc
+
+This is the rule the cityscape adds on top of the shared sunless rule. Aura draws the live sun (by day) and moon (by night) on top of the art at the true solar position, with a soft glow around it. A building must **never rise in front of the disc or its glow** at any of the six light positions — if a tower crosses where the live disc sits, the disc reads as painted onto the building instead of floating in the sky, and the whole illusion breaks. So the skyline has to stay low, or leave a clear gap, around each of these positions (x across the frame, y down from the top):
+
+| Time | Light position | Where to keep the skyline clear |
+|------|----------------|---------------------------------|
+| **dawn** | low-left, ~6% x · ~68% y | leave the lower-left corner open; no tower crossing the left edge low down |
+| **morning** | ~26% x · ~32% y | nothing tall in the left third reaching up past the roofline into the upper-middle |
+| **noon** | ~50% x · ~14% y | the disc sits high and central — the whole skyline is well below it, so this one's naturally safe |
+| **afternoon** | ~74% x · ~32% y | mirror of morning: nothing tall in the right third reaching into the upper-middle |
+| **dusk** | low-right, ~94% x · ~68% y | leave the lower-right corner open; no tower crossing the right edge low down |
+| **night** | moon, ~50% x · ~20% y | high and central, like noon — keep the tallest towers off-centre so they don't spear the moon |
+
+The dawn and dusk positions are the tight ones: the light is low and near the frame edge, exactly where a tall building on that side would sit. Push the tallest towers toward the centre and keep the outer thirds low, so the low corners stay open for the rising and setting disc.
+
+### The veiled-sky honesty rule
+
+Same as the landscape family, and it matters just as much here: under **overcast, rainy, stormy, snowy, foggy** the sky is veiled, so at **every** time — including noon and the golden hours — Aura shows only a soft diffuse glow where the light would be, never a sharp disc (this mirrors `AuraSky.hidesDisc` / `veil`). The art for those five conditions must therefore read genuinely overcast: flat grey, wet, storm-dark, snow-pale or fog-swallowed, with **no** bright break, hotspot, halo or shaft anywhere in the sky. Only `clear`, `few_clouds` and `cloudy` keep a defined live disc, and even those dim and soften as the cloud thickens. The heavy-cloud-beats-bright-time failure mode from the landscape prompts (a vivid time line silently overriding a later cloud line, e.g. `city_stormy_noon` rendering as clear blue) applies identically — demote the time colour to a subordinate tint for overcast and storm.
+
+### Reviewing and dropping the set
+
+`docs/hero-review-cityscape.html` is the cityscape contact sheet — the same 8×6 veil-aware live-hero preview as `docs/hero-review.html`, but reading the `city_*` thumbnails. Once the 48 `hero_asset_creation/output/city_*.png` land, the drop step copies each full-res PNG into `Aura/Assets.xcassets/city_<name>.imageset/` and a 512px-wide copy into `AuraWatch/Assets.xcassets/`, regenerates the thumbnails, and rebuilds that review page. The in-app *Ciudad* switch only appears once at least one `city_*` asset is actually in the bundle, so shipping the switch ahead of the art is safe.
 
 ## Keep it static
 

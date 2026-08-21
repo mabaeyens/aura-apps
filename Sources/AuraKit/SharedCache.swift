@@ -41,6 +41,29 @@ public enum SharedCache {
         write(all)
     }
 
+    /// Trim the cache so it can't grow without bound as favourites come and go. Drops any snapshot
+    /// older than `maxAge`; when `keepINEs` is given, also drops any location no longer in that set
+    /// (a favourite the user removed); then caps the store to the `maxCount` most-recently-updated
+    /// entries as a final safety net. Cheap enough to call on every launch/refresh — it only rewrites
+    /// the file when it actually removed something.
+    public static func prune(keepINEs: Set<String>? = nil,
+                             maxAge: TimeInterval = 30 * 24 * 60 * 60,
+                             maxCount: Int = 24) {
+        let now = Date()
+        var all = read()
+        let before = all.count
+
+        all = all.filter { snapshot in
+            if now.timeIntervalSince(snapshot.updated) >= maxAge { return false }
+            if let keep = keepINEs, !keep.contains(snapshot.ine) { return false }
+            return true
+        }
+        if all.count > maxCount {
+            all = Array(all.sorted { $0.updated > $1.updated }.prefix(maxCount))
+        }
+        if all.count != before { write(all) }
+    }
+
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601

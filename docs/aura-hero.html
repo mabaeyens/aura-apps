@@ -1,0 +1,375 @@
+<meta charset="utf-8">
+<title>Aura's Living Hero</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,900&display=swap">
+
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#eaeef6; --surface:#ffffff; --surface-2:#e2e8f4; --surface-3:#eef2f9;
+  --ink:#1a2130; --ink-soft:#586179; --ink-faint:#8590a6;
+  --line:#d3dbea; --line-soft:#e2e8f4;
+  --accent:#d97814; --accent-2:#c25a2b; --accent-tint:#fbe8cf;
+  --good:#3a9c6d; --warn:#c9871f;
+  --shadow: 0 1px 2px rgba(20,30,60,.06), 0 8px 30px rgba(20,30,60,.09);
+  --shadow-lift: 0 2px 6px rgba(20,30,60,.10), 0 22px 48px rgba(20,30,60,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f131d; --surface:#181d2b; --surface-2:#212739; --surface-3:#1d2333;
+    --ink:#eef1f8; --ink-soft:#a2adc4; --ink-faint:#6d7891;
+    --line:#2b3345; --line-soft:#232a3b;
+    --accent:#ffb347; --accent-2:#ff9e5e; --accent-tint:#39302099;
+    --good:#4fc08a; --warn:#e6b25a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.4);
+    --shadow-lift: 0 3px 8px rgba(0,0,0,.35), 0 26px 56px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f131d; --surface:#181d2b; --surface-2:#212739; --surface-3:#1d2333;
+  --ink:#eef1f8; --ink-soft:#a2adc4; --ink-faint:#6d7891;
+  --line:#2b3345; --line-soft:#232a3b;
+  --accent:#ffb347; --accent-2:#ff9e5e; --accent-tint:#39302099;
+  --good:#4fc08a; --warn:#e6b25a;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 34px rgba(0,0,0,.4);
+  --shadow-lift: 0 3px 8px rgba(0,0,0,.35), 0 26px 56px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  font-optical-sizing:auto; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:clamp(24px,5vw,72px) clamp(20px,5vw,40px)}
+h1,h2,h3{font-family:"Baloo 2", ui-rounded, system-ui, sans-serif; line-height:1.12; text-wrap:balance; margin:0}
+p{margin:0}
+.eyebrow{
+  font-family:"Nunito Sans"; font-weight:700; font-size:.72rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--accent);
+}
+
+/* ---- Masthead ---- */
+.mast{position:relative; padding-bottom:clamp(28px,4vw,44px); margin-bottom:clamp(28px,4vw,44px); border-bottom:1px solid var(--line)}
+.mast h1{font-size:clamp(2.5rem,6vw,4.2rem); font-weight:800; letter-spacing:-.01em; margin:.5rem 0 .4rem}
+.mast .thesis{font-size:clamp(1.08rem,2.3vw,1.4rem); color:var(--ink-soft); max-width:34ch; font-weight:600}
+.mast .sun{
+  position:absolute; top:6px; right:8px; width:74px; height:74px; border-radius:50%;
+  background:radial-gradient(circle at 42% 38%, #fff8e7, #ffd27a 42%, #ff9e3d 74%, #ff8a2e);
+  box-shadow:0 0 0 10px color-mix(in srgb, var(--accent) 16%, transparent), 0 0 46px 12px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+@media(max-width:640px){.mast .sun{width:52px;height:52px}}
+
+/* ---- Prose blocks ---- */
+.lede{font-size:1.12rem; max-width:62ch; color:var(--ink-soft)}
+.lede b{color:var(--ink); font-weight:700}
+section{margin-top:clamp(40px,6vw,80px)}
+.sec-head{display:flex; align-items:baseline; gap:.8rem; margin-bottom:1.4rem; flex-wrap:wrap}
+.sec-head h2{font-size:clamp(1.5rem,3.2vw,2.1rem); font-weight:700; letter-spacing:-.01em}
+.sec-head .n{font-family:"Baloo 2"; font-weight:700; color:var(--accent); font-size:1.1rem}
+
+/* ---- Problem list ---- */
+.flaws{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:6px}
+.flaw{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 18px 16px; box-shadow:var(--shadow)}
+.flaw h3{font-size:1.02rem; font-weight:700; margin-bottom:.3rem}
+.flaw p{font-size:.92rem; color:var(--ink-soft)}
+.flaw .tag{font-size:.72rem; font-weight:700; color:var(--accent); letter-spacing:.04em; text-transform:uppercase}
+
+/* ---- Direction layout ---- */
+.dir{display:grid; grid-template-columns:236px 1fr; gap:clamp(22px,4vw,48px); align-items:start; padding:clamp(22px,3vw,34px); background:var(--surface); border:1px solid var(--line); border-radius:24px; box-shadow:var(--shadow); margin-top:22px}
+.dir.rec{border-color:color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow:var(--shadow-lift)}
+@media(max-width:720px){.dir{grid-template-columns:1fr; justify-items:center}.dir .copy{justify-self:stretch}}
+.dir .copy h3{font-size:1.55rem; font-weight:700; letter-spacing:-.01em; margin-bottom:.1rem}
+.dir .copy .sub{color:var(--accent); font-weight:700; font-size:.86rem; letter-spacing:.02em; margin-bottom:.7rem}
+.dir .copy p{color:var(--ink-soft); font-size:.98rem; max-width:52ch}
+.dir .copy p + p{margin-top:.7rem}
+.rec-badge{display:inline-flex; align-items:center; gap:.4rem; background:var(--accent); color:#1a1204; font-weight:800; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; padding:.3em .7em; border-radius:999px; margin-bottom:.7rem}
+:root[data-theme="dark"] .rec-badge, :root:not([data-theme="light"]) .rec-badge{color:#1a1204}
+
+.pc{margin-top:14px; display:flex; gap:10px; flex-wrap:wrap}
+.pc div{font-size:.86rem; line-height:1.45; flex:1 1 200px}
+.pc .h{font-weight:700; font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; margin-bottom:.2rem}
+.pc .keep .h{color:var(--good)} .pc .cost .h{color:var(--warn)}
+.pc p{color:var(--ink-soft)}
+
+/* ================= PHONE MOCKUP ================= */
+.phone{
+  width:216px; aspect-ratio:216/460; border-radius:36px; position:relative; overflow:hidden;
+  border:6px solid #0c0f16; background:#0c0f16;
+  box-shadow:var(--shadow-lift); flex:0 0 auto;
+}
+.phone .cap{position:absolute; top:0; left:50%; transform:translateX(-50%); width:78px; height:20px; background:#0c0f16; border-radius:0 0 12px 12px; z-index:9}
+.screen{position:absolute; inset:0; border-radius:30px; overflow:hidden}
+
+/* --- sky scenes --- */
+.sky{position:absolute; inset:0}
+.sky.day{background:linear-gradient(#7ea6da 0%, #93a6cf 40%, #b9bcd0 74%, #c8bfca 100%)}
+.sky.dusk{background:linear-gradient(#4b5a97 0%, #7a6ba0 42%, #d38a6f 78%, #f0a566 100%)}
+.sun-disc{position:absolute; width:52px; height:52px; border-radius:50%}
+.sun-disc.day{top:52px; left:50%; transform:translateX(-50%);
+  background:radial-gradient(circle at 42% 38%, #fffdf6, #ffe6a8 46%, #ffc463 78%);
+  box-shadow:0 0 34px 12px rgba(255,214,120,.55)}
+.sun-disc.dusk{top:none; bottom:120px; right:24px; left:auto; transform:none; width:46px;height:46px;
+  background:radial-gradient(circle at 42% 40%, #fff2df, #ffb56b 44%, #ff7a3c 80%);
+  box-shadow:0 0 40px 14px rgba(255,130,70,.5)}
+.mtn{position:absolute; left:0; right:0; bottom:0; height:44%;
+  background:#6f74ab; clip-path:polygon(0 58%,17% 22%,30% 54%,48% 10%,66% 52%,84% 26%,100% 54%,100% 100%,0 100%); opacity:.92}
+.sky.dusk .mtn{background:#4a4374}
+.hills{position:absolute; left:-6%; right:-6%; bottom:0; height:20%; background:#274a8a; border-radius:46% 54% 0 0/100% 100% 0 0}
+.sky.dusk .hills{background:#2a2450}
+.river{position:absolute; left:0; right:0; bottom:0; height:7%; background:linear-gradient(#c6d0e6,#9fb0d4); opacity:.7}
+.sky.dusk .river{background:linear-gradient(#f0b98e,#c98a6f); opacity:.6}
+.tree{position:absolute; bottom:6%; right:26px; width:30px; height:34px; background:#2f7d55; border-radius:50% 50% 46% 46%}
+.sky.dusk .tree{background:#243c4a}
+.tree::after{content:""; position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); width:5px; height:12px; background:#3a4a52; border-radius:2px}
+
+/* --- glass card used by some mockups --- */
+.g-card{position:absolute; background:rgba(28,34,52,.42); backdrop-filter:blur(9px) saturate(1.2); -webkit-backdrop-filter:blur(9px) saturate(1.2); border:1px solid rgba(255,255,255,.12); border-radius:18px}
+.mock-label{position:absolute; left:50%; transform:translateX(-50%); bottom:10px; font-family:"Nunito Sans"; font-weight:700; font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.72); background:rgba(10,14,22,.5); padding:.25em .7em; border-radius:999px; backdrop-filter:blur(4px); z-index:8}
+
+/* text helpers inside mock */
+.m{position:absolute; color:#fff; font-family:"Nunito Sans"; z-index:5}
+.m.rnd, .temp{font-family:"Baloo 2"}
+.loc{font-weight:700; font-size:.72rem; letter-spacing:.02em}
+.temp{font-weight:700; line-height:.9}
+.cond{font-weight:600; font-size:.74rem; opacity:.92}
+.mm{font-weight:700; font-size:.66rem}
+.chiprow{display:flex; gap:8px; align-items:center; font-weight:700; font-size:.62rem; color:rgba(255,255,255,.9)}
+.chiprow span{display:inline-flex; gap:3px; align-items:center}
+.dot{opacity:.5}
+
+/* BEFORE mock — the current frosted data panel */
+.b-card{top:16px; left:14px; right:14px; padding:13px 14px}
+.b-top{display:flex; justify-content:space-between}
+.b-ico{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 40% 38%,#fff,#ffd35e 60%,#ffab2e)}
+.b-metrics{margin-top:11px; display:flex; flex-direction:column; gap:6px; color:rgba(255,255,255,.85); font-weight:700; font-size:.6rem}
+.mini-card{position:absolute; left:14px; right:14px; height:52px; border-radius:16px; background:rgba(28,34,52,.34); border:1px solid rgba(255,255,255,.1)}
+
+/* editorial scrim for immersive direction */
+.scrim{position:absolute; inset:0 0 auto 0; height:62%; background:linear-gradient(rgba(8,14,30,.34),rgba(8,14,30,0)); z-index:2}
+.scrim.bottom{inset:auto 0 0 0; height:34%; background:linear-gradient(rgba(8,14,30,0),rgba(8,14,30,.42))}
+
+/* ---- recommendation & code ---- */
+.rec-why{background:linear-gradient(135deg, color-mix(in srgb,var(--accent) 12%, var(--surface)), var(--surface)); border:1px solid color-mix(in srgb,var(--accent) 30%, var(--line)); border-radius:22px; padding:clamp(22px,3vw,32px); margin-top:6px}
+.rec-why p{max-width:64ch; color:var(--ink-soft); font-size:1.02rem}
+.rec-why p b{color:var(--ink)}
+.map{width:100%; border-collapse:collapse; margin-top:12px; font-size:.92rem}
+.map th,.map td{text-align:left; padding:11px 12px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+.map th{font-weight:700; color:var(--ink-faint); font-size:.74rem; letter-spacing:.06em; text-transform:uppercase}
+.map td:first-child{font-family:"Baloo 2"; font-weight:600; color:var(--ink); white-space:nowrap}
+.map code{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.84em; background:var(--surface-2); padding:.12em .4em; border-radius:5px; color:var(--accent-2)}
+.map-wrap{overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:4px 8px; box-shadow:var(--shadow); margin-top:14px}
+
+footer{margin-top:clamp(48px,7vw,90px); padding-top:22px; border-top:1px solid var(--line); color:var(--ink-faint); font-size:.86rem; display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap}
+
+.toggle{position:fixed; top:14px; right:14px; z-index:50; background:var(--surface); border:1px solid var(--line); color:var(--ink-soft); border-radius:999px; padding:.5em .9em; font:inherit; font-size:.8rem; font-weight:700; cursor:pointer; box-shadow:var(--shadow)}
+.toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<button class="toggle" id="tg" aria-label="Switch theme">◐ Theme</button>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="sun" aria-hidden="true"></div>
+    <div class="eyebrow">Aura · hero study</div>
+    <h1>The hero should be the sky, not a panel on it</h1>
+    <p class="thesis">You built a living sky. The hero card covers its best part with a data table. Here's how to let the life through.</p>
+  </header>
+
+  <p class="lede">The Phase-F sun disc gave the background genuine life — light that sits where the sun really is, warming from dawn to a gold noon to an orange dusk. But the <b>hero</b> is still a frosted rectangle of numbers pinned over the top of that scene: it reads as a <b>dashboard widget</b>, not as today's weather. The fix isn't more data or a bigger icon — it's changing the hero's <b>relationship to the sky</b>. Three directions, then a recommendation, all built to keep the static-render / no-animation battery rule from Phase&nbsp;G.</p>
+
+  <!-- THE READ -->
+  <section>
+    <div class="sec-head"><span class="n">01</span><h2>Why the current hero reads flat</h2></div>
+    <div class="dir" style="box-shadow:var(--shadow)">
+      <div class="phone" role="img" aria-label="Current Aura hero: a frosted data card over the sky">
+        <div class="cap"></div>
+        <div class="screen">
+          <div class="sky day">
+            <div class="sun-disc day" style="top:38px"></div>
+            <div class="mtn"></div><div class="hills"></div><div class="river"></div><div class="tree"></div>
+          </div>
+          <div class="g-card b-card">
+            <div class="b-top">
+              <div>
+                <div class="m loc" style="position:static">Madrid</div>
+                <div class="temp" style="position:static; font-size:2.3rem; margin:1px 0">29°</div>
+                <div class="cond" style="position:static">Despejado</div>
+              </div>
+              <div style="text-align:right">
+                <div class="b-ico"></div>
+                <div class="mm" style="color:#ff8a52; margin-top:14px">Máx 34°</div>
+                <div class="mm" style="color:#7fd0ff">Mín 18°</div>
+              </div>
+            </div>
+            <div class="b-metrics">
+              <div>≈ 25 km/h SO</div>
+              <div style="display:flex;gap:12px"><span style="color:#6fd0e0">◍ 42%</span><span style="color:#8fb4ff">☂ 15%</span></div>
+            </div>
+          </div>
+          <div class="mock-label">Now — frosted data panel</div>
+        </div>
+      </div>
+      <div class="copy">
+        <h3>It's competent. That's the problem.</h3>
+        <p>Every number is legible and nothing truncates — but the card is doing the job of a spreadsheet cell, and it sits <em>on</em> the sky rather than belonging to it. Four things drain the life:</p>
+        <div class="flaws" style="margin-top:16px">
+          <div class="flaw"><div class="tag">Occlusion</div><h3>It hides the best pixels</h3><p>The sun and sky peak at the top of the screen — exactly where the opaque card lands. The living element is covered by the static one.</p></div>
+          <div class="flaw"><div class="tag">Told, not shown</div><h3>Weather as a word</h3><p>“Despejado” + a stock SF Symbol. A generic multicolor glyph fights the custom flat-vector language of your sky.</p></div>
+          <div class="flaw"><div class="tag">Flat hierarchy</div><h3>One voice, one weight</h3><p>Location, condition, wind, humidity all sit at a similar size and weight. Only the temperature is loud; nothing else breathes.</p></div>
+          <div class="flaw"><div class="tag">Container</div><h3>A box, not a scene</h3><p>The frosted rectangle frames the data like a widget. The reference apps you shared feel immersive because the top of the screen <em>is</em> the weather.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIRECTIONS -->
+  <section>
+    <div class="sec-head"><span class="n">02</span><h2>Three directions</h2></div>
+
+    <!-- A -->
+    <div class="dir">
+      <div class="phone" role="img" aria-label="Direction A: immersive hero, temperature floating on the sky, no card">
+        <div class="cap"></div>
+        <div class="screen">
+          <div class="sky dusk">
+            <div class="sun-disc dusk"></div>
+            <div class="mtn"></div><div class="hills"></div><div class="river"></div><div class="tree"></div>
+          </div>
+          <div class="scrim"></div><div class="scrim bottom"></div>
+          <div class="m loc" style="top:26px; left:0; right:0; text-align:center">MADRID</div>
+          <div class="temp" style="position:absolute; top:38px; left:0; right:0; text-align:center; font-size:4.6rem; z-index:5; text-shadow:0 2px 20px rgba(0,0,0,.35)">29°</div>
+          <div class="cond" style="top:132px; left:0; right:0; text-align:center; font-size:.82rem">Despejado · se nubla al atardecer</div>
+          <div class="chiprow" style="position:absolute; bottom:16px; left:0; right:0; justify-content:center; z-index:5">
+            <span style="color:#ff8a52">↑34°</span><span class="dot">·</span><span style="color:#9fd6ff">↓18°</span><span class="dot">·</span><span>≈25</span><span class="dot">·</span><span>◍42%</span>
+          </div>
+          <div class="mock-label">A — Immersive</div>
+        </div>
+      </div>
+      <div class="copy">
+        <div class="sub">A · Dissolve the card</div>
+        <h3>Let the sky be the hero</h3>
+        <p>Remove the top card entirely. The location becomes a quiet eyebrow, the temperature floats huge and directly on the scene, and the sun disc is the actual focal element beside it. A soft top-and-bottom scrim (gradient, not a box) buys legibility without walls. Máx/Mín and the metrics condense to one unobtrusive line at the base of the sky.</p>
+        <p>This is the biggest single gain in “life,” and it's the closest to the CARROT / AEMET references — the weather stops being reported and starts being <em>present</em>.</p>
+        <div class="pc">
+          <div class="keep"><div class="h">Wins</div><p>Maximum atmosphere; the sun does real work; time-of-day drama is felt, not framed.</p></div>
+          <div class="cost"><div class="h">Costs</div><p>Legibility over a bright noon sky needs a careful adaptive scrim; the data still has to live <em>somewhere</em> below.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="dir">
+      <div class="phone" role="img" aria-label="Direction B: a card with a large illustrated weather scene inside it">
+        <div class="cap"></div>
+        <div class="screen">
+          <div class="sky day">
+            <div class="sun-disc day" style="top:44px"></div>
+            <div class="mtn"></div><div class="hills"></div><div class="river"></div><div class="tree"></div>
+          </div>
+          <div class="g-card" style="top:16px; left:14px; right:14px; height:196px; overflow:hidden">
+            <!-- illustrated depiction inside the card -->
+            <div style="position:absolute; inset:0; background:linear-gradient(160deg,#3b6ea8,#294f86)"></div>
+            <div style="position:absolute; top:22px; right:26px; width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 42% 38%,#fffdf4,#ffe08a 48%,#ffb54a);box-shadow:0 0 30px 10px rgba(255,205,110,.6)"></div>
+            <div style="position:absolute; top:60px; right:60px; width:52px;height:20px;background:#eef3fb;border-radius:20px;box-shadow:18px 6px 0 -3px #dbe6f5"></div>
+            <div class="m loc" style="position:absolute; top:16px; left:16px">Madrid</div>
+            <div class="temp" style="position:absolute; top:88px; left:14px; font-size:3.2rem; z-index:5">29°</div>
+            <div class="cond" style="position:absolute; top:150px; left:16px">Despejado</div>
+            <div class="mm" style="position:absolute; top:150px; right:16px; color:#ffd7b0">34° / 18°</div>
+          </div>
+          <div class="g-card" style="top:222px; left:14px; right:14px; height:44px"></div>
+          <div class="mock-label">B — Illustrated card</div>
+        </div>
+      </div>
+      <div class="copy">
+        <div class="sub">B · Weather in the window</div>
+        <h3>Keep a card, make it a scene</h3>
+        <p>Retain the safety of a card, but throw out the tiny SF Symbol. Fill the card's right side with a <em>large custom illustration</em> in the same flat-vector language as the sky — a sun with soft rays, drifting clouds, rain streaks, a moon and stars — driven by the current condition. The card becomes a little window onto today, not a data grid.</p>
+        <p>Lowest risk: legibility is never in question because the card owns its own background. It's the smallest leap from what ships today.</p>
+        <div class="pc">
+          <div class="keep"><div class="h">Wins</div><p>Guaranteed contrast; a distinctive illustrated identity; reuses your existing scene vocabulary.</p></div>
+          <div class="cost"><div class="h">Costs</div><p>Still a box on the sky — the occlusion problem remains; you now maintain two weather scenes (card + sky).</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="dir rec">
+      <div class="phone" role="img" aria-label="Direction C: editorial hero with a huge temperature and a human sentence">
+        <div class="cap"></div>
+        <div class="screen">
+          <div class="sky day">
+            <div class="sun-disc day" style="top:40px; left:auto; right:26px; transform:none"></div>
+            <div class="mtn"></div><div class="hills"></div><div class="river"></div><div class="tree"></div>
+          </div>
+          <div class="scrim"></div>
+          <div class="m loc" style="top:24px; left:16px; font-size:.74rem; letter-spacing:.14em">MADRID · 13:30</div>
+          <div class="temp" style="position:absolute; top:36px; left:13px; font-size:5rem; z-index:5; text-shadow:0 2px 18px rgba(0,0,0,.3)">29°</div>
+          <div class="m rnd" style="top:150px; left:16px; right:70px; font-weight:700; font-size:.92rem; line-height:1.25; z-index:5">Caluroso y despejado; se nubla al caer la tarde.</div>
+          <!-- one condensed glass strip for the numbers -->
+          <div class="g-card" style="bottom:14px; left:14px; right:14px; height:46px"></div>
+          <div class="chiprow" style="position:absolute; bottom:30px; left:26px; right:26px; justify-content:space-between; z-index:6; font-size:.66rem">
+            <span style="color:#ff8a52">↑34°</span><span style="color:#9fd6ff">↓18°</span><span>≈25 SO</span><span style="color:#6fd0e0">◍42%</span><span style="color:#9fb4ff">☂15%</span>
+          </div>
+          <div class="mock-label">C — Editorial</div>
+        </div>
+      </div>
+      <div class="copy">
+        <div class="rec-badge">★ Recommended — A + C</div>
+        <div class="sub">C · Say something human</div>
+        <h3>Confidence through type &amp; a sentence</h3>
+        <p>Dramatize the hierarchy: an enormous temperature, the place and time as a hairline eyebrow, and — the real move — a <em>human one-line summary</em> derived from the forecast (“Caluroso y despejado; se nubla al caer la tarde”). The numbers retreat into a single condensed glass strip at the base. Life comes from a confident voice, not more widgets.</p>
+        <p><b>My recommendation is A married to C:</b> dissolve the card (A) so the sky and sun carry the top, and float an editorial temperature + human sentence (C) over an adaptive scrim, with one thin glass strip holding Máx/Mín/wind/humidity. It keeps every current data point, removes the occluding box, and turns the sun disc into the hero it was built to be.</p>
+        <div class="pc">
+          <div class="keep"><div class="h">Wins</div><p>Immersive <em>and</em> legible; a memorable voice; the whole scene reads at a glance before any number.</p></div>
+          <div class="cost"><div class="h">Costs</div><p>The summary sentence needs a small rules engine mapping AEMET fields → phrasing; the scrim must adapt to sky brightness.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT CHANGES -->
+  <section>
+    <div class="sec-head"><span class="n">03</span><h2>What it takes in code</h2></div>
+    <div class="rec-why">
+      <p>All three stay inside the Phase-G rule — <b>static per render, no timers or animation</b>. The recommended A+C is mostly a rework of <b>one view</b> plus a small text helper; the sky, cards, and data model are untouched.</p>
+      <div class="map-wrap">
+        <table class="map">
+          <thead><tr><th>Piece</th><th>Where</th><th>Change</th></tr></thead>
+          <tbody>
+            <tr><td>Dissolve the box</td><td><code>AuraHeroCard</code></td><td>Drop the <code>AuraCard</code> wrapper for the top block; lay temperature + eyebrow directly over the sky.</td></tr>
+            <tr><td>Legibility scrim</td><td><code>AuraSky</code> / hero</td><td>A top gradient scrim whose opacity rises with sky brightness (tie to <code>veil</code> + <code>altitude</code>) — not a card.</td></tr>
+            <tr><td>Human sentence</td><td>new <code>ForecastPhrase</code></td><td>Pure function: sky code + max/min + wind + change-through-day → one Spanish line. Testable, no network.</td></tr>
+            <tr><td>Condensed metrics</td><td><code>AuraHeroCard</code></td><td>Máx/Mín/wind/humidity/precip into one thin glass strip at the base of the hero.</td></tr>
+            <tr><td>Retire the glyph</td><td><code>WeatherIcon</code></td><td>Optional: replace the SF Symbol with a small flat-vector depiction (shared with B's vocabulary) or drop it.</td></tr>
+            <tr><td>Watch</td><td>shared stack</td><td>Same treatment, resized — the eyebrow+temp+strip scales down cleanly; no separate path.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Aura — hero direction study · mockups are CSS approximations of the SwiftUI scene</span>
+    <span>Phases A–G shipped · this is the item-6 “lifelier hero” exploration</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('tg'), root=document.documentElement;
+  function cur(){ if(root.hasAttribute('data-theme')) return root.getAttribute('data-theme');
+    return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; }
+  btn.addEventListener('click', function(){
+    var next = cur()==='dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('aura-hero-theme', next); }catch(e){}
+  });
+  try{ var s=localStorage.getItem('aura-hero-theme'); if(s) root.setAttribute('data-theme', s); }catch(e){}
+})();
+</script>

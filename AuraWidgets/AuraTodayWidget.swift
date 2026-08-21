@@ -57,6 +57,49 @@ struct AuraTodayWidget: Widget {
     }
 }
 
+/// Aura's Lock Screen rain glance — the current hour's precipitation probability as a ring.
+/// Circular only; configurable to a saved location like the main widget.
+struct AuraRainWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "AuraRainWidget",
+                               intent: SelectLocationIntent.self,
+                               provider: AuraProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraRainCircular(snapshot: snapshot)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Lluvia")
+        .description("La probabilidad de precipitación de la hora actual.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+/// Aura's Lock Screen UV glance — the day's maximum UV index as a ring. Circular only.
+struct AuraUVWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "AuraUVWidget",
+                               intent: SelectLocationIntent.self,
+                               provider: AuraProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraUVCircular(snapshot: snapshot)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("UV máximo")
+        .description("El índice UV máximo del día (cielo despejado).")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
 /// Picks the Lock Screen layout, or an invitation to open the app when nothing is cached yet.
 struct AuraTodayEntryView: View {
     @Environment(\.widgetFamily) private var family

@@ -7,5 +7,7 @@ import WidgetKit
 struct AuraWidgetBundle: WidgetBundle {
     var body: some Widget {
         AuraTodayWidget()
+        AuraRainWidget()
+        AuraUVWidget()
     }
 }

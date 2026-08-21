@@ -100,6 +100,16 @@ public struct AuraSky: View {
                                   : Color(red: 0.60, green: 0.65, blue: 0.72)).opacity(veil * 0.5)
                 }
 
+                // 2.5 — night dim: a subtle darkening so night reads as night, not dusk. Deepest at the
+                // middle of the night (when the moon rides highest) and gentle toward dawn and dusk. It
+                // sits *under* the moon glow (step 3), so the moonlit pool still lifts back out of it. I
+                // keep it light and let it fall on the hero art too — I paid for the art to be seen, so
+                // this only takes the daylit edge off; it never crushes the scene to black.
+                if path.isNight {
+                    let nightDim = 0.10 + path.altitude * 0.12       // ~0.10 at the edges → ~0.22 at midnight
+                    Color(red: 0.02, green: 0.03, blue: 0.09).opacity(nightDim)
+                }
+
                 // 3 — the light: a warm (or cool, at night) glow centred exactly where the sun/moon is.
                 // Day glow eases off as the sun climbs, so the gold doesn't overpower the blue at noon
                 // (which read as a green cast); it stays strong low on the horizon at dawn/dusk.
@@ -120,8 +130,11 @@ public struct AuraSky: View {
                 let occlusion = veil
                 let discR = min(size.width, size.height) * 0.075
                 let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
-                let discAlpha = (path.isNight ? 0.90 : 1.0) * (1 - occlusion * 0.85)
-                let discBlur = discR * (0.05 + occlusion * 0.9)         // sharp when clear, swollen under cloud
+                // The moon reads as reflected moonlight, not a second sun: markedly dimmer than the day
+                // disc and drawn with a soft base blur even on the clearest night, so its edge stays a
+                // gentle pale coin rather than a hard, sun-bright point.
+                let discAlpha = (path.isNight ? 0.62 : 1.0) * (1 - occlusion * 0.85)
+                let discBlur = discR * ((path.isNight ? 0.14 : 0.05) + occlusion * 0.9)  // sharp when clear, swollen under cloud; softer for the moon
                 // Overcast, rain, storm, snow and fog never resolve into a disc you can point at — at any
                 // hour, sun or moon. The warm glow (step 3) still bleeds through the deck, but the defined
                 // core and its corona are dropped entirely; only clear/few-clouds/cloudy keep a real ball.
@@ -129,11 +142,17 @@ public struct AuraSky: View {
                     let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
                     let centre = CGPoint(x: path.point.x * size.width, y: path.point.y * size.height)
                     // Corona — a wide soft halo around the disc; fades and tightens as the disc is occluded.
+                    // At night I let the halo do the work the hard core no longer does: a touch wider and
+                    // held up in its own right, so the moon reads as a soft pool of light against the darker
+                    // sky rather than a dim dot. Drawn `.normal` at night (screen would over-brighten the
+                    // dark), `.screen` by day.
                     let coronaR = discR * (1 - occlusion * 0.2)
+                    let coronaAlpha = (path.isNight ? 0.60 : 0.55) * discAlpha
+                    let coronaSpread: CGFloat = path.isNight ? 3.4 : 3.2
                     Circle()
-                        .fill(RadialGradient(colors: [disc.glow.opacity(0.55 * discAlpha), disc.glow.opacity(0)],
-                                             center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * 3.2))
-                        .frame(width: coronaR * 6.4, height: coronaR * 6.4)
+                        .fill(RadialGradient(colors: [disc.glow.opacity(coronaAlpha), disc.glow.opacity(0)],
+                                             center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * coronaSpread))
+                        .frame(width: coronaR * coronaSpread * 2, height: coronaR * coronaSpread * 2)
                         .position(centre)
                         .blendMode(path.isNight ? .normal : .screen)
                     // The disc — bright core to warm rim, lit slightly off-centre for depth.
@@ -216,8 +235,10 @@ public struct AuraSky: View {
     private static func discColors(isNight: Bool, altitude: Double, glow: Color)
         -> (core: Color, rim: Color, glow: Color) {
         if isNight {
-            return (core: RGB(r: 0.96, g: 0.97, b: 1.00).color,
-                    rim:  RGB(r: 0.80, g: 0.84, b: 0.98).color,
+            // A pale, cool silver — the core is deliberately held back off pure white so the moon reads
+            // as reflected light, and the rim/glow stay a faint blue.
+            return (core: RGB(r: 0.90, g: 0.92, b: 0.99).color,
+                    rim:  RGB(r: 0.78, g: 0.82, b: 0.97).color,
                     glow: RGB(r: 0.76, g: 0.80, b: 0.96).color)
         }
         let rimHorizon = RGB(r: 1.00, g: 0.55, b: 0.28)   // low sun — orange rim

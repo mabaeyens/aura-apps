@@ -30,6 +30,11 @@ enum AEMETService {
     }
 
     private static func performRefresh(_ locations: [Location], force: Bool) async -> String? {
+        // Drop cached snapshots for locations the user no longer tracks (and any long-stale leftover)
+        // so the App Group cache stays bounded. Runs before the early-outs below so removed favourites
+        // are cleaned up even when nothing needs fetching.
+        SharedCache.prune(keepINEs: Set(locations.map(\.ine)))
+
         guard let client = client() else { return nil }
         var firstError: String?
         func note(_ error: Error) { if firstError == nil { firstError = message(for: error) } }
