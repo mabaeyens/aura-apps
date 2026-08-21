@@ -52,10 +52,17 @@ public struct AuraSunPath: Sendable {
 public struct AuraSky: View {
     private let snapshot: WeatherSnapshot?
     private let now: Date
+    /// An optional **sunless** hero image that sits behind the live sun/moon. When set, it replaces the
+    /// procedural gradient, veil, stars and scenery (the art carries the sky colour and the landscape);
+    /// the glow and the sun/moon disc are still drawn on top at the true position. Nil → fully procedural.
+    /// The app resolves this via `HeroBackground` and its bundle; `AuraKit` stays agnostic about where the
+    /// image comes from.
+    private let heroImage: Image?
 
-    public init(snapshot: WeatherSnapshot?, now: Date = Date()) {
+    public init(snapshot: WeatherSnapshot?, now: Date = Date(), heroImage: Image? = nil) {
         self.snapshot = snapshot
         self.now = now
+        self.heroImage = heroImage
     }
 
     public var body: some View {
@@ -69,13 +76,22 @@ public struct AuraSky: View {
         GeometryReader { geo in
             let size = geo.size
             ZStack {
-                // 1 — the sky itself: a top-to-bottom gradient that tracks the hour.
-                LinearGradient(colors: [base.top, base.bottom], startPoint: .top, endPoint: .bottom)
+                // 1 — the sky itself. Either the sunless hero image (which carries the sky colour and the
+                // landscape), or the procedural top-to-bottom gradient that tracks the hour.
+                if let heroImage {
+                    heroImage.resizable().scaledToFill()
+                        .frame(width: size.width, height: size.height).clipped()
+                } else {
+                    LinearGradient(colors: [base.top, base.bottom], startPoint: .top, endPoint: .bottom)
+                }
 
                 // 2 — the cloud veil: a soft, slightly cool scrim that greys the sky as it clouds over.
-                // A neutral-cool grey (not warm) keeps an overcast noon from reading muddy/brown.
-                (path.isNight ? Color(white: 0.12)
-                              : Color(red: 0.60, green: 0.65, blue: 0.72)).opacity(veil * 0.5)
+                // A neutral-cool grey (not warm) keeps an overcast noon from reading muddy/brown. Skipped
+                // over an image — the art already carries its own condition.
+                if heroImage == nil {
+                    (path.isNight ? Color(white: 0.12)
+                                  : Color(red: 0.60, green: 0.65, blue: 0.72)).opacity(veil * 0.5)
+                }
 
                 // 3 — the light: a warm (or cool, at night) glow centred exactly where the sun/moon is.
                 // Day glow eases off as the sun climbs, so the gold doesn't overpower the blue at noon
@@ -113,18 +129,20 @@ public struct AuraSky: View {
                         .blur(radius: discR * 0.05)
                 }
 
-                // 4 — stars, night only.
-                if path.isNight {
+                // 4 — stars, night only. Skipped over an image (the art carries its own).
+                if heroImage == nil, path.isNight {
                     Canvas { ctx, sz in Self.drawStars(&ctx, size: sz) }
                         .opacity(1 - veil * 0.8)
                 }
 
                 // 5 — the flat vector scenery along the horizon: mountain, hills, sun-lit river, a tree
-                // whose shadow leans away from the sun.
-                Canvas { ctx, sz in
-                    Self.drawScenery(&ctx, size: sz, colors: scene, sunX: path.point.x)
+                // whose shadow leans away from the sun. Skipped over an image (the art has its landscape).
+                if heroImage == nil {
+                    Canvas { ctx, sz in
+                        Self.drawScenery(&ctx, size: sz, colors: scene, sunX: path.point.x)
+                    }
+                    .allowsHitTesting(false)
                 }
-                .allowsHitTesting(false)
             }
         }
         .ignoresSafeArea()

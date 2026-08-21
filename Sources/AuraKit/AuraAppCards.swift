@@ -138,77 +138,40 @@ public struct AuraHeroCard: View {
     }
 
     public var body: some View {
-        AuraCard(size: size) {
-            VStack(alignment: .leading, spacing: size == .phone ? 12 : 6) {
-                // Top: temperature + condition on the left, a big condition icon and today's range on
-                // the right, so the card fills its width instead of leaving the right half blank.
-                HStack(alignment: .top, spacing: size == .phone ? 12 : 6) {
-                    VStack(alignment: .leading, spacing: size == .phone ? 2 : 1) {
-                        Text(snapshot.localidad)
-                            .font(.system(size: size.bodySize, weight: .semibold))
-                            .foregroundStyle(.white).lineLimit(1)
-                        Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
-                            .font(.system(size: size.heroTemp, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                        if let sky = snapshot.currentSkyText {
-                            Text(sky)
-                                .font(.system(size: size.bodySize, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.9)).lineLimit(2)
-                        }
-                    }
-                    .layoutPriority(1)   // the temperature keeps its width; the range column yields first
-                    Spacer(minLength: 4)
-                    // Icon pinned to the top, Máx/Mín pushed to the bottom, so the right column spans the
-                    // full height of the tall temperature instead of clustering up top and leaving a gap.
-                    VStack(alignment: .trailing, spacing: size == .phone ? 6 : 3) {
-                        Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky,
-                                                             isNight: snapshot.isNight(at: now)))
-                            .symbolRenderingMode(.multicolor)
-                            .font(.system(size: size.heroIcon))
-                        // On the wide phone hero, push the range to the bottom so the column spans the
-                        // full height of the tall temperature. The narrow Watch keeps them clustered.
-                        if size == .phone { Spacer(minLength: 8) }
-                        Text("Máx \(fmt(snapshot.tempMax))").foregroundStyle(Palette.temperature(snapshot.tempMax))
-                        Text("Mín \(fmt(snapshot.tempMin))").foregroundStyle(Palette.temperature(snapshot.tempMin))
-                    }
-                    .font(.system(size: size.bodySize + 2, weight: .semibold))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .frame(maxHeight: size == .phone ? .infinity : nil, alignment: .top)
-                }
-
-                // Wind gets its own full-width row so the speed *and* direction always fit; humidity and
-                // rain share the row beneath, each taking half the width so nothing crowds or truncates.
-                VStack(alignment: .leading, spacing: size == .phone ? 8 : 4) {
-                    if let wind = snapshot.windSpeed {
-                        metric("wind", "\(wind) km/h\(snapshot.windDirection.map { " " + $0.abbreviation } ?? "")",
-                               .white.opacity(0.9))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    HStack(spacing: size == .phone ? 12 : 6) {
-                        if let h = snapshot.currentHumidity {
-                            metric("humidity.fill", "\(h)%", Palette.tempTeal)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        if let p = snapshot.currentPrecipProb, p > 0 {
-                            metric("umbrella.fill", "\(p)%", auraPrecipColor)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                }
+        // Dissolved hero: no frosted card. The sky — and the sun/moon disc `AuraSky` draws at the true
+        // position — carries the top of the screen; over it float only the editorial temperature and two
+        // lines of prose (a human headline, then Máx/Mín · viento · humedad · lluvia folded into a
+        // sentence by `ForecastPhrase`). Text aligns with the cards below via the same horizontal inset.
+        VStack(alignment: .leading, spacing: size == .phone ? 6 : 3) {
+            Text(snapshot.localidad)
                 .font(.system(size: size.bodySize, weight: .semibold))
-            }
-        }
-    }
+                .tracking(0.5)
+                .foregroundStyle(.white).lineLimit(1)
 
-    private func metric(_ icon: String, _ text: String, _ tint: Color) -> some View {
-        HStack(spacing: 5) { Image(systemName: icon); Text(text) }.foregroundStyle(tint)
+            Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
+                .font(.system(size: size.heroTemp, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1).minimumScaleFactor(0.6)
+
+            Text(ForecastPhrase.headline(for: snapshot, now: now))
+                .font(.system(size: size.bodySize, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(2).minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(ForecastPhrase.dataline(for: snapshot, now: now))
+                .font(.system(size: size.bodySize - (size == .phone ? 4 : 3), weight: .regular))
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(size == .phone ? 3 : 4).minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, size.cardPadding)
+        .padding(.top, size == .phone ? 6 : 3)
+        // A soft dark halo behind the glyphs keeps white text legible over a bright noon sky, without
+        // reintroducing a panel. Tunable; the sky's own scrim does the rest.
+        .shadow(color: .black.opacity(0.35), radius: size == .phone ? 9 : 6, y: 1)
     }
-    private func fmt(_ v: Int?) -> String { v.map { "\($0)°" } ?? "—" }
 }
 
 // MARK: - Hourly
@@ -231,7 +194,9 @@ public struct AuraHourlyCard: View {
     /// there's no rain anywhere in the strip the precip row is dropped and the card shrinks to match, so
     /// a dry day doesn't reserve an empty band.
     private var contentHeight: CGFloat {
-        let rows: CGFloat = size == .phone ? 100 : 66      // hour + icon + degree
+        // The row stack (hour + icon + degree) is ~71pt tall on the Watch; give it a bit more than
+        // that so the temperature row breathes above the card's bottom edge instead of sitting flush.
+        let rows: CGFloat = size == .phone ? 100 : 80      // hour + icon + degree
         let precipRow: CGFloat = size == .phone ? 34 : 20
         return showPrecip ? rows + precipRow : rows
     }

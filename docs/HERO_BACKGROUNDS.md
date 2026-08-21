@@ -1,96 +1,142 @@
 # Hero background prompts
 
-A set of prompts for generating Aura hero/background images with ChatGPT (or any
-image model), for my own experiments. This is **not** the in-app background — the app
-draws its sky in SwiftUI (`AuraSky`), sun-as-light-source, no shipped images. This file
-is a scratchpad for exploring a richer illustrated look I might fold back into the
-drawing later, or use as reference art.
+Prompts for generating Aura's hero background images. These are the images that **sit
+behind** the dissolved hero — the full-bleed sky and landscape — while Aura keeps drawing
+the live sun/moon disc and the editorial text on top. They do **not** replace `AuraSky`:
+the procedural sky logic stays underneath, the image just enriches the backdrop, and if an
+image is missing Aura falls back to the procedural sky.
 
-The whole point of Aura's sky is that the **light source (sun by day, moon by night)
-sits where it really is for the hour** — rising east (left), high at noon, setting west
-(right). Any generated image has to respect that, and has to leave the **upper third
-calm** so the frosted hero card stays readable on top.
+## The one rule that matters: no sun, no moon
 
-## Base style (paste this first, then add a time + condition line)
+**The art is generated without any sun, moon, or bright light-source disc in the sky.**
+Aura draws the sun (by day) and moon (by night) itself, at the position they really occupy
+for the location and the hour — rising east (left), high at noon, setting west (right).
+If the image carried its own painted sun there would be *two* suns, and the real one
+wouldn't move. So: clean sky, no disc. Diffuse warmth toward the light's side is fine (a
+low warm glow at the horizon at dawn/dusk); a defined sun/moon is not.
 
-> Flat, minimalist vector illustration of a landscape, seen straight on. A vertical
+Two more framing rules, because the composition is fixed so the live layers always land in
+the right place:
+
+- **Keep the top ~55% calm.** The editorial temperature and two lines of prose float over
+  it (there's no card any more — the text sits straight on the sky), so it needs quiet,
+  uncluttered negative space with enough contrast for white text.
+- **Same framing across all 48.** Low horizon in the bottom third; layered silhouetted
+  mountains, soft near hills, a single rounded tree to the right, a calm river ribbon.
+  Identical composition every time, so switching condition/time (or, later, families) is
+  seamless and the sun/text zones never move.
+
+Portrait phone-wallpaper ratio **9:19.5** (e.g. ~886×1920). No text, no people, no
+buildings (that's the future cityscape family), no watermark.
+
+## The grid — 8 conditions × 6 times = 48 images
+
+Every cell is one image, named `condition_time` (snake_case, `.png`). These names are the
+contract with the app: they are exactly `HeroBackground.allAssetNames`, and the selector
+resolves the current sky+time to one of them (see below).
+
+- **Conditions** (map to `Palette.Sky` / `HeroBackground.Condition`):
+  `clear · few_clouds · cloudy · overcast · rainy · stormy · snowy · foggy`
+- **Times** (map to `HeroBackground.Time`, derived from the real sun path):
+  `dawn · morning · noon · afternoon · dusk · night`
+
+So the filenames run `clear_dawn`, `clear_morning`, … `foggy_night` — e.g. `few_clouds_dawn`,
+`rainy_afternoon`, `clear_night`. (My earlier `sunset`→`dusk`, `early_morning` folds into
+`morning`.)
+
+## Base style (paste first, then add a time line + a condition line)
+
+> Flat, minimalist vector illustration of a landscape, seen straight on. Vertical
 > phone-wallpaper composition (9:19.5). Clean geometric shapes, smooth gradients, no
 > texture, no outlines, no text, no people, no buildings. A low horizon in the bottom
-> third: layered silhouetted mountains, soft rounded near hills, a single rounded tree
-> to the right, and a calm river ribbon that catches the light. The sky fills the upper
-> two thirds and is mostly empty, quiet negative space (a card will sit over it).
-> A single clear light source — a defined disc with a soft corona — is the focal point.
+> third: layered silhouetted mountains, soft rounded near hills, a single rounded tree to
+> the right, a calm river ribbon that catches the light. The sky fills the upper two thirds
+> and is **empty, quiet negative space — no sun, no moon, no bright disc of any kind**.
 > Calm, modern, Apple-Weather-meets-Behance mood.
 
-## Time of day — where the light sits + palette
+## Time of day — sky palette + where the light sits
 
-Add one of these after the base. `x` is horizontal position of the disc (0 = left/east,
-1 = right/west); keep the disc **low near the horizon at dawn/dusk, high near the top at
-noon**.
+Add one after the base. There is **no disc** — convey the hour with the **sky colour** and a
+**diffuse** warmth on the light's side (low-left at dawn/morning, overhead-pale at noon,
+low-right at afternoon/dusk), never a defined sun.
 
-| Time | Light position | Sky palette | Light colour |
-|------|----------------|-------------|--------------|
-| **Dawn** | sun low, far left (x≈0.05) | deep indigo top → warm peach at the horizon | deep orange disc |
-| **Morning** | sun low-left rising (x≈0.2) | soft blue top → warm haze low | warm gold-orange |
-| **Noon** | sun high, centre (x≈0.5, near top) | even bright blue, pale near the sun | bright near-white gold |
-| **Afternoon** | sun high-right (x≈0.7) | blue, slightly warm | warm gold |
-| **Sunset / dusk** | sun low, far right (x≈0.95) | violet top → burning orange/pink at the horizon | deep orange-red disc |
-| **Night** | moon mid-left (x≈0.3), gentler arc | deep navy → dark slate, scattered stars | pale silver-blue moon |
+| Time | Sky palette | Ambient light (diffuse, no disc) |
+|------|-------------|----------------------------------|
+| **dawn** | deep indigo top → warm peach at the horizon | soft warm glow low on the **left**, most of the sky still dim |
+| **morning** | soft blue top → warm haze low | gentle warm light from the **low-left**, brightening |
+| **noon** | even bright blue, palest near the top-centre | bright, near-even; palest overhead, no hotspot |
+| **afternoon** | blue, slightly warm | warm light from the **high-right**, long soft shadows |
+| **dusk** | violet top → burning orange/pink at the horizon | strong warm glow low on the **right**, sky darkening above |
+| **night** | deep navy → dark slate, a few faint scattered stars | cool and dim; **stars are fine, the moon is not** |
 
-## Condition — what veils the light
+## Condition — what veils the sky
 
-Add one of these too. Clouds never move the light — they only **dull and veil** it.
+Add one too. Conditions only **dull and veil** the sky; they never add a light source. Aura
+also dims its own disc under cloud (via `AuraSky.veil`), so the art just needs to *look* the
+part — an overcast image should read flat-grey, a rainy one wet and low-contrast.
 
 | Condition | Modifier |
 |-----------|----------|
-| **Clear** | (nothing — full, clean light and saturated sky) |
-| **Few clouds** | a few soft flat clouds drifting, light still strong |
-| **Cloudy** | broad flat cloud banks, the disc softened and partly hidden, muted palette |
-| **Overcast** | the whole sky a flat cool grey, the disc a faint bright patch only |
-| **Fog** | low haze swallowing the mountains' feet, the disc a dim halo, desaturated |
-| **Rain** | grey-blue veil, diagonal rain streaks low, the river brighter, disc barely visible |
-| **Storm** | dark heavy sky, a break of dramatic light near the horizon, deep contrast |
-| **Snow** | pale cool sky, soft falling flakes, hills dusted lighter, gentle low contrast |
+| **clear** | nothing — clean, saturated sky |
+| **few_clouds** | a few soft flat clouds drifting |
+| **cloudy** | broad flat cloud banks, muted palette |
+| **overcast** | the whole sky a flat cool grey |
+| **fog** *(foggy)* | low haze swallowing the mountains' feet, desaturated |
+| **rain** *(rainy)* | grey-blue veil, fine diagonal rain streaks low, the river brighter |
+| **storm** *(stormy)* | dark heavy sky, deep contrast, a dramatic break of light low at the horizon |
+| **snow** *(snowy)* | pale cool sky, soft falling flakes, hills dusted lighter, low contrast |
 
-## Ready-to-paste examples
+## Ready-to-paste examples (sunless)
 
-**Clear noon**
-> [base style] The sun is a bright near-white gold disc with a soft corona, high near the
-> top centre of the sky. The sky is an even bright blue, palest around the sun. Full clean
-> daylight, saturated, calm. Mountains in cool blue haze, a green tree, a silver river.
+**clear_noon**
+> [base style] An even bright blue sky, palest overhead, completely clear — no sun, no disc,
+> just clean saturated daylight. Cool blue-haze mountains, a green tree, a silver river.
 
-**Clear dawn**
-> [base style] The sun is a deep-orange disc low on the far-left horizon, rising, with a
-> warm glow. The sky runs deep indigo at the top to warm peach at the horizon. Mountains
-> and tree in near-silhouette, the river catching the warm light. Quiet, still, first-light.
+**clear_dawn**
+> [base style] The sky runs deep indigo at the top to warm peach low on the left horizon,
+> where a soft diffuse warm glow sits — but no sun disc. Mountains and tree in near-silhouette,
+> the river catching the faint warm light. Quiet, first-light.
 
-**Sunset, few clouds**
-> [base style] The sun is a deep orange-red disc low on the far-right horizon, setting.
-> The sky burns from violet at the top to orange and pink at the horizon, with a few soft
-> flat clouds lit from beneath. Long warm light across the hills, the river glowing.
+**few_clouds_dusk**
+> [base style] The sky burns from violet at the top to orange and pink low on the right, a
+> few soft flat clouds lit from beneath — but no sun disc anywhere. Long warm light across the
+> hills, the river glowing.
 
-**Clear night**
-> [base style] A pale silver-blue full moon with a soft halo sits mid-left in a deep navy
-> sky scattered with small stars. The mountains, hills and tree are dark silhouettes; the
-> river catches a faint cool moonlight. Calm, quiet, cold.
+**clear_night**
+> [base style] A deep navy sky fading to dark slate, scattered with a few small faint stars —
+> and **no moon**. Mountains, hills and tree as dark silhouettes; the river catches a faint
+> cool light. Calm, cold.
 
-**Rainy afternoon**
-> [base style] A muted grey-blue sky, the sun only a faint bright patch high-right behind
-> broad flat cloud. Fine diagonal rain low over the hills, the river bright against the
-> dim land. Soft, low-contrast, damp mood.
+**rainy_afternoon**
+> [base style] A muted grey-blue overcast sky, no visible sun. Fine diagonal rain low over the
+> hills, the river bright against the dim land. Soft, low-contrast, damp.
 
-**Snowy morning**
-> [base style] A pale cool sky, the sun a soft dim disc low-left behind thin cloud. Gentle
-> flakes falling, the hills and mountains dusted lighter, the tree carrying a little snow.
-> Quiet, soft, low contrast.
+**overcast_morning**
+> [base style] The whole sky a flat, even cool grey, no sun, no break in the cloud. Mountains
+> and hills muted, the river a dull silver. Still, quiet, low contrast.
 
-## Notes for folding back into SwiftUI
+## How the app uses them
 
-If any of these reads better than the current `AuraSky`, the drawable pieces are:
-- disc colour/size per time → `AuraSky.discColors` + the disc layer
-- sky gradient stops per hour → `Palette.skyBaseColors(at:)`
-- veil amount per condition → `AuraSky.veil`
-- scenery tints → `AuraSky.sceneColors`
+- Drop the 48 PNGs into the app's asset catalog under their canonical names.
+- The app probes `HeroBackground.allAssetNames` against its bundle to learn which shipped,
+  resolves the current sky + time with `HeroBackground.resolve(...)`, loads that `Image`, and
+  passes it to `AuraSky(snapshot:now:heroImage:)`.
+- `AuraSky` then draws the image behind the **glow + live sun/moon disc**, skipping its own
+  gradient, veil, stars and scenery. The disc still dims under cloud/rain via `veil`.
+- **Fallback chain:** exact `condition_time` → nearest existing time for the same condition →
+  procedural `AuraSky`. So I can ship art incrementally — a half-full grid still looks right,
+  and shipping zero images costs nothing (it's all procedural until then).
 
-Keep it **static per render** (position from `now`, no timers/animation) so the battery
-baseline stays flat.
+## Future: a second family (cityscape)
+
+I plan a second set of 48 with a **cityscape** instead of the landscape, switchable and
+persisted (the choice stays until I switch back). Same 8×6 grid, same times/conditions, same
+sunless rule and calm-top framing — only the scenery changes (flat building skyline, windows
+that could light at night). Naming gets a family axis (a prefix or folder, e.g.
+`cityscape/clear_noon`); see `specs/cityscape-background-switch.md`. Keep the horizon line and
+the text/sun zones identical to the landscape family so switching is seamless.
+
+## Keep it static
+
+Position and colour are computed once per render from `now` — no timers, no animation — so the
+battery baseline stays flat. Same on iPhone and Watch.

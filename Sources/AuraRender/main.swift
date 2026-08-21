@@ -88,7 +88,7 @@ func appScreen(size: CGSize, now: Date) -> some View {
             .padding(.horizontal, isPhone ? 14 : 5)
             .padding(.top, isPhone ? 16 : 8)
     }
-    .frame(width: size.width, height: size.height)
+    .frame(width: size.width, height: size.height, alignment: .top)   // show the top of the scroll, not a centred crop
     .clipShape(RoundedRectangle(cornerRadius: isPhone ? 32 : 40, style: .continuous))
     .environment(\.colorScheme, .dark)
     .fontDesign(.rounded)   // mirror RootView so the preview reflects the app's single typeface
