@@ -2,12 +2,6 @@ import AuraKit
 import SwiftUI
 import UIKit
 
-/// Reports the Hoy scroll view's vertical offset so the "MÁS" hint can fade as the cards come up.
-private struct ScrollOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 /// "Hoy" — the forecast for the selected location, rendered as Aura's signature screen: the shared
 /// `AuraForecastStack` (hero, hours, days, sun·wind, aviso, predicción) floating as frosted cards over
 /// a full-bleed `AuraSky` whose light sits where the sun actually is for the hour. The same cards the
@@ -35,8 +29,6 @@ struct TodayView: View {
     /// foreground doesn't trigger a refresh when the on-screen data is already recent.
     @State private var loadedINE: String?
     @State private var loadedAt: Date?
-    /// Hoy scroll offset (0 at the top, negative as you scroll down), driving the "MÁS" hint's fade.
-    @State private var scrollY: CGFloat = 0
 
     /// AEMET updates municipal forecasts only a few times a day; don't refresh the same location
     /// more often than this except on an explicit pull-to-refresh.
@@ -70,7 +62,6 @@ struct TodayView: View {
             // No bottom tab bar (it chromed the sky): the other sections open from a discreet frosted
             // menu on the hero, so the clean sky, landscape and editorial text own the screen.
             .overlay(alignment: .topTrailing) { heroMenu }
-            .overlay(alignment: .bottom) { scrollHintOverlay }
             .toolbar(.hidden, for: .navigationBar)    // immersive: the hero card carries the location name
         }
         .sheet(item: $route) { route in
@@ -109,9 +100,11 @@ struct TodayView: View {
         .environment(\.colorScheme, .dark)
     }
 
-    /// A gentle "MÁS ⌄" affordance centred at the bottom of the first screen, inviting a scroll to the
-    /// cards. Fades out as soon as the user scrolls; only shown when there's a forecast to reveal.
-    @ViewBuilder private var scrollHintOverlay: some View {
+    /// A gentle "MÁS ⌄" affordance near the bottom of the first screen, inviting a scroll to the cards.
+    /// It lives *inside* the scroll content (see `content(for:)`), pinned one viewport down, so it simply
+    /// scrolls up and away as the cards come into view — no offset tracking to stall. Only shown when
+    /// there's a forecast to reveal.
+    @ViewBuilder private var scrollHint: some View {
         if snapshot != nil {
             VStack(spacing: 1) {
                 Text("MÁS").font(.system(size: 11, weight: .bold)).tracking(2)
@@ -119,17 +112,9 @@ struct TodayView: View {
             }
             .foregroundStyle(.white.opacity(0.85))
             .shadow(color: .black.opacity(0.35), radius: 5, y: 1)
-            .padding(.bottom, 8)
-            .opacity(hintOpacity)
             .allowsHitTesting(false)
             .environment(\.colorScheme, .dark)
         }
-    }
-
-    /// 1 at the top of the scroll, fading to 0 after ~50 pt of downward scroll.
-    private var hintOpacity: Double {
-        let scrolled = min(max(-scrollY, 0) / 50, 1)   // CGFloat, 0…1
-        return 1 - Double(scrolled)
     }
 
     @ViewBuilder
@@ -137,11 +122,6 @@ struct TodayView: View {
         // The hero fills the first screen (see `heroFillHeight`), so `geo` gives it the scroll viewport
         // height and the cards start just below the fold — the clean sky + landscape read on their own.
         GeometryReader { geo in
-            // The scroll viewport's top edge in global space is fixed (it doesn't move as the content
-            // scrolls); the content-top reader below reports its own global top minus this, giving 0 at
-            // rest and a growing negative offset on downward scroll. Global space is immune to the way
-            // `.refreshable` rewrites the ScrollView's internals — a named coordinate space wasn't tracking.
-            let viewportTop = geo.frame(in: .global).minY
             ScrollView {
                 VStack(spacing: 14) {
                     if !store.apiKeyPresent { keyBanner }
@@ -163,14 +143,13 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity)   // centre the capped column in the scroll view's full width
                 .padding(.top, 40)      // start the editorial text a touch lower, off the status bar
                 .padding(.bottom, 64)   // let the sky's horizon breathe below the last card
-                .background(
-                    GeometryReader { g in
-                        Color.clear.preference(key: ScrollOffsetKey.self,
-                                               value: g.frame(in: .global).minY - viewportTop)
-                    }
-                )
+                // The "MÁS ⌄" hint rides inside the scroll content, pinned ~one viewport down (near the
+                // bottom of the first screen). Because it's content — not a fixed overlay — it scrolls up
+                // and out of view the moment the cards are pulled in, with no offset tracking to stall.
+                .overlay(alignment: .top) {
+                    scrollHint.padding(.top, max(geo.size.height - 48, 0))
+                }
             }
-            .onPreferenceChange(ScrollOffsetKey.self) { scrollY = $0 }
             .scrollContentBackground(.hidden)
             .refreshable { await load(force: true) }
         }
