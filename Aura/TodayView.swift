@@ -2,6 +2,24 @@ import AuraKit
 import SwiftUI
 import UIKit
 
+/// Reports whether the attached scroll view sits at its very top, driving the "MÁS" hint's fade. Uses
+/// `onScrollGeometryChange` (iOS 18+, which the target devices run); on older systems it's a no-op and the
+/// hint simply stays put — an acceptable fallback since the reliable scroll-offset API isn't there.
+private struct FadeHintAtTop: ViewModifier {
+    @Binding var atTop: Bool
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollGeometryChange(for: Bool.self) { geo in
+                geo.contentOffset.y <= 2
+            } action: { _, isTop in
+                withAnimation(.easeOut(duration: 0.25)) { atTop = isTop }
+            }
+        } else {
+            content
+        }
+    }
+}
+
 /// "Hoy" — the forecast for the selected location, rendered as Aura's signature screen: the shared
 /// `AuraForecastStack` (hero, hours, days, sun·wind, aviso, predicción) floating as frosted cards over
 /// a full-bleed `AuraSky` whose light sits where the sun actually is for the hour. The same cards the
@@ -29,6 +47,14 @@ struct TodayView: View {
     /// foreground doesn't trigger a refresh when the on-screen data is already recent.
     @State private var loadedINE: String?
     @State private var loadedAt: Date?
+    /// True while the Hoy scroll sits at the very top; drives the "MÁS" hint (shown only at the top,
+    /// faded out the moment the user scrolls). Updated via `onScrollGeometryChange` on iOS 18+.
+    @State private var atTop = true
+
+    /// The card column's max width on iPad/Mac (regular width). The cards and the crisp hero sky are both
+    /// capped to this and centred, so the portrait art sits at true proportions right behind the column
+    /// instead of being cropped across a full-width window.
+    private static let columnMaxWidth: CGFloat = 620
 
     /// AEMET updates municipal forecasts only a few times a day; don't refresh the same location
     /// more often than this except on an explicit pull-to-refresh.
@@ -45,7 +71,7 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AuraSky(snapshot: snapshot, heroImage: heroImage).ignoresSafeArea()
+                skyBackground
                 Group {
                     if let location = store.selected {
                         content(for: location)
@@ -62,6 +88,10 @@ struct TodayView: View {
             // No bottom tab bar (it chromed the sky): the other sections open from a discreet frosted
             // menu on the hero, so the clean sky, landscape and editorial text own the screen.
             .overlay(alignment: .topTrailing) { heroMenu }
+            // The "MÁS" hint is a fixed overlay pinned to the bottom of the screen (not part of the scroll
+            // content): it shows only while the scroll sits at the very top and fades fully the instant the
+            // user scrolls (see `atTop` / `FadeHintAtTop`), so it never drifts up with the cards.
+            .overlay(alignment: .bottom) { scrollHint }
             .toolbar(.hidden, for: .navigationBar)    // immersive: the hero card carries the location name
         }
         .sheet(item: $route) { route in
@@ -72,6 +102,29 @@ struct TodayView: View {
             }
         }
         .task(id: store.selectedINE) { await load(force: false) }
+    }
+
+    /// The full-bleed sky behind everything.
+    /// - iPhone (compact): the sky bleeds edge to edge as before.
+    /// - iPad / Mac (regular): the hero art is portrait, so stretching it across a wide landscape window
+    ///   crops most of it away. Instead show a heavily blurred, dimmed copy full-bleed as an ambient
+    ///   backdrop, and the crisp sky capped to the card-column width and centred — so the art reads at
+    ///   its true portrait proportions right behind the cards, showing far more of what was drawn.
+    @ViewBuilder private var skyBackground: some View {
+        if hSizeClass == .regular {
+            ZStack {
+                AuraSky(snapshot: snapshot, heroImage: heroImage)
+                    .ignoresSafeArea()
+                    .blur(radius: 44)
+                    .overlay(Color.black.opacity(0.32).ignoresSafeArea())
+                AuraSky(snapshot: snapshot, heroImage: heroImage)
+                    .frame(maxWidth: Self.columnMaxWidth)
+                    .frame(maxWidth: .infinity)   // centre the capped sky column in the window
+                    .ignoresSafeArea(.container, edges: .vertical)
+            }
+        } else {
+            AuraSky(snapshot: snapshot, heroImage: heroImage).ignoresSafeArea()
+        }
     }
 
     /// The sections that used to be tabs, now reachable from the hero menu. Presented as sheets (each
@@ -100,10 +153,9 @@ struct TodayView: View {
         .environment(\.colorScheme, .dark)
     }
 
-    /// A gentle "MÁS ⌄" affordance near the bottom of the first screen, inviting a scroll to the cards.
-    /// It lives *inside* the scroll content (see `content(for:)`), pinned one viewport down, so it simply
-    /// scrolls up and away as the cards come into view — no offset tracking to stall. Only shown when
-    /// there's a forecast to reveal.
+    /// A gentle "MÁS ⌄" affordance pinned to the bottom of the screen, inviting a scroll to the cards.
+    /// Shown only while the scroll is at the very top (`atTop`) and faded fully once the user scrolls, so
+    /// it never rides up with the content. Only present when there's a forecast to reveal.
     @ViewBuilder private var scrollHint: some View {
         if snapshot != nil {
             VStack(spacing: 1) {
@@ -112,6 +164,8 @@ struct TodayView: View {
             }
             .foregroundStyle(.white.opacity(0.85))
             .shadow(color: .black.opacity(0.35), radius: 5, y: 1)
+            .padding(.bottom, 8)
+            .opacity(atTop ? 1 : 0)
             .allowsHitTesting(false)
             .environment(\.colorScheme, .dark)
         }
@@ -139,18 +193,13 @@ struct TodayView: View {
                 // On iPad and Mac the window is far wider than a phone; cap the card column to a comfortable
                 // reading width and centre it, so the cards sit inset over a full-bleed sky instead of
                 // stretching the full window width. iPhone (compact) keeps the full width.
-                .frame(maxWidth: hSizeClass == .regular ? 620 : .infinity)
+                .frame(maxWidth: hSizeClass == .regular ? Self.columnMaxWidth : .infinity)
                 .frame(maxWidth: .infinity)   // centre the capped column in the scroll view's full width
                 .padding(.top, 40)      // start the editorial text a touch lower, off the status bar
                 .padding(.bottom, 64)   // let the sky's horizon breathe below the last card
-                // The "MÁS ⌄" hint rides inside the scroll content, pinned ~one viewport down (near the
-                // bottom of the first screen). Because it's content — not a fixed overlay — it scrolls up
-                // and out of view the moment the cards are pulled in, with no offset tracking to stall.
-                .overlay(alignment: .top) {
-                    scrollHint.padding(.top, max(geo.size.height - 48, 0))
-                }
             }
             .scrollContentBackground(.hidden)
+            .modifier(FadeHintAtTop(atTop: $atTop))   // fade the "MÁS" hint out the moment we leave the top
             .refreshable { await load(force: true) }
         }
     }
