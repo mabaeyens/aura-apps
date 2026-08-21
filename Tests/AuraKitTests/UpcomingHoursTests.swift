@@ -50,14 +50,35 @@ final class UpcomingHoursTests: XCTestCase {
         XCTAssertEqual(strip.first?.hour, 10)
     }
 
-    // Snapshots cached before slots carried a date decode as nil dates — keep the stored order untouched.
-    func testNilDatesFallBackToStoredOrder() {
-        let hours = [HourSlot(hour: 20, temp: 20, sky: "11", precipProb: 0),
-                     HourSlot(hour: 21, temp: 19, sky: "11", precipProb: 0)]
+    // A pre-fix cache has nil-date slots. The strip is reconstructed from `updated` (the build time) by
+    // walking the wrapping hour sequence, so an overnight cache still re-anchors without a fresh fetch.
+    func testNilDatesReconstructedFromUpdated() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = madrid
+        // Built 20:00 yesterday; the stored strip runs 20h..23h then wraps into today 0h..19h.
+        let built = at(DateComponents(year: 2026, month: 8, day: 20), 20)
+        let seq = [20, 21, 22, 23] + Array(0...19)
+        let hours = seq.map { HourSlot(hour: $0, temp: 20, sky: "11", precipProb: 0) }  // no dates
         let snap = WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
                                    tempMin: 10, tempMax: 20, humedadMax: 50,
-                                   sunrise: nil, sunset: nil, hours: hours, updated: Date())
-        let strip = snap.upcomingHours(now: Date(), timeZone: madrid)
-        XCTAssertEqual(strip.map(\.hour), [20, 21])
+                                   sunrise: nil, sunset: nil, hours: hours, updated: built)
+
+        let strip = snap.upcomingHours(now: at(DateComponents(year: 2026, month: 8, day: 21), 9)
+                                            .addingTimeInterval(55 * 60), timeZone: madrid)
+        XCTAssertEqual(strip.first?.hour, 9, "reconstructed dates drop yesterday and today's early hours")
+        XCTAssertEqual(strip.map(\.hour), Array(9...19))
+    }
+
+    // Nothing left ahead of now (a two-day-old cache): return the stored strip rather than an empty one.
+    func testExhaustedStripFallsBackToStored() {
+        let built = at(DateComponents(year: 2026, month: 8, day: 19), 20)
+        let hours = ([20, 21, 22, 23] + Array(0...19)).map {
+            HourSlot(hour: $0, temp: 20, sky: "11", precipProb: 0)
+        }
+        let snap = WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                                   tempMin: 10, tempMax: 20, humedadMax: 50,
+                                   sunrise: nil, sunset: nil, hours: hours, updated: built)
+        let strip = snap.upcomingHours(now: at(DateComponents(year: 2026, month: 8, day: 21), 9),
+                                       timeZone: madrid)
+        XCTAssertEqual(strip.count, hours.count)
     }
 }

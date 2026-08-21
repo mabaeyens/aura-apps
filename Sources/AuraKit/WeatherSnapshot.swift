@@ -104,16 +104,36 @@ public extension WeatherSnapshot {
     var heroIsObserved: Bool { false }
 
     /// The hourly strip re-anchored to `now`: hours already past are dropped so the strip always begins
-    /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours later).
-    /// The current hour itself is kept as the first column. Snapshots cached before `HourSlot` carried a
-    /// date have `nil` dates and fall back to the stored order unchanged.
+    /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours or a
+    /// day later). The current hour itself is kept as the first column.
+    ///
+    /// Each slot's absolute instant is its stamped `date`; for snapshots cached before slots carried one,
+    /// it's reconstructed by walking the strip's wrapping hour sequence forward from `updated` (the build
+    /// time), so the fix applies to an already-cached snapshot without waiting for a fresh fetch. If the
+    /// snapshot is so old nothing remains ahead of `now`, the stored strip is returned unchanged.
     func upcomingHours(now: Date = Date(),
                        timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> [HourSlot] {
+        guard !hours.isEmpty else { return hours }
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
         let hourStart = cal.dateInterval(of: .hour, for: now)?.start ?? now
-        let anchored = hours.filter { ($0.date ?? .distantFuture) >= hourStart }
-        return anchored.isEmpty ? hours : anchored
+
+        // Reconstruction anchor for nil-date slots: the build day's midnight, advanced by one day each
+        // time the hour sequence wraps past midnight. The strip starts at/after the build hour, so the
+        // first slot belongs to the build day.
+        var anchorDay = cal.startOfDay(for: updated)
+        var prevHour = -1
+        let dated: [(slot: HourSlot, date: Date)] = hours.map { slot in
+            if let d = slot.date { return (slot, d) }
+            if slot.hour < prevHour {
+                anchorDay = cal.date(byAdding: .day, value: 1, to: anchorDay) ?? anchorDay
+            }
+            prevHour = slot.hour
+            let d = cal.date(bySettingHour: slot.hour, minute: 0, second: 0, of: anchorDay) ?? anchorDay
+            return (slot, d)
+        }
+        let kept = dated.filter { $0.date >= hourStart }.map(\.slot)
+        return kept.isEmpty ? hours : kept
     }
 
     /// The next sun event to happen, for the sunrise/sunset complication: sunrise if it's still to

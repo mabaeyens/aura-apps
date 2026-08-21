@@ -39,7 +39,10 @@ private struct AuraCard<Content: View>: View {
         content
             .padding(size.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous))
+            // A lighter frost than a full dark material: more of the sky reads through, so the cards
+            // sit on the scene instead of blacking it out.
+            .background(.ultraThinMaterial.opacity(0.7),
+                        in: RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
                 .strokeBorder(.white.opacity(0.16), lineWidth: 0.5))
     }
@@ -149,7 +152,7 @@ public struct AuraHeroCard: View {
                         Text("Máx \(fmt(snapshot.tempMax))").foregroundStyle(Palette.temperature(snapshot.tempMax))
                         Text("Mín \(fmt(snapshot.tempMin))").foregroundStyle(Palette.temperature(snapshot.tempMin))
                     }
-                    .font(.system(size: size.bodySize - 1, weight: .semibold))
+                    .font(.system(size: size.bodySize + 2, weight: .semibold))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -176,7 +179,7 @@ public struct AuraHeroCard: View {
                         }
                     }
                 }
-                .font(.system(size: size.smallSize, weight: .semibold))
+                .font(.system(size: size.bodySize, weight: .semibold))
             }
         }
     }
@@ -307,13 +310,13 @@ public struct AuraDailyCard: View {
                             Image(systemName: WeatherIcon.symbol(forSky: d.sky))
                                 .symbolRenderingMode(.multicolor)
                                 .font(.system(size: size.iconSize))
-                            if let p = d.probPrecip, p >= 10 {
-                                Text("\(p)%")
-                                    .font(.system(size: size.smallSize - 2, weight: .semibold))
-                                    .foregroundStyle(auraPrecipColor)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                            }
+                            // Always render the precip line (a blank space when there's no meaningful
+                            // chance) so every day's row is exactly the same height, rain or not.
+                            Text(d.probPrecip.map { $0 >= 10 ? "\($0)%" : " " } ?? " ")
+                                .font(.system(size: size.smallSize - 2, weight: .semibold))
+                                .foregroundStyle(auraPrecipColor)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         .frame(width: size == .phone ? 40 : 27)
 
@@ -463,13 +466,13 @@ public struct AuraBulletinCard: View {
             VStack(alignment: .leading, spacing: size == .phone ? 9 : 6) {
                 if let phenomenon {
                     Label(phenomenon, systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: size == .phone ? 16 : 12, weight: .semibold))
+                        .font(.system(size: size == .phone ? 18 : 14, weight: .semibold))
                         .foregroundStyle(Palette.tempOrange)
                 }
                 ForEach(Array(BulletinText.sentences(text).enumerated()), id: \.offset) { _, line in
                     Text(line)
-                        .font(.system(size: size == .phone ? 17 : 13))
-                        .foregroundStyle(.white.opacity(0.88))
+                        .font(.system(size: size == .phone ? 19 : 15))
+                        .foregroundStyle(.white.opacity(0.9))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
