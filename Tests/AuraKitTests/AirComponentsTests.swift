@@ -40,9 +40,12 @@ final class AirComponentsTests: XCTestCase {
                             station: "Valderejo", distanceKm: 5, measured: Date(),
                             components: parse(json))
         XCTAssertEqual(aq.components.map(\.pollutant), ["NO2", "O3", "PM2.5", "PM10", "SO2"])
-        XCTAssertEqual(aq.components.first { $0.pollutant == "NO2" }?.value, 3, "latest hour wins over hour 8")
-        XCTAssertEqual(aq.components.first { $0.pollutant == "O3" }?.value, 60,
-                       "the raw valor_medido, not the moving average, is used")
+        XCTAssertEqual(aq.components.first { $0.pollutant == "NO2" }?.value, 3,
+                       "NO₂ has no moving average, so the latest valid hour (3, not hour 8's 9) is used")
+        XCTAssertEqual(aq.components.first { $0.pollutant == "O3" }?.value, 63,
+                       "O₃ uses its 8 h running mean (valor_media_movil 63), the value the ICA is built from")
+        XCTAssertEqual(aq.components.first { $0.pollutant == "PM10" }?.value, 3.5,
+                       "PM10 likewise uses its 24 h running mean (3,5), not the raw hourly 3")
     }
 
     // An invalid latest hour must not shadow an earlier valid one.

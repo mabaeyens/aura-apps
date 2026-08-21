@@ -580,7 +580,7 @@ public struct AuraWindCard: View {
         let rose: CGFloat = size == .phone ? 100 : 62
         return AuraCard(size: size) {
             HStack(spacing: size.stackSpacing) {
-                AuraWindCircular(snapshot: snapshot, detailed: size == .phone)
+                AuraWindCircular(snapshot: snapshot, dense: size == .phone, card: true)
                     .frame(width: rose, height: rose)
                 VStack(alignment: .leading, spacing: size == .phone ? 4 : 2) {
                     Text(snapshot.windSpeed.map { "\($0) km/h" } ?? "—")
@@ -601,6 +601,7 @@ public struct AuraWindCard: View {
                 Spacer(minLength: 0)
             }
         }
+        .auraDetail(size) { AuraBeaufortSheet(snapshot: snapshot) }
         .auraSectionTitle("Viento".uppercased(), size)
     }
 
@@ -658,6 +659,7 @@ public struct AuraAirQualityCard: View {
                 if showComponents { componentsRow }
             }
         }
+        .auraDetail(size) { AuraAirQualitySheet(airQuality: airQuality) }
         .auraSectionTitle("Calidad del aire".uppercased(), size)
     }
 
@@ -772,6 +774,7 @@ public struct AuraUVCard: View {
                 Spacer(minLength: 0)
             }
         }
+        .auraDetail(size) { AuraUVSheet(uvIndex: uvIndex) }
         .auraSectionTitle("Índice UV".uppercased(), size)
     }
 }

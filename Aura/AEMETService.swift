@@ -84,18 +84,16 @@ enum AEMETService {
             let observed = StationObservation.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
                                                       in: observations)
-            var airQuality = MitecoAirQuality.nearest(toLatitude: location.latitude,
-                                                      longitude: location.longitude,
-                                                      in: airStations)
-            // Enrich the ICA headline with the nearest station's per-pollutant breakdown (one POST to
-            // MITECO's backend, a separate host — outside the AEMET budget). A miss leaves the headline
-            // alone; unmeasured pollutants are simply absent.
-            if airQuality != nil {
-                let components = await MitecoAirQuality.components(toLatitude: location.latitude,
-                                                                  longitude: location.longitude,
-                                                                  in: airStations)
-                if !components.isEmpty { airQuality = airQuality?.adding(components: components) }
-            }
+            // Air quality: pull each pollutant from the nearest station that measures it (O₃ and SO₂
+            // often aren't at the closest, urban-traffic station), then compose the índice from the worst
+            // pollutant — MITECO's own method — using its running means. A handful of POSTs to MITECO's
+            // backend (a separate host, outside the AEMET budget); on a miss, fall back to the single
+            // nearest station's published índice so the card still stands.
+            let breakdown = await MitecoAirQuality.breakdown(toLatitude: location.latitude,
+                                                             longitude: location.longitude, in: airStations)
+            let airQuality = MitecoAirQuality.composite(from: breakdown)
+                ?? MitecoAirQuality.nearest(toLatitude: location.latitude,
+                                            longitude: location.longitude, in: airStations)
             let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?

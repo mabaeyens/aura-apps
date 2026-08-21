@@ -171,6 +171,21 @@ func windCardPreview() -> some View {
 }
 write(windCardPreview(), name: "app-wind-card", size: CGSize(width: 320, height: 200))
 
+// The watch wind card: same needle-through-a-clean-dial as the phone (no redundant centre number, since
+// the speed is spelled out beside it) but on the plain 32-point rose that stays legible when desaturated.
+@MainActor
+func windCardWatchPreview() -> some View {
+    ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(13, 0))
+        AuraWindCard(snapshot: .preview, size: .watch)
+            .environment(\.colorScheme, .dark)
+            .padding(10)
+    }
+    .frame(width: 198, height: 130)
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+}
+write(windCardWatchPreview(), name: "app-wind-card-watch", size: CGSize(width: 198, height: 130))
+
 // The Noticias card: a round-robin RTVE + AEMET stream, each row a tappable headline with a source
 // badge and relative time. Sample items (the renderer has no network).
 @MainActor
@@ -220,14 +235,49 @@ func airQualityCardPreview(_ aq: AirQuality) -> some View {
 write(airQualityCardPreview(WeatherSnapshot.preview.airQuality!),
       name: "app-airquality-card", size: CGSize(width: 340, height: 230))
 
-// A traffic station that measures only NO₂ and O₃: the other three chips (PM2,5, PM10, SO₂) show grey
-// with a dash — MITECO's grey-for-unavailable convention — so the coverage is visible at a glance.
-let partialAQ = AirQuality(
-    category: 3, partial: false, pollutant: "NO2",
-    station: "Escuelas Aguirre", distanceKm: 0.8, measured: todayAt(13, 0),
-    components: [AirComponent(pollutant: "NO2", value: 96), AirComponent(pollutant: "O3", value: 58)])
+// A partial breakdown: NO₂ from the nearest urban station, O₃ from a background station farther out;
+// PM2,5, PM10 and SO₂ aren't found nearby, so their chips show grey with a dash (MITECO's grey-for-
+// unavailable convention). The composite (worst = NO₂) is built by the real `composite` path.
+let aqNow = todayAt(13, 0)
+let partialAQ = MitecoAirQuality.composite(from: [
+    AirComponent(pollutant: "NO2", value: 96, station: "Escuelas Aguirre", distanceKm: 0.8, measured: todayAt(12, 0)),
+    AirComponent(pollutant: "O3", value: 58, station: "Casa de Campo", distanceKm: 6.4, measured: todayAt(11, 0)),
+])!
 write(airQualityCardPreview(partialAQ),
       name: "app-airquality-card-partial", size: CGSize(width: 340, height: 230))
+
+// A full breakdown drawn from several stations: NO₂/particulates from the nearest, O₃ from a background
+// station a few km out, SO₂ from an industrial one farther still — each labelled with its own source.
+let fullAQ = MitecoAirQuality.composite(from: [
+    AirComponent(pollutant: "NO2", value: 96, station: "Escuelas Aguirre", distanceKm: 0.8, measured: todayAt(12, 0)),
+    AirComponent(pollutant: "O3", value: 63, station: "Casa de Campo", distanceKm: 6.4, measured: todayAt(12, 0)),
+    AirComponent(pollutant: "PM2.5", value: 12, station: "Escuelas Aguirre", distanceKm: 0.8, measured: todayAt(12, 0)),
+    AirComponent(pollutant: "PM10", value: 18, station: "Escuelas Aguirre", distanceKm: 0.8, measured: todayAt(12, 0)),
+    AirComponent(pollutant: "SO2", value: 5, station: "Villaverde", distanceKm: 9.1, measured: todayAt(11, 0)),
+])!
+
+// The tap-through detail sheets: the reference scales that open when a wind / air-quality / UV card is
+// tapped, with the current reading ringed and tagged "Ahora". Rendered as their own content (the sheet
+// chrome — grabber, detents — is added by the system at runtime), tall enough to show every row.
+@MainActor
+func sheetPreview<V: View>(_ view: V, size: CGSize) -> some View {
+    view.frame(width: size.width, height: size.height)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .fontDesign(.rounded)
+}
+write(sheetPreview(AuraBeaufortSheet(snapshot: .preview, scrolls: false),
+                   size: CGSize(width: 380, height: 1120)),
+      name: "sheet-beaufort", size: CGSize(width: 380, height: 1120))
+write(sheetPreview(AuraAirQualitySheet(airQuality: fullAQ, now: aqNow, scrolls: false),
+                   size: CGSize(width: 380, height: 1680)),
+      name: "sheet-airquality", size: CGSize(width: 380, height: 1680))
+// A station set that yields only NO₂ and O₃ — so PM2,5, PM10 and SO₂ show the "No medido" grey rail.
+write(sheetPreview(AuraAirQualitySheet(airQuality: partialAQ, now: aqNow, scrolls: false),
+                   size: CGSize(width: 380, height: 1560)),
+      name: "sheet-airquality-partial", size: CGSize(width: 380, height: 1560))
+write(sheetPreview(AuraUVSheet(uvIndex: UVIndex(value: 8), scrolls: false),
+                   size: CGSize(width: 380, height: 660)),
+      name: "sheet-uv", size: CGSize(width: 380, height: 660))
 
 // The sky ALONE (no cards) at the four times of day, so the sun/moon disc and its travel east→west can
 // be judged without the frosted stack covering it. Phone aspect.

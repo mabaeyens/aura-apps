@@ -115,20 +115,26 @@ private enum SunFormat {
 /// direction the wind comes *from*, so the arrowhead points that bearing + 180°.
 public struct AuraWindCircular: View {
     let snapshot: WeatherSnapshot
-    /// The app's full-width card opts into the denser, graduated rose; the Watch complication and the
-    /// watchOS card keep the plain 32-point ring (fewer marks — cheaper, and legible when desaturated).
-    let detailed: Bool
+    /// Denser, graduated 48-point rose (the phone card's nautical look) vs the plain 32-point ring —
+    /// fewer marks, cheaper, and legible when desaturated. The Watch keeps the plain ring at both sizes.
+    let dense: Bool
+    /// A *card* spells the speed and direction out beside the rose, so the dial itself stays clean: a
+    /// single needle read like a weather-vane, no number in the centre. A bare *complication* has no
+    /// label beside it, so it keeps the speed big in the centre with two detached tips framing it. The
+    /// phone and watch app cards are both cards; only the watch-face complication is not.
+    let card: Bool
 
-    public init(snapshot: WeatherSnapshot, detailed: Bool = false) {
+    public init(snapshot: WeatherSnapshot, dense: Bool = false, card: Bool = false) {
         self.snapshot = snapshot
-        self.detailed = detailed
+        self.dense = dense
+        self.card = card
     }
 
     public var body: some View {
         GeometryReader { geo in
             let d = min(geo.size.width, geo.size.height)
             ZStack {
-                WindRose(diameter: d, detailed: detailed)
+                WindRose(diameter: d, detailed: dense)
 
                 // The arrow, over the rose. Rotated so the arrowhead sits at the "blows toward" bearing.
                 if let towards = towardsDegrees {
@@ -138,38 +144,39 @@ public struct AuraWindCircular: View {
                 }
 
                 // Centre. On the plain Watch dial (no speed shown beside it) the speed sits big and white
-                // on the bare dial. The app card already prints the speed next to the rose, so there the
-                // centre instead carries the wind's origin as a compass abbreviation ("SO"), coloured by
-                // strength to match the arrow — anchoring the rose without repeating the number.
+                // on the bare dial. The app card prints the speed and direction beside the rose, so there
+                // the centre stays clear — just the arrow over a clean dial.
                 centre(diameter: d)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 
-    /// The heading, in the wind-intensity colour, as two separate marks with no shaft between them: a
-    /// solid arrowhead at the mark ring where the wind blows *to*, and a forked swallowtail at the mark
-    /// ring where it comes *from*. Drawn pointing up here; the caller rotates the pair to the bearing.
+    /// The heading, in the wind-intensity colour. On a `card` it's a single slender needle through the
+    /// whole dial — a long tapered half in full strength colour aimed where the wind blows *to*, an
+    /// identically-shaped back half in the same colour dimmed for where it comes *from* — so it reads as
+    /// one weather-vane, like a compass needle. The complication (which frames a centre number, so a full
+    /// needle won't fit) keeps two detached tips: an arrowhead and a swallowtail. Drawn pointing up here;
+    /// the caller rotates it to the "blows toward" bearing.
     @ViewBuilder private func vane(diameter d: CGFloat) -> some View {
         let color = Palette.wind(snapshot.windSpeed)
         ZStack {
-            WindHead().fill(color)
-            WindTail().fill(color).rotationEffect(.degrees(180))
+            if card {
+                WindNeedleHalf().fill(color)
+                WindNeedleHalf().fill(color.opacity(0.34)).rotationEffect(.degrees(180))
+            } else {
+                WindHead().fill(color)
+                WindTail().fill(color).rotationEffect(.degrees(180))
+            }
         }
         .frame(width: d, height: d)
     }
 
-    /// The dial centre. On the app card (`detailed`) the speed is already printed beside the rose, so the
-    /// centre carries the wind's origin as a compass abbreviation ("SO"), coloured by strength to echo the
-    /// arrow. Everywhere else (the Watch complication, which has no number beside it) the speed stays big
-    /// and white in the centre. Calm — or a detailed card with no direction — falls back to the number.
+    /// The dial centre. On a `card` the speed *and* the direction are already spelled out beside the rose
+    /// ("25 km/h", "del Sudoeste"), so the centre stays clear — just the needle reads across a clean dial.
+    /// On the Watch complication (no number beside it) the speed stays big and white here.
     @ViewBuilder private func centre(diameter d: CGFloat) -> some View {
-        if detailed, let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 {
-            Text(dir.abbreviation)
-                .font(.system(size: d * 0.30, weight: .heavy, design: .rounded))
-                .foregroundStyle(Palette.wind(snapshot.windSpeed))
-                .shadow(color: .black.opacity(0.5), radius: 1)
-        } else {
+        if !card {
             Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
                 .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
@@ -297,6 +304,25 @@ private struct WindTail: Shape {
         path.addLine(to: CGPoint(x: cx + half, y: cy - r))
         path.addLine(to: CGPoint(x: cx + baseHalf, y: cy - (r - depth)))
         path.addLine(to: CGPoint(x: cx - baseHalf, y: cy - (r - depth)))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// One half of the app card's needle: a long slender triangle from a small base at the dial centre to a
+/// point on the mark ring. Drawn pointing up; the caller fills it (full colour for the "blows toward"
+/// half, dimmed for the "comes from" half rotated 180°) so the two halves share the centre base and read
+/// as a single continuous needle, widest through the middle and tapering to a point at each rim.
+private struct WindNeedleHalf: Shape {
+    func path(in rect: CGRect) -> Path {
+        let d = min(rect.width, rect.height)
+        let cx = rect.midX, cy = rect.midY
+        let r = d * WindRose.markRingRadiusFactor      // tip sits on the mark ring
+        let halfW = d * 0.05                           // half-width at the centre (widest point)
+        var path = Path()
+        path.move(to: CGPoint(x: cx, y: cy - r))       // tip at the rim
+        path.addLine(to: CGPoint(x: cx + halfW, y: cy))// base, right of centre
+        path.addLine(to: CGPoint(x: cx - halfW, y: cy))// base, left of centre
         path.closeSubpath()
         return path
     }
