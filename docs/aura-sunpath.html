@@ -1,0 +1,663 @@
+<meta charset="utf-8">
+<title>Aura Sunpath</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap">
+<style>
+  :root{
+    --bg:#e9edf4; --bg2:#f5f7fb; --surface:#ffffff; --ink:#141d2c; --muted:#586477;
+    --line:#d6dce6; --accent:#d67f2e; --accent-soft:#f3e2cf;
+    --radius:18px; --maxw:1120px;
+    --ui:'Manrope',system-ui,sans-serif;
+    --display:'Fraunces',Georgia,serif;
+    --num:'Nunito',var(--ui);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b1120; --bg2:#0f1626; --surface:#141d2e; --ink:#eef2f8; --muted:#94a1b6;
+      --line:rgba(255,255,255,.10); --accent:#ffb657; --accent-soft:#33291a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1120; --bg2:#0f1626; --surface:#141d2e; --ink:#eef2f8; --muted:#94a1b6;
+    --line:rgba(255,255,255,.10); --accent:#ffb657; --accent-soft:#33291a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--ui);
+    line-height:1.55; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px)}
+  .eyebrow{font-weight:700; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent)}
+  h1{font-family:var(--display); font-weight:500; font-size:clamp(2.1rem,5.4vw,3.6rem);
+    line-height:1.04; letter-spacing:-.015em; margin:.35em 0 .3em; text-wrap:balance; max-width:15ch}
+  .lede{font-size:clamp(1.02rem,2.3vw,1.22rem); color:var(--muted); max-width:60ch; margin:0}
+  .lede b{color:var(--ink); font-weight:600}
+  h2{font-family:var(--display); font-weight:500; font-size:clamp(1.5rem,3.4vw,2.05rem);
+    letter-spacing:-.01em; margin:0 0 .15em; text-wrap:balance}
+  .sub{color:var(--muted); margin:0 0 1.6em; max-width:58ch}
+  section{margin-top:clamp(48px,7vw,88px)}
+  hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+
+  /* ---------- Device frames ---------- */
+  .phone{width:var(--pw,224px); border-radius:34px; padding:9px;
+    background:linear-gradient(160deg,#20262f,#0c0f14);
+    box-shadow:0 26px 60px -24px rgba(8,14,28,.6), 0 3px 10px rgba(0,0,0,.28); flex:0 0 auto}
+  .screen{position:relative; border-radius:27px; overflow:hidden;
+    aspect-ratio:9/19.3; display:flex; flex-direction:column; isolation:isolate}
+  .watch{width:var(--ww,150px); border-radius:42px; padding:8px;
+    background:linear-gradient(160deg,#2a2f36,#0a0d11);
+    box-shadow:0 20px 44px -20px rgba(8,14,28,.6)}
+  .watch .screen{aspect-ratio:41/50; border-radius:34px}
+
+  /* sky = moving sun glow + gradient; sky vars live on .screen (both .sky and .scene inherit) */
+  .sky{position:absolute; inset:0; z-index:0}
+  .sky::before{content:""; position:absolute; inset:0;
+    background:
+      radial-gradient(130% 95% at var(--sun-x) var(--sun-y), var(--halo), transparent 54%),
+      linear-gradient(180deg, var(--g1), var(--g2))}
+  .stars{position:absolute; inset:0 0 40% 0; z-index:0; opacity:0}
+  .sky-night .stars{opacity:1}
+  .sun-disk{position:absolute; width:26%; aspect-ratio:1; border-radius:50%;
+    left:var(--sun-x); top:var(--sun-y); transform:translate(-50%,-50%);
+    background:radial-gradient(circle, var(--sun) 36%, transparent 70%); z-index:1}
+  .moonface{position:absolute; width:15%; left:var(--sun-x); top:var(--sun-y);
+    transform:translate(-50%,-50%); z-index:1; display:none}
+  .sky-night .moonface{display:block}
+
+  /* flat vector scenery */
+  .scene-wrap{position:absolute; left:0; right:0; bottom:0; height:34%; z-index:1}
+  .scene-wrap svg{display:block; width:100%; height:100%}
+
+  .ui{position:relative; z-index:2; display:flex; flex-direction:column; gap:9px;
+    padding:11px 10px 12px; flex:1; color:#fff; font-size:11px; overflow:hidden}
+  .watch .ui{padding:8px 7px 9px; gap:7px; font-size:9.5px}
+  .statusbar{display:flex; justify-content:space-between; align-items:center;
+    font-size:9px; font-weight:700; color:rgba(255,255,255,.92); padding:1px 4px 0}
+  .statusbar .sig{display:flex; align-items:center; gap:5px; font-size:8px; letter-spacing:.04em}
+  .statusbar .bat{display:inline-block; width:15px; height:8px; border-radius:2px;
+    border:1px solid rgba(255,255,255,.8); position:relative}
+  .statusbar .bat::after{content:""; position:absolute; inset:1.5px 4px 1.5px 1.5px;
+    background:rgba(255,255,255,.9); border-radius:1px}
+  .watch .statusbar{font-size:7.5px}
+
+  .card{background:rgba(255,255,255,.14);
+    -webkit-backdrop-filter:blur(9px) saturate(1.2); backdrop-filter:blur(9px) saturate(1.2);
+    border:1px solid rgba(255,255,255,.22); border-radius:16px; padding:11px 12px;
+    box-shadow:0 4px 16px -8px rgba(0,0,0,.35)}
+  .watch .card{border-radius:13px; padding:8px 9px}
+  .card-title{font-size:8.5px; font-weight:700; letter-spacing:.11em;
+    color:rgba(255,255,255,.78); text-transform:uppercase; margin-bottom:7px}
+  .watch .card-title{font-size:7.5px; margin-bottom:5px}
+
+  .hero .loc{display:flex; justify-content:space-between; align-items:baseline;
+    font-weight:600; color:rgba(255,255,255,.95)}
+  .hero .loc .t{font-weight:500; font-size:9.5px; color:rgba(255,255,255,.72)}
+  .hero .big{display:flex; align-items:center; gap:8px; margin:3px 0 1px}
+  .hero .temp{font-family:var(--num); font-weight:800; font-size:44px; line-height:.95; letter-spacing:-.02em}
+  .watch .hero .temp{font-size:34px}
+  .hero .ico{width:34px; height:34px} .watch .hero .ico{width:26px; height:26px}
+  .hero .cond{font-weight:600; color:rgba(255,255,255,.92); font-size:11px}
+  .hero .hilo{display:flex; gap:10px; margin-top:5px; font-weight:600;
+    font-variant-numeric:tabular-nums; font-size:10.5px}
+  .hero .hilo .mx{color:#ffd7a1} .hero .hilo .mn{color:#bfe0ff}
+
+  .hours{display:flex; justify-content:space-between}
+  .hours .h{display:flex; flex-direction:column; align-items:center; gap:3px; font-variant-numeric:tabular-nums}
+  .hours .h .hh{font-size:8.5px; color:rgba(255,255,255,.72)}
+  .hours .h .ico{width:18px; height:18px}
+  .hours .h .tt{font-weight:700; font-size:10px}
+
+  .days{display:flex; flex-direction:column; gap:8px}
+  .day{display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums}
+  .day .wd{width:30px; font-weight:600; color:rgba(255,255,255,.9)}
+  .day .ico{width:16px; height:16px}
+  .day .pop{color:#bfe0ff; font-weight:600; font-size:9px; width:26px}
+  .day .rng{margin-left:auto; display:flex; gap:6px; font-weight:700}
+  .day .rng .mn{color:#bfe0ff} .day .rng .mx{color:#ffd7a1}
+
+  .duo{display:flex; gap:9px} .duo .card{flex:1}
+  .metric{display:flex; align-items:center; gap:6px; font-weight:600}
+  .metric svg{width:14px;height:14px;opacity:.9}
+  .alert{display:flex; align-items:center; gap:7px; font-weight:600; font-size:10px;
+    background:rgba(240,170,60,.24); border-color:rgba(255,200,120,.4)}
+  .alert svg{width:15px;height:15px}
+  .bulletin{font-size:9.5px; color:rgba(255,255,255,.86); line-height:1.5}
+  .watch .bulletin{font-size:8px}
+
+  /* sky presets — carry BOTH gradient and scenery vars, set on .screen */
+  .sky-morning{--g1:#3d6bc2;--g2:#7aa6ea;--sun-x:15%;--sun-y:68%;--sun:#ffe6a8;--halo:rgba(255,220,150,.55);
+    --far:#5b83c4;--near:#33549a;--water:rgba(255,224,160,.55);--tree:#2f6f5a;--trunk:#3d4a52;--skew:24deg}
+  .sky-noon{--g1:#1663e6;--g2:#4f95f6;--sun-x:50%;--sun-y:8%;--sun:#fff0b4;--halo:rgba(255,244,190,.6);
+    --far:#3f7ce0;--near:#1a56c9;--water:rgba(255,244,190,.55);--tree:#2c7d63;--trunk:#39454d;--skew:2deg}
+  .sky-sunset{--g1:#2b3576;--g2:#7c5170;--sun-x:84%;--sun-y:66%;--sun:#ff9d5c;--halo:rgba(255,140,70,.55);
+    --far:#5a4f86;--near:#2a2a53;--water:rgba(255,150,80,.5);--tree:#2a3a52;--trunk:#242a3a;--skew:-24deg}
+  .sky-night{--g1:#0a0f22;--g2:#141a34;--sun-x:70%;--sun-y:26%;--sun:#c2ccf0;--halo:rgba(150,170,230,.3);
+    --far:#1a2244;--near:#111834;--water:rgba(150,170,230,.26);--tree:#16203a;--trunk:#0f1830;--skew:-12deg}
+  .sky-mid{--g1:#2f6dcf;--g2:#6fa0e6;--sun-x:24%;--sun-y:50%;--sun:#ffe6a8;--halo:rgba(255,222,150,.52);
+    --far:#4f7cc8;--near:#2b5aa6;--water:rgba(255,228,168,.5);--tree:#2f6f5a;--trunk:#3d4a52;--skew:18deg}
+
+  /* ---------- Sun-arc centerpiece ---------- */
+  .arc-svg{width:100%; height:auto; display:block; overflow:visible; margin-bottom:4px}
+  .arc-path{fill:none; stroke:var(--line); stroke-width:2; stroke-dasharray:3 6}
+  .horizon{stroke:var(--line); stroke-width:1.5; stroke-dasharray:2 7}
+  .arc-tick{fill:var(--muted); font:600 13px var(--ui); letter-spacing:.14em}
+  .arc-node{fill:#ffce6b} .arc-node.noon{fill:#fff0b0} .arc-node.dusk{fill:#ff9d5c}
+  .arc-moon{fill:#c2ccf0} .drop{stroke:var(--line); stroke-width:1.5; stroke-dasharray:2 5; fill:none}
+  .travel{fill:#ffd67a; filter:drop-shadow(0 0 6px rgba(255,200,110,.9))}
+  @media (prefers-reduced-motion:no-preference){
+    .travel{offset-path:path('M100 120 Q300 -30 500 120'); animation:ride 9s ease-in-out infinite alternate}
+  }
+  @keyframes ride{from{offset-distance:0%} to{offset-distance:100%}}
+
+  .trio{display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(8px,1.8vw,18px);
+    justify-items:center; margin-top:6px}
+  .trio .cap{margin-top:12px; text-align:center}
+  .trio .cap .k{font-family:var(--display); font-size:1rem; color:var(--ink); display:block}
+  .trio .cap .d{font-size:.78rem; color:var(--muted)}
+  .trio .phone{--pw:min(21vw,208px)}
+  @media (max-width:860px){
+    .trio{grid-template-columns:repeat(2,1fr); gap:26px}
+    .trio .phone{--pw:min(40vw,220px)}
+    .arc-svg{display:none}
+  }
+  @media (max-width:520px){ .trio{grid-template-columns:1fr} }
+
+  /* cloud-veil demo */
+  .veil{display:flex; align-items:center; gap:clamp(20px,5vw,54px); flex-wrap:wrap;
+    justify-content:center; margin-top:clamp(34px,5vw,56px);
+    padding-top:clamp(28px,4vw,44px); border-top:1px solid var(--line)}
+  .veil-copy{flex:1; min-width:250px; max-width:40ch}
+  .veil-h{font-family:var(--display); font-weight:500; font-size:1.3rem; margin:0 0 .3em}
+  .veil-copy p{margin:0; color:var(--muted)} .veil-copy b{color:var(--ink); font-weight:600}
+  .veil-pair{display:flex; gap:14px}
+
+  /* pair + legend */
+  .pair{display:flex; align-items:center; gap:clamp(20px,5vw,60px); flex-wrap:wrap; justify-content:center}
+  .pair .phone{--pw:min(52vw,260px)} .pair .watch{--ww:min(30vw,168px)}
+  .pairnote{flex:1; min-width:260px; max-width:38ch}
+
+  /* scenery kit */
+  .kit{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-top:8px}
+  .kit figure{margin:0; background:var(--surface); border:1px solid var(--line);
+    border-radius:14px; overflow:hidden}
+  .kit .art{height:84px; display:block; width:100%}
+  .kit figcaption{padding:9px 12px 11px}
+  .kit .nm{font-weight:700; font-size:.86rem; display:block}
+  .kit .tag{font-size:.72rem; font-weight:700; letter-spacing:.03em}
+  .kit .ok{color:#3f9b6b} .kit .mid{color:var(--accent)} .kit .no{color:#c65b5b}
+  .kit .note{color:var(--muted); font-size:.74rem; display:block; margin-top:2px}
+
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:8px}
+  .tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 18px 16px}
+  .tile h3{font-size:.95rem; font-weight:700; margin:0 0 4px; display:flex; align-items:center; gap:8px}
+  .tile p{margin:0; color:var(--muted); font-size:.9rem}
+  .tile code{font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:.82em;
+    background:var(--accent-soft); color:var(--ink); padding:1px 5px; border-radius:5px}
+  .tile .n{font-family:var(--display); color:var(--accent); font-size:.9rem; font-weight:600}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+  .chip{border:1px solid var(--line); border-radius:999px; padding:5px 12px;
+    font-size:.82rem; font-weight:600; color:var(--muted); background:var(--surface)}
+  .chip b{color:var(--ink)}
+
+  .foot{margin-top:64px; padding-top:22px; border-top:1px solid var(--line); color:var(--muted);
+    font-size:.85rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px}
+  .glyphrow{display:flex; gap:18px; align-items:center; margin-top:14px; flex-wrap:wrap}
+  .glyphrow div{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:.72rem; color:var(--muted)}
+  .glyphrow svg{width:34px; height:34px}
+</style>
+
+<!-- ======================= shared symbols ======================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-sun" viewBox="0 0 24 24">
+    <g stroke="#ffcf5c" stroke-width="1.7" stroke-linecap="round">
+      <line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/>
+      <line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/>
+      <line x1="4.4" y1="4.4" x2="6.2" y2="6.2"/><line x1="17.8" y1="17.8" x2="19.6" y2="19.6"/>
+      <line x1="19.6" y1="4.4" x2="17.8" y2="6.2"/><line x1="6.2" y1="17.8" x2="4.4" y2="19.6"/></g>
+    <circle cx="12" cy="12" r="5.2" fill="#ffd25a"/></symbol>
+  <symbol id="i-suncloud" viewBox="0 0 24 24">
+    <circle cx="8.5" cy="8" r="4" fill="#ffd25a"/>
+    <g fill="#f4f8ff"><circle cx="10" cy="16" r="4"/><circle cx="15" cy="14" r="5"/>
+      <circle cx="19" cy="16.5" r="3.5"/><rect x="8" y="15" width="12" height="5" rx="2.5"/></g></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24">
+    <g fill="#eef3fb"><circle cx="7.5" cy="14" r="4"/><circle cx="13" cy="12" r="5"/>
+      <circle cx="17.5" cy="14.5" r="4"/><rect x="5.5" y="13" width="13.5" height="5.5" rx="2.7"/></g></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24">
+    <g fill="#e7eefb"><circle cx="7.5" cy="10.5" r="3.6"/><circle cx="13" cy="8.8" r="4.6"/>
+      <circle cx="17.4" cy="11" r="3.6"/><rect x="5.6" y="9.5" width="13.4" height="5" rx="2.5"/></g>
+    <g stroke="#7cc0ff" stroke-width="1.8" stroke-linecap="round">
+      <line x1="9" y1="17" x2="8" y2="20.5"/><line x1="13" y1="17" x2="12" y2="21"/>
+      <line x1="17" y1="17" x2="16" y2="20.5"/></g></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24">
+    <path d="M20 14.5A8 8 0 0 1 9 4.2a8 8 0 1 0 11 10.3z" fill="#cdd7ff"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24">
+    <path d="M12 3.2 22 20H2z" fill="#ffca6a"/><rect x="11" y="9" width="2" height="6" rx="1" fill="#4a2c00"/>
+    <circle cx="12" cy="17" r="1.2" fill="#4a2c00"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24">
+    <g stroke="#bfe6df" stroke-width="1.8" fill="none" stroke-linecap="round">
+      <path d="M3 9h11a2.6 2.6 0 1 0-2.6-2.6"/><path d="M3 14h15a2.8 2.8 0 1 1-2.8 2.8"/></g></symbol>
+  <symbol id="i-sunrise" viewBox="0 0 24 24">
+    <g stroke="#ffc46a" stroke-width="1.7" stroke-linecap="round" fill="none">
+      <path d="M4 18h16"/><path d="M8 14a4 4 0 0 1 8 0"/><line x1="12" y1="4" x2="12" y2="8"/>
+      <line x1="6" y1="10" x2="7.5" y2="11.4"/><line x1="18" y1="10" x2="16.5" y2="11.4"/></g></symbol>
+
+  <!-- the flat vector scene: mountain, hills, sun-lit river, tree with sun-cast shadow -->
+  <symbol id="scene" viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice">
+    <style>
+      .sc-shadow{transform:scaleY(.42) skewX(var(--skew,0deg));
+        transform-box:fill-box; transform-origin:38px 55px; fill:#0a1020; opacity:.2}
+    </style>
+    <polygon style="fill:var(--far);opacity:.85" points="0,40 34,18 60,38 96,12 132,36 168,20 200,38 200,74 0,74"/>
+    <path style="fill:var(--near)" d="M0 52 Q46 40 92 50 T200 48 L200 74 L0 74 Z"/>
+    <path style="fill:var(--water)" d="M0 60 Q54 54 108 61 T200 60 L200 67 Q108 70 54 67 T0 67 Z"/>
+    <g class="sc-shadow"><rect x="36" y="43" width="4" height="12"/>
+      <circle cx="38" cy="40" r="8"/><circle cx="31" cy="45" r="5.5"/><circle cx="45" cy="45" r="5.5"/></g>
+    <rect style="fill:var(--trunk)" x="36" y="42" width="4" height="13" rx="1"/>
+    <circle style="fill:var(--tree)" cx="38" cy="40" r="8"/>
+    <circle style="fill:var(--tree)" cx="31" cy="45" r="5.5"/>
+    <circle style="fill:var(--tree)" cx="45" cy="45" r="5.5"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+
+  <!-- masthead -->
+  <header>
+    <span class="eyebrow">Aura · Design direction</span>
+    <h1>The sky, where you'd actually see it</h1>
+    <p class="lede">One layout, shared by the iPhone and the Watch. Behind it, a light that moves the way the
+      real sun does — <b>rising on the left in the east, overhead at midday, setting on the right in the
+      west</b>, and gone below the horizon at night. Aura already computes the true sunrise and sunset for
+      your town, so the glow sits where the sun actually is. This is the weather app I always wished I had.</p>
+  </header>
+
+  <!-- the moving sun -->
+  <section>
+    <span class="eyebrow">The signature</span>
+    <h2>One screen. The light travels it.</h2>
+    <p class="sub">The same cards in the same order, morning to night. Only the light changes — and it changes
+      because the hour changed, not for decoration.</p>
+
+    <svg class="arc-svg" viewBox="0 0 800 176" role="img" aria-label="Sun arc from east to west, moon below horizon at night">
+      <line class="horizon" x1="20" y1="128" x2="780" y2="128"/>
+      <path class="arc-path" d="M100 120 Q300 -30 500 120"/>
+      <path class="drop" d="M500 120 Q640 150 700 150"/>
+      <text class="arc-tick" x="100" y="150" text-anchor="middle">E</text>
+      <text class="arc-tick" x="300" y="12" text-anchor="middle">MEDIODÍA</text>
+      <text class="arc-tick" x="500" y="150" text-anchor="middle">O</text>
+      <circle class="arc-node" cx="100" cy="120" r="7"/>
+      <circle class="arc-node noon" cx="300" cy="20" r="9"/>
+      <circle class="arc-node dusk" cx="500" cy="120" r="7"/>
+      <circle class="arc-moon" cx="700" cy="150" r="6"/>
+      <circle class="travel" cx="100" cy="120" r="6"/>
+    </svg>
+
+    <div class="trio">
+      <!-- MORNING -->
+      <div>
+        <div class="phone"><div class="screen sky-morning">
+          <div class="sky"></div><div class="sun-disk"></div>
+          <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice"><use href="#scene"/></svg></div>
+          <div class="ui">
+            <div class="statusbar"><span>8:04</span><span class="sig">5G<span class="bat"></span></span></div>
+            <div class="card hero">
+              <div class="loc"><span>Madrid</span><span class="t">hoy 8:04</span></div>
+              <div class="big"><span class="temp">18°</span><svg class="ico"><use href="#i-sun"/></svg></div>
+              <div class="cond">Despejado</div>
+              <div class="hilo"><span class="mx">Máx 26°</span><span class="mn">Mín 12°</span></div>
+            </div>
+            <div class="card"><div class="card-title">Próximas horas</div>
+              <div class="hours">
+                <div class="h"><span class="hh">9h</span><svg class="ico"><use href="#i-sun"/></svg><span class="tt">19°</span></div>
+                <div class="h"><span class="hh">11h</span><svg class="ico"><use href="#i-sun"/></svg><span class="tt">22°</span></div>
+                <div class="h"><span class="hh">13h</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div>
+                <div class="h"><span class="hh">15h</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div></div></div>
+            <div class="card"><div class="card-title">Próximos días</div>
+              <div class="days">
+                <div class="day"><span class="wd">Mié</span><svg class="ico"><use href="#i-sun"/></svg><span class="pop"></span><span class="rng"><span class="mn">12°</span><span class="mx">26°</span></span></div>
+                <div class="day"><span class="wd">Jue</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="pop">20%</span><span class="rng"><span class="mn">13°</span><span class="mx">25°</span></span></div></div></div>
+          </div>
+        </div></div>
+        <div class="cap"><span class="k">Mañana</span><span class="d">luz baja desde el este</span></div>
+      </div>
+
+      <!-- MIDDAY -->
+      <div>
+        <div class="phone"><div class="screen sky-noon">
+          <div class="sky"></div><div class="sun-disk"></div>
+          <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice"><use href="#scene"/></svg></div>
+          <div class="ui">
+            <div class="statusbar"><span>13:22</span><span class="sig">5G<span class="bat"></span></span></div>
+            <div class="card hero">
+              <div class="loc"><span>Madrid</span><span class="t">hoy 13:22</span></div>
+              <div class="big"><span class="temp">25°</span><svg class="ico"><use href="#i-suncloud"/></svg></div>
+              <div class="cond">Poco nuboso</div>
+              <div class="hilo"><span class="mx">Máx 26°</span><span class="mn">Mín 12°</span></div>
+            </div>
+            <div class="card"><div class="card-title">Próximas horas</div>
+              <div class="hours">
+                <div class="h"><span class="hh">14h</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div>
+                <div class="h"><span class="hh">16h</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">24°</span></div>
+                <div class="h"><span class="hh">18h</span><svg class="ico"><use href="#i-cloud"/></svg><span class="tt">22°</span></div>
+                <div class="h"><span class="hh">20h</span><svg class="ico"><use href="#i-cloud"/></svg><span class="tt">18°</span></div></div></div>
+            <div class="card"><div class="card-title">Próximos días</div>
+              <div class="days">
+                <div class="day"><span class="wd">Mié</span><svg class="ico"><use href="#i-sun"/></svg><span class="pop"></span><span class="rng"><span class="mn">12°</span><span class="mx">26°</span></span></div>
+                <div class="day"><span class="wd">Jue</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="pop">20%</span><span class="rng"><span class="mn">13°</span><span class="mx">25°</span></span></div></div></div>
+          </div>
+        </div></div>
+        <div class="cap"><span class="k">Mediodía</span><span class="d">el sol cae desde arriba</span></div>
+      </div>
+
+      <!-- SUNSET -->
+      <div>
+        <div class="phone"><div class="screen sky-sunset">
+          <div class="sky"></div><div class="sun-disk"></div>
+          <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice"><use href="#scene"/></svg></div>
+          <div class="ui">
+            <div class="statusbar"><span>19:38</span><span class="sig">5G<span class="bat"></span></span></div>
+            <div class="card hero">
+              <div class="loc"><span>Madrid</span><span class="t">hoy 19:38</span></div>
+              <div class="big"><span class="temp">21°</span><svg class="ico"><use href="#i-suncloud"/></svg></div>
+              <div class="cond">Nuboso</div>
+              <div class="hilo"><span class="mx">Máx 26°</span><span class="mn">Mín 12°</span></div>
+            </div>
+            <div class="card"><div class="card-title">Próximas horas</div>
+              <div class="hours">
+                <div class="h"><span class="hh">20h</span><svg class="ico"><use href="#i-cloud"/></svg><span class="tt">18°</span></div>
+                <div class="h"><span class="hh">22h</span><svg class="ico"><use href="#i-moon"/></svg><span class="tt">15°</span></div>
+                <div class="h"><span class="hh">0h</span><svg class="ico"><use href="#i-moon"/></svg><span class="tt">13°</span></div>
+                <div class="h"><span class="hh">2h</span><svg class="ico"><use href="#i-moon"/></svg><span class="tt">12°</span></div></div></div>
+            <div class="card"><div class="card-title">Próximos días</div>
+              <div class="days">
+                <div class="day"><span class="wd">Mié</span><svg class="ico"><use href="#i-sun"/></svg><span class="pop"></span><span class="rng"><span class="mn">12°</span><span class="mx">26°</span></span></div>
+                <div class="day"><span class="wd">Jue</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="pop">20%</span><span class="rng"><span class="mn">13°</span><span class="mx">25°</span></span></div></div></div>
+          </div>
+        </div></div>
+        <div class="cap"><span class="k">Tarde</span><span class="d">se pone por el oeste</span></div>
+      </div>
+
+      <!-- NIGHT -->
+      <div>
+        <div class="phone"><div class="screen sky-night">
+          <div class="sky"></div>
+          <svg class="stars" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <g fill="#fff">
+              <circle cx="12" cy="14" r=".8"/><circle cx="28" cy="8" r="1"/><circle cx="41" cy="18" r=".7"/>
+              <circle cx="55" cy="10" r=".9"/><circle cx="63" cy="22" r=".7"/><circle cx="78" cy="9" r="1"/>
+              <circle cx="88" cy="20" r=".8"/><circle cx="20" cy="26" r=".7"/><circle cx="35" cy="30" r=".8"/>
+              <circle cx="72" cy="30" r=".7"/><circle cx="48" cy="26" r=".6"/><circle cx="6" cy="20" r=".7"/></g></svg>
+          <div class="sun-disk"></div>
+          <div class="moonface"><svg viewBox="0 0 24 24"><use href="#i-moon"/></svg></div>
+          <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice"><use href="#scene"/></svg></div>
+          <div class="ui">
+            <div class="statusbar"><span>23:10</span><span class="sig">5G<span class="bat"></span></span></div>
+            <div class="card hero">
+              <div class="loc"><span>Madrid</span><span class="t">hoy 23:10</span></div>
+              <div class="big"><span class="temp">14°</span><svg class="ico"><use href="#i-moon"/></svg></div>
+              <div class="cond">Despejado</div>
+              <div class="hilo"><span class="mx">Máx 26°</span><span class="mn">Mín 12°</span></div>
+            </div>
+            <div class="card"><div class="card-title">Próximas horas</div>
+              <div class="hours">
+                <div class="h"><span class="hh">0h</span><svg class="ico"><use href="#i-moon"/></svg><span class="tt">13°</span></div>
+                <div class="h"><span class="hh">2h</span><svg class="ico"><use href="#i-moon"/></svg><span class="tt">12°</span></div>
+                <div class="h"><span class="hh">4h</span><svg class="ico"><use href="#i-moon"/></svg><span class="tt">12°</span></div>
+                <div class="h"><span class="hh">6h</span><svg class="ico"><use href="#i-sun"/></svg><span class="tt">13°</span></div></div></div>
+            <div class="card"><div class="card-title">Próximos días</div>
+              <div class="days">
+                <div class="day"><span class="wd">Mié</span><svg class="ico"><use href="#i-sun"/></svg><span class="pop"></span><span class="rng"><span class="mn">12°</span><span class="mx">26°</span></span></div>
+                <div class="day"><span class="wd">Jue</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="pop">20%</span><span class="rng"><span class="mn">13°</span><span class="mx">25°</span></span></div></div></div>
+          </div>
+        </div></div>
+        <div class="cap"><span class="k">Noche</span><span class="d">estrellas y luz de luna</span></div>
+      </div>
+    </div>
+
+    <!-- cloud-veil demo -->
+    <div class="veil">
+      <div class="veil-copy">
+        <h3 class="veil-h">Even the clouds obey the hour</h3>
+        <p>The sun's position is a layer that's always there — on clear days and cloudy ones alike. Cloud only
+          draws a veil over it: thicker cloud, softer light. So <b>the same "nuboso" never looks the same at
+          9:00 and at 19:00</b> — it glows cool from the east in the morning and warm from the west at dusk.</p>
+      </div>
+      <div class="veil-pair">
+        <div class="phone" style="--pw:150px"><div class="screen">
+          <div class="sky" style="--g1:#5b7fb0;--g2:#8aa4c4;--sun-x:15%;--sun-y:62%;--sun:#f2ead9;--halo:rgba(240,232,214,.42)"></div>
+          <div class="sun-disk" style="opacity:.5"></div>
+          <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice" style="--far:#6a86ab;--near:#4a6a95;--water:rgba(235,235,235,.35);--tree:#4a6a63;--trunk:#465059;--skew:22deg"><use href="#scene"/></svg></div>
+          <div class="ui" style="justify-content:center">
+            <div class="card hero">
+              <div class="loc"><span>Madrid</span><span class="t">9:00</span></div>
+              <div class="big"><span class="temp">14°</span><svg class="ico"><use href="#i-cloud"/></svg></div>
+              <div class="cond">Nuboso</div></div>
+          </div>
+        </div></div>
+        <div class="phone" style="--pw:150px"><div class="screen">
+          <div class="sky" style="--g1:#4b4a72;--g2:#8a6a72;--sun-x:85%;--sun-y:62%;--sun:#e79a6a;--halo:rgba(230,150,90,.44)"></div>
+          <div class="sun-disk" style="opacity:.5"></div>
+          <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice" style="--far:#5a5878;--near:#3a3958;--water:rgba(255,170,110,.32);--tree:#39384f;--trunk:#2c2a3a;--skew:-22deg"><use href="#scene"/></svg></div>
+          <div class="ui" style="justify-content:center">
+            <div class="card hero">
+              <div class="loc"><span>Madrid</span><span class="t">19:00</span></div>
+              <div class="big"><span class="temp">17°</span><svg class="ico"><use href="#i-cloud"/></svg></div>
+              <div class="cond">Nuboso</div></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- identical, resized -->
+  <section>
+    <span class="eyebrow">One codebase, two sizes</span>
+    <h2>Identical on the wrist, resized to fit</h2>
+    <p class="sub">Same background, same sun position, same cards in the same order — the Watch just scales the
+      type and padding down. Hours horizontal, days vertical, on both.</p>
+
+    <div class="pair">
+      <div class="phone"><div class="screen sky-mid">
+        <div class="sky"></div><div class="sun-disk"></div>
+        <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice"><use href="#scene"/></svg></div>
+        <div class="ui">
+          <div class="statusbar"><span>10:12</span><span class="sig">5G<span class="bat"></span></span></div>
+          <div class="card hero">
+            <div class="loc"><span>Madrid</span><span class="t">hoy 10:12</span></div>
+            <div class="big"><span class="temp">21°</span><svg class="ico"><use href="#i-suncloud"/></svg></div>
+            <div class="cond">Poco nuboso</div>
+            <div class="hilo"><span class="mx">Máx 26°</span><span class="mn">Mín 12°</span></div></div>
+          <div class="card alert"><svg><use href="#i-warn"/></svg><span>Aviso amarillo · Altas temperaturas</span></div>
+          <div class="card"><div class="card-title">Próximas horas</div>
+            <div class="hours">
+              <div class="h"><span class="hh">11h</span><svg class="ico"><use href="#i-sun"/></svg><span class="tt">22°</span></div>
+              <div class="h"><span class="hh">13h</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div>
+              <div class="h"><span class="hh">15h</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div>
+              <div class="h"><span class="hh">17h</span><svg class="ico"><use href="#i-cloud"/></svg><span class="tt">23°</span></div></div></div>
+          <div class="card"><div class="card-title">Próximos días</div>
+            <div class="days">
+              <div class="day"><span class="wd">Mié</span><svg class="ico"><use href="#i-sun"/></svg><span class="pop"></span><span class="rng"><span class="mn">12°</span><span class="mx">26°</span></span></div>
+              <div class="day"><span class="wd">Jue</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="pop">20%</span><span class="rng"><span class="mn">13°</span><span class="mx">25°</span></span></div>
+              <div class="day"><span class="wd">Vie</span><svg class="ico"><use href="#i-rain"/></svg><span class="pop">70%</span><span class="rng"><span class="mn">14°</span><span class="mx">21°</span></span></div></div></div>
+          <div class="duo">
+            <div class="card"><div class="metric"><svg><use href="#i-wind"/></svg>14 km/h NE</div></div>
+            <div class="card"><div class="metric"><svg><use href="#i-sunrise"/></svg>21:32</div></div></div>
+          <div class="card"><div class="card-title">Predicción · AEMET</div>
+            <div class="bulletin">Cielos poco nubosos con intervalos de nubes altas. Temperaturas en ligero
+              ascenso. Viento flojo del nordeste.</div></div>
+        </div>
+      </div></div>
+
+      <div class="watch"><div class="screen sky-mid">
+        <div class="sky"></div><div class="sun-disk"></div>
+        <div class="scene-wrap"><svg viewBox="0 0 200 74" preserveAspectRatio="xMidYMax slice"><use href="#scene"/></svg></div>
+        <div class="ui">
+          <div class="statusbar"><span>10:12</span><span class="bat"></span></div>
+          <div class="card hero">
+            <div class="loc"><span>Madrid</span></div>
+            <div class="big"><span class="temp">21°</span><svg class="ico"><use href="#i-suncloud"/></svg></div>
+            <div class="cond">Poco nuboso</div>
+            <div class="hilo"><span class="mx">26°</span><span class="mn">12°</span></div></div>
+          <div class="card"><div class="card-title">Horas</div>
+            <div class="hours">
+              <div class="h"><span class="hh">11</span><svg class="ico"><use href="#i-sun"/></svg><span class="tt">22°</span></div>
+              <div class="h"><span class="hh">13</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div>
+              <div class="h"><span class="hh">15</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="tt">25°</span></div></div></div>
+          <div class="card"><div class="card-title">Días</div>
+            <div class="days">
+              <div class="day"><span class="wd">Mié</span><svg class="ico"><use href="#i-sun"/></svg><span class="rng"><span class="mn">12°</span><span class="mx">26°</span></span></div>
+              <div class="day"><span class="wd">Jue</span><svg class="ico"><use href="#i-suncloud"/></svg><span class="rng"><span class="mn">13°</span><span class="mx">25°</span></span></div></div></div>
+        </div>
+      </div></div>
+
+      <div class="pairnote">
+        <div class="chips">
+          <span class="chip"><b>Hero</b> · lugar, temp, condición</span>
+          <span class="chip"><b>Horas</b> · scroll horizontal</span>
+          <span class="chip"><b>Días</b> · lista vertical</span>
+          <span class="chip"><b>Sol · Viento</b></span>
+          <span class="chip"><b>Aviso</b> AEMET</span>
+          <span class="chip"><b>Predicción</b></span>
+        </div>
+        <p class="sub" style="margin-top:14px">The Watch drops the bulletin and sun/wind row only when space
+          runs out — never the order, never a different colour, never a different sky.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- scenery kit -->
+  <section>
+    <span class="eyebrow">What I can draw in code — no illustrator</span>
+    <h2>The scenery kit</h2>
+    <p class="sub">Every piece below is a flat SwiftUI vector, so it's parametric: it re-tints with the sky,
+      its river catches the sun's colour, and its shadows lean away from the sun. All of it scales to the
+      Watch. The last tile is the one thing code can't do alone.</p>
+
+    <div class="kit">
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#2f6dcf"/>
+          <path d="M0 34 Q26 24 52 32 T100 30 V56 H0Z" fill="#2b5aa6"/>
+          <path d="M0 44 Q30 36 60 43 T100 42 V56 H0Z" fill="#224d92"/></svg>
+        <figcaption><span class="nm">Colinas</span><span class="tag ok">EN CÓDIGO</span>
+          <span class="note">La base — el horizonte donde sale y se pone el sol.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#3d6bc2"/>
+          <polygon points="8,42 30,14 46,42" fill="#33549a"/>
+          <polygon points="30,14 36,22 30,22" fill="#e9f0fb" opacity=".85"/>
+          <polygon points="40,42 66,10 92,42" fill="#2b4d8f"/>
+          <polygon points="66,10 74,20 66,20" fill="#e9f0fb" opacity=".85"/></svg>
+        <figcaption><span class="nm">Montaña</span><span class="tag ok">EN CÓDIGO</span>
+          <span class="note">Cresta lejana, con nieve opcional en la cima.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#3d6bc2"/>
+          <path d="M0 40 H100 V56 H0Z" fill="#2b5aa6"/>
+          <ellipse cx="66" cy="46" rx="20" ry="4" fill="#0a1020" opacity=".22"/>
+          <rect x="47" y="30" width="4" height="14" rx="1" fill="#3d4a52"/>
+          <circle cx="49" cy="27" r="9" fill="#2f6f5a"/><circle cx="41" cy="33" r="6" fill="#2f6f5a"/>
+          <circle cx="57" cy="33" r="6" fill="#2f6f5a"/></svg>
+        <figcaption><span class="nm">Árbol</span><span class="tag ok">EN CÓDIGO</span>
+          <span class="note">Con sombra que se alarga según dónde esté el sol.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#2b3576"/>
+          <path d="M0 38 Q30 30 60 38 T100 36 V56 H0Z" fill="#2a2a53"/>
+          <path d="M0 46 Q30 40 60 47 T100 45 V52 Q60 54 30 51 T0 52Z" fill="#ff9d5c" opacity=".55"/></svg>
+        <figcaption><span class="nm">Río / reflejo</span><span class="tag ok">EN CÓDIGO</span>
+          <span class="note">El agua recoge el color del sol: dorado, naranja o azul luna.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#2f6dcf"/>
+          <g fill="#25508f">
+            <rect x="6" y="30" width="12" height="26"/><rect x="20" y="20" width="12" height="36"/>
+            <rect x="34" y="34" width="10" height="22"/><rect x="46" y="14" width="14" height="42"/>
+            <rect x="62" y="26" width="12" height="30"/><rect x="76" y="20" width="10" height="36"/>
+            <rect x="88" y="32" width="10" height="24"/></g>
+          <g fill="#ffd98a" opacity=".8"><rect x="23" y="24" width="2" height="3"/><rect x="27" y="24" width="2" height="3"/>
+            <rect x="49" y="18" width="2" height="3"/><rect x="53" y="18" width="2" height="3"/>
+            <rect x="79" y="24" width="2" height="3"/></g></svg>
+        <figcaption><span class="nm">Skyline de edificios</span><span class="tag ok">EN CÓDIGO</span>
+          <span class="note">Ciudad plana con ventanas que se encienden de noche.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#3d6bc2"/>
+          <g>
+            <polygon points="30,44 46,36 46,20 30,28" fill="#2b5aa6"/>
+            <polygon points="46,36 62,44 62,28 46,20" fill="#22467f"/>
+            <polygon points="30,28 46,20 62,28 46,36" fill="#3a63ab"/>
+            <polygon points="62,40 74,34 74,24 62,30" fill="#2b5aa6"/>
+            <polygon points="74,34 84,40 84,30 74,24" fill="#22467f"/>
+            <polygon points="62,30 74,24 84,30 74,36" fill="#3a63ab"/></g></svg>
+        <figcaption><span class="nm">Ciudad isométrica</span><span class="tag mid">EN CÓDIGO · MÁS TRABAJO</span>
+          <span class="note">Posible, pero más pesado y delicado en el Watch. Fase 2.</span></figcaption>
+      </figure>
+      <figure>
+        <svg class="art" viewBox="0 0 100 56" preserveAspectRatio="none">
+          <rect width="100" height="56" fill="#eef1f6"/>
+          <g stroke="#b9c2d1" stroke-width="1.4" fill="none" stroke-dasharray="3 3">
+            <circle cx="42" cy="24" r="7"/><path d="M42 31 v14 M35 52 l7-7 7 7 M42 38 l-8 4 M42 38 l8 4"/></g>
+          <text x="70" y="40" font-family="'Fraunces',serif" font-size="24" fill="#c9d0dc">?</text></svg>
+        <figcaption><span class="nm">Personaje / mascota</span><span class="tag no">NECESITA ILUSTRADOR</span>
+          <span class="note">El del gorro y los cascos. Esto sí requiere dibujo a mano.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- how it's built -->
+  <section>
+    <span class="eyebrow">Why this is buildable now</span>
+    <h2>Most of it already exists</h2>
+    <p class="sub">The redesign is mostly layout on top of colour science that's already in
+      <b>Palette.swift</b>. Here's the split.</p>
+    <div class="grid2">
+      <div class="tile"><h3><span class="n">Have</span> Time-of-day gradient</h3>
+        <p><code>timeGradient</code> already drifts dawn → zenith → dusk → night. It becomes the full-bleed
+          background instead of just the header.</p></div>
+      <div class="tile"><h3><span class="n">Have</span> Condition palette &amp; temp ramp</h3>
+        <p><code>skyGradient</code>, <code>skyAccent</code> and the continuous temperature colour drive every
+          card and number, unchanged.</p></div>
+      <div class="tile"><h3><span class="n">Have</span> Real sun times</h3>
+        <p><code>SolarTimes</code> gives true sunrise/sunset per location — so the sun's screen position is
+          the actual sun, computed once per view, not on a timer.</p></div>
+      <div class="tile"><h3><span class="n">Build</span> Sun / moon glow</h3>
+        <p>A radial glow placed by daylight progress → x, altitude → y. At night, a dimmer moon glow plus a
+          scatter of stars. Small and self-contained.</p></div>
+      <div class="tile"><h3><span class="n">Build</span> Shared cards in AuraKit</h3>
+        <p>Hero / Hourly / Daily / Sun·Wind / Alert / Bulletin, composed once. Kills today's phone↔watch
+          drift for good.</p></div>
+      <div class="tile"><h3><span class="n">Build</span> Flat vector scenery</h3>
+        <p>Hills, mountain, tree, sun-lit river — layered SwiftUI shapes tinted to the sky. Skyline and
+          isometric city are optional add-ons.</p></div>
+    </div>
+
+    <div class="glyphrow">
+      <div><svg><use href="#i-sun"/></svg>despejado</div>
+      <div><svg><use href="#i-suncloud"/></svg>poco nuboso</div>
+      <div><svg><use href="#i-cloud"/></svg>nuboso</div>
+      <div><svg><use href="#i-rain"/></svg>lluvia</div>
+      <div><svg><use href="#i-moon"/></svg>noche</div>
+      <div><svg><use href="#i-warn"/></svg>aviso</div>
+      <div><svg><use href="#i-wind"/></svg>viento</div>
+    </div>
+    <p class="sub" style="margin-top:12px">Icons stay SF Symbols in the real app (hand-drawn stand-ins here) —
+      identical on phone, Watch and complication, native in dark mode.</p>
+  </section>
+
+  <div class="foot">
+    <span>Aura · design direction mockup — not the shipping UI</span>
+    <span>Elaborado con datos de AEMET</span>
+  </div>
+</div>
