@@ -137,16 +137,30 @@ public struct AuraHeroCard: View {
         self.snapshot = snapshot; self.size = size; self.now = now
     }
 
+    /// The Spanish time-of-day word shown after the city ("MADRID · Atardecer"). Derived from the same
+    /// sun-path bucket the hero background selector uses, so the label tracks true sunrise/sunset.
+    private var momentLabel: String {
+        switch HeroBackground.Time(now: now, sunrise: snapshot.sunrise, sunset: snapshot.sunset) {
+        case .dawn:      return "Amanecer"
+        case .morning:   return "Mañana"
+        case .noon:      return "Mediodía"
+        case .afternoon: return "Tarde"
+        case .dusk:      return "Atardecer"
+        case .night:     return "Noche"
+        }
+    }
+
     public var body: some View {
         // Dissolved hero: no frosted card. The sky — and the sun/moon disc `AuraSky` draws at the true
         // position — carries the top of the screen; over it float only the editorial temperature and two
         // lines of prose (a human headline, then Máx/Mín · viento · humedad · lluvia folded into a
         // sentence by `ForecastPhrase`). Text aligns with the cards below via the same horizontal inset.
         VStack(alignment: .leading, spacing: size == .phone ? 6 : 3) {
-            Text(snapshot.localidad)
+            Text("\(snapshot.localidad.uppercased()) · \(momentLabel)")
                 .font(.system(size: size.bodySize, weight: .semibold))
                 .tracking(0.5)
-                .foregroundStyle(.white).lineLimit(1)
+                .foregroundStyle(.white)
+                .lineLimit(1).minimumScaleFactor(0.7)
 
             Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
                 .font(.system(size: size.heroTemp, weight: .bold, design: .rounded))
