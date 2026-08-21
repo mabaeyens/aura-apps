@@ -1,6 +1,13 @@
 # Backlog
 
 ## Done
+- 2026-08-21 — UV Index card (`AuraUVCard`, `UVIndex` in `Sources/AuraKit/UVIndex.swift`): AEMET's
+  forecast clear-sky daily-max UV (`/prediccion/especifica/uvi/0`) as a WHO band-coloured swatch +
+  band name ("Muy alto") + protection cue. Payload confirmed live: a single object with
+  `CIUDAD:[{id,valor,uv,canarias}]` where `id` is the INE municipio code, so it's selected per location
+  by `location.ine` — one AEMET call lists every capital (fetched once per refresh, like the ICA feed).
+  Snapshot gains optional `uvIndex` (back-compatible). Placed in the environmental cluster after the ICA
+  card. Verified phone + Watch. (Render canvas heightened to fit the taller stack.)
 - 2026-08-21 — Air-quality card (`AuraAirQualityCard`) from MITECO's national ICA feed (`AirQuality` +
   `MitecoAirQuality` in `Sources/AuraKit/AirQuality.swift`): one ~50 KB `ica-ultima-hora.csv` download
   per refresh (in `AEMETService`, alongside `observacionTodas`), nearest active station resolved locally
@@ -28,11 +35,6 @@
   "Elaborado con datos de AEMET" credit.
 
 ## Pending
-- **UV Index card** — `/api/prediccion/especifica/uvi/{0..4}` (0=today … 4). BLOCKED on the exact
-  JSON key names: the product is one **daily-max clear-sky UV integer per provincial capital**,
-  selected by capital NAME (no INE/station code); scale 0–2 low … ≥11 extreme. **To unblock**, run one
-  live `datos` fetch with the AEMET key (I'm sandboxed out of the Keychain) — e.g. paste the first array
-  element of `.../uvi/0` — then it's a small card. High value; do next.
 - **Ozono card** — `/api/red/especial/ozono` is **total-column ozone in Dobson Units** (Madrid ≈ 320 DU
   is stratospheric column, *not* surface air quality), daily-mean, and **not produced on weekends/
   holidays**. Low everyday value + JSON keys still unknown. Recommend deprioritising vs. the ICA card

@@ -18,3 +18,6 @@ specs/
 # Secrets — the AEMET key never enters the repo
 .env
 *.pem
+
+# Obsidian workspace
+.obsidian/

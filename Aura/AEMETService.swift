@@ -54,6 +54,11 @@ enum AEMETService {
         // never blocks the AEMET refresh.
         let airStations = await MitecoAirQuality.stations()
 
+        // Today's forecast max UV index — one AEMET call lists every provincial capital; resolved per
+        // location by INE. A failure just leaves the UV card hidden.
+        var uvCities: [UVIForecast.City] = []
+        do { uvCities = try await client.uviCities(dia: 0) } catch { note(error) }
+
         // Fetch each distinct avisos area at most once, then resolve per location by province.
         let areas = Set(stale.compactMap { AvisoArea.forProvincia($0.provinciaCode) })
         var alertsByArea: [String: [WeatherAlert]] = [:]
@@ -82,13 +87,15 @@ enum AEMETService {
             let airQuality = MitecoAirQuality.nearest(toLatitude: location.latitude,
                                                       longitude: location.longitude,
                                                       in: airStations)
+            let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?
                 .topActive(forProvince: location.provinciaCode)
             let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
                                                     observed: observed, alert: alert,
-                                                    airQuality: airQuality, bulletin: bulletin,
+                                                    airQuality: airQuality, uvIndex: uvIndex,
+                                                    bulletin: bulletin,
                                                     timeZone: location.timeZone))
             didUpdate = true
         }

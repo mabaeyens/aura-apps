@@ -41,6 +41,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     /// Sunrise, computed on-device for the location.
     public let airQuality: AirQuality?
 
+    public let uvIndex: UVIndex?
+
     public let sunrise: Date?
     /// Sunset, computed on-device for the location.
     public let sunset: Date?
@@ -65,6 +67,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 currentHumidity: Int? = nil, currentPrecipProb: Int? = nil,
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
                 airQuality: AirQuality? = nil,
+                uvIndex: UVIndex? = nil,
                 sunrise: Date?, sunset: Date?,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
                 alert: WeatherAlert? = nil,
@@ -86,6 +89,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.windSpeed = windSpeed
         self.windDirection = windDirection
         self.airQuality = airQuality
+        self.uvIndex = uvIndex
         self.sunrise = sunrise
         self.sunset = sunset
         self.days = days
@@ -227,6 +231,7 @@ public extension WeatherSnapshot {
                      observed: StationObservation? = nil,
                      alert: WeatherAlert? = nil,
                      airQuality: AirQuality? = nil,
+                     uvIndex: UVIndex? = nil,
                      bulletin: ForecastBulletin? = nil,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
@@ -270,6 +275,7 @@ public extension WeatherSnapshot {
             windSpeed: wind?.speed ?? nil,
             windDirection: wind?.direction ?? nil,
             airQuality: airQuality,
+            uvIndex: uvIndex,
             sunrise: sun.sunrise,
             sunset: sun.sunset,
             days: days,

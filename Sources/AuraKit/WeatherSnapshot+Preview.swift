@@ -26,6 +26,7 @@ public extension WeatherSnapshot {
             windSpeed: 25, windDirection: .so,
             airQuality: AirQuality(category: 2, partial: false, pollutant: "O3",
                                    station: "Retiro", distanceKm: 1.7, measured: base),
+            uvIndex: UVIndex(value: 8),
             sunrise: cal.date(bySettingHour: 7, minute: 12, second: 0, of: base),
             sunset: cal.date(bySettingHour: 21, minute: 11, second: 0, of: base),
             days: days, hours: hours,

@@ -96,6 +96,9 @@ public struct AuraForecastStack: View {
             if let airQuality = snapshot.airQuality {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
             }
+            if let uvIndex = snapshot.uvIndex {
+                AuraUVCard(uvIndex: uvIndex, size: size)
+            }
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
@@ -649,6 +652,49 @@ public struct AuraAirQualityCard: View {
             : "a \(Int(km.rounded())) km")
         if airQuality.partial { parts.append("parcial") }
         return parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - UV index
+
+/// AEMET's forecast max UV index for today, in its WHO band colour: the value in a swatch, the band name
+/// ("Muy alto"), and a one-line protection cue. Shown only when a value resolved for the location.
+public struct AuraUVCard: View {
+    let uvIndex: UVIndex
+    let size: AuraSize
+    public init(uvIndex: UVIndex, size: AuraSize) {
+        self.uvIndex = uvIndex; self.size = size
+    }
+
+    public var body: some View {
+        let color = Palette.uvIndex(uvIndex.value)
+        let swatch: CGFloat = size == .phone ? 46 : 30
+        return AuraCard(size: size) {
+            HStack(spacing: size.stackSpacing) {
+                ZStack {
+                    Circle().fill(color)
+                    Text("\(uvIndex.value)")
+                        .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
+                                      weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: swatch, height: swatch)
+                .shadow(color: color.opacity(0.6), radius: 5)
+
+                VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
+                    Text(uvIndex.bandName)
+                        .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Text(uvIndex.advice)
+                        .font(.system(size: size.smallSize - 1))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1).minimumScaleFactor(0.65)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .auraSectionTitle("Índice UV".uppercased(), size)
     }
 }
 

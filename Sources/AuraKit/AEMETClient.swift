@@ -126,6 +126,13 @@ public extension AEMETClient {
         return first
     }
 
+    /// Forecast daily-max UV index for every provincial capital, in one call. `dia` 0 = today … 4.
+    /// One fetch serves every location; resolve per location by INE with `UVIndex.pick(ine:in:)`. The
+    /// payload is a single JSON object (not the array most `/prediccion` products use).
+    func uviCities(dia: Int = 0) async throws -> [UVIForecast.City] {
+        try await fetch("/prediccion/especifica/uvi/\(dia)", as: UVIForecast.self).ciudad
+    }
+
     /// Every conventional station's recent surface observations, in one call. Large (thousands of
     /// records), so fetch it once per refresh and resolve the nearest station per location locally
     /// via `StationObservation.nearest(toLatitude:longitude:in:)`.
