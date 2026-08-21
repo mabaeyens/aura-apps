@@ -34,6 +34,15 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let currentHumidity: Int?
     /// Precipitation probability for the current hour, %, from the hourly feed's coarse blocks.
     public let currentPrecipProb: Int?
+    /// Precipitation *amount* for the current hour, mm, from the hourly feed. 0 means dry; nil means the
+    /// feed didn't carry it. A trace ("Ip") reads as 0.
+    public let currentPrecipMm: Double?
+    /// Snow *amount* for the current hour, mm, from the hourly feed. Same rules as `currentPrecipMm`.
+    public let currentSnowMm: Double?
+    /// Feels-like temperature for the current hour, °C, from the hourly feed.
+    public let currentFeelsLike: Int?
+    /// Storm probability for the current hour, %, from the hourly feed's coarse blocks.
+    public let currentStormProb: Int?
     /// Current-hour wind speed, km/h.
     public let windSpeed: Int?
     /// Current-hour wind direction (whence it blows), or nil when calm/unknown.
@@ -68,6 +77,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
                 currentSky: String? = nil, currentSkyText: String? = nil,
                 currentHumidity: Int? = nil, currentPrecipProb: Int? = nil,
+                currentPrecipMm: Double? = nil, currentSnowMm: Double? = nil,
+                currentFeelsLike: Int? = nil, currentStormProb: Int? = nil,
                 windSpeed: Int? = nil, windDirection: WindDirection? = nil,
                 windGust: Int? = nil,
                 airQuality: AirQuality? = nil,
@@ -90,6 +101,10 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.currentSkyText = currentSkyText
         self.currentHumidity = currentHumidity
         self.currentPrecipProb = currentPrecipProb
+        self.currentPrecipMm = currentPrecipMm
+        self.currentSnowMm = currentSnowMm
+        self.currentFeelsLike = currentFeelsLike
+        self.currentStormProb = currentStormProb
         self.windSpeed = windSpeed
         self.windDirection = windDirection
         self.windGust = windGust
@@ -260,6 +275,10 @@ public extension WeatherSnapshot {
         let wind = hourly.map { Self.currentWind($0, timeZone: timeZone, now: now) }
         let humidityNow = hourly.flatMap { Self.currentHumidity($0, timeZone: timeZone, now: now) }
         let precipNow = hourly.flatMap { Self.currentPrecipProb($0, timeZone: timeZone, now: now) }
+        let precipMmNow = hourly.flatMap { Self.currentPrecipMm($0, timeZone: timeZone, now: now) }
+        let snowMmNow = hourly.flatMap { Self.currentSnowMm($0, timeZone: timeZone, now: now) }
+        let feelsNow = hourly.flatMap { Self.currentFeelsLike($0, timeZone: timeZone, now: now) }
+        let stormNow = hourly.flatMap { Self.currentStormProb($0, timeZone: timeZone, now: now) }
         let resolved = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
         let currentSky = resolved?.current?.sky
 
@@ -289,6 +308,10 @@ public extension WeatherSnapshot {
             currentSkyText: resolved?.currentText,
             currentHumidity: humidityNow,
             currentPrecipProb: precipNow,
+            currentPrecipMm: precipMmNow,
+            currentSnowMm: snowMmNow,
+            currentFeelsLike: feelsNow,
+            currentStormProb: stormNow,
             windSpeed: wind?.speed ?? nil,
             windDirection: wind?.direction ?? nil,
             windGust: wind?.gust ?? nil,
@@ -394,6 +417,95 @@ public extension WeatherSnapshot {
 
         func prob(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
             let blocks = dia.probPrecipitacion.compactMap { hv -> (start: Int, end: Int, value: Int)? in
+                guard hv.periodo.count == 4,
+                      let start = Int(hv.periodo.prefix(2)),
+                      var end = Int(hv.periodo.suffix(2)),
+                      let value = Int(hv.value) else { return nil }
+                if end == 0 { end = 24 }
+                return (start, end, value)
+            }.sorted { $0.start < $1.start }
+            if let covering = blocks.first(where: { $0.start <= from && from < $0.end }) { return covering.value }
+            if let next = blocks.first(where: { $0.start >= from }) { return next.value }
+            return blocks.first?.value
+        }
+
+        let dias = forecast.prediccion.dia
+        if let day0 = dias.first, let p = prob(in: day0, from: currentHour) { return p }
+        if dias.count > 1, let p = prob(in: dias[1], from: 0) { return p }
+        return nil
+    }
+
+    /// Parse an AEMET precipitation/snow amount string into mm. "Ip" (precipitación inapreciable) is a
+    /// trace and reads as 0; empty or non-numeric returns nil (treated as "no data"). Accepts a decimal
+    /// comma or dot.
+    static func precipAmount(_ raw: String) -> Double? {
+        let t = raw.trimmingCharacters(in: .whitespaces)
+        if t.isEmpty { return nil }
+        if t.caseInsensitiveCompare("Ip") == .orderedSame { return 0 }
+        return Double(t.replacingOccurrences(of: ",", with: "."))
+    }
+
+    /// The rain amount for the current hour, mm, from the hourly feed.
+    private static func currentPrecipMm(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Double? {
+        currentMm(forecast, timeZone: timeZone, now: now) { $0.precipitacion }
+    }
+
+    /// The snow amount for the current hour, mm, from the hourly feed.
+    private static func currentSnowMm(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Double? {
+        currentMm(forecast, timeZone: timeZone, now: now) { $0.nieve }
+    }
+
+    /// Current-hour amount in mm from one of the hourly amount arrays (single-hour `periodo`, same keying
+    /// as humidity/temperature). Picks the current hour, else the next available.
+    private static func currentMm(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date,
+                                  _ array: (MunicipioHourly.Dia) -> [MunicipioHourly.HourValue]?) -> Double? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let currentHour = cal.component(.hour, from: now)
+
+        func amount(in dia: MunicipioHourly.Dia, from: Int) -> Double? {
+            let readings = (array(dia) ?? []).compactMap { hv -> (hour: Int, value: Double)? in
+                guard let hour = Int(hv.periodo), let mm = precipAmount(hv.value) else { return nil }
+                return (hour, mm)
+            }.sorted { $0.hour < $1.hour }
+            return (readings.first { $0.hour >= from } ?? readings.first)?.value
+        }
+
+        let dias = forecast.prediccion.dia
+        if let day0 = dias.first, let mm = amount(in: day0, from: currentHour) { return mm }
+        if dias.count > 1, let mm = amount(in: dias[1], from: 0) { return mm }
+        return nil
+    }
+
+    /// The feels-like temperature for the current hour, °C, from the hourly feed (single-hour `periodo`).
+    private static func currentFeelsLike(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let currentHour = cal.component(.hour, from: now)
+
+        func feels(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
+            let readings = (dia.sensTermica ?? []).compactMap { hv -> (hour: Int, value: Int)? in
+                guard let hour = Int(hv.periodo), let value = Int(hv.value) else { return nil }
+                return (hour, value)
+            }.sorted { $0.hour < $1.hour }
+            return (readings.first { $0.hour >= from } ?? readings.first)?.value
+        }
+
+        let dias = forecast.prediccion.dia
+        if let day0 = dias.first, let f = feels(in: day0, from: currentHour) { return f }
+        if dias.count > 1, let f = feels(in: dias[1], from: 0) { return f }
+        return nil
+    }
+
+    /// The storm probability for the current hour, %, from the hourly feed's coarse blocks (same "SSEE"
+    /// periodo format as `probPrecipitacion`).
+    private static func currentStormProb(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let currentHour = cal.component(.hour, from: now)
+
+        func prob(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
+            let blocks = (dia.probTormenta ?? []).compactMap { hv -> (start: Int, end: Int, value: Int)? in
                 guard hv.periodo.count == 4,
                       let start = Int(hv.periodo.prefix(2)),
                       var end = Int(hv.periodo.suffix(2)),

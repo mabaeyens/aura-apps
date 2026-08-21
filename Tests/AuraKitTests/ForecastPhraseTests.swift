@@ -9,11 +9,14 @@ final class ForecastPhraseTests: XCTestCase {
     private func snap(sky: String? = "11", min: Int? = 15, max: Int? = 24,
                       humidity: Int? = 63, precip: Int? = 10,
                       wind: Int? = 9, dir: WindDirection? = .o,
+                      mm: Double? = nil, snow: Double? = nil, feels: Int? = nil, storm: Int? = nil,
                       city: String = "Bilbao") -> WeatherSnapshot {
         WeatherSnapshot(ine: "48020", localidad: city, provincia: "Bizkaia",
                         tempMin: min, tempMax: max, humedadMax: humidity,
                         currentTemp: 21, currentSky: sky, currentSkyText: "Nuboso",
                         currentHumidity: humidity, currentPrecipProb: precip,
+                        currentPrecipMm: mm, currentSnowMm: snow,
+                        currentFeelsLike: feels, currentStormProb: storm,
                         windSpeed: wind, windDirection: dir,
                         sunrise: nil, sunset: nil, updated: Date(timeIntervalSince1970: 0))
     }
@@ -50,6 +53,63 @@ final class ForecastPhraseTests: XCTestCase {
         XCTAssertFalse(line.contains(" ,"), line)
         XCTAssertFalse(line.contains("..."), line)
         XCTAssertTrue(line.contains("40%"), line)
+    }
+
+    // MARK: Rain amount (mm), feels-like, storm
+
+    func testDatalineShowsRainAmountWhenMeaningful() {
+        let line = ForecastPhrase.dataline(for: snap(precip: 75, mm: 2), now: noon)
+        XCTAssertTrue(line.contains("75%"), line)
+        XCTAssertTrue(line.contains("2 mm"), line)   // whole number, no decimal
+    }
+
+    func testDatalineFormatsFractionalMmWithComma() {
+        let line = ForecastPhrase.dataline(for: snap(precip: 60, mm: 0.4), now: noon)
+        XCTAssertTrue(line.contains("0,4 mm"), line)
+        XCTAssertFalse(line.contains("0.4"), line)   // Spanish decimal comma, never a dot
+    }
+
+    func testDatalineOmitsTraceAndZeroMm() {
+        for amount in [0.0, 0.05] {
+            let line = ForecastPhrase.dataline(for: snap(precip: 20, mm: amount), now: noon)
+            XCTAssertFalse(line.lowercased().contains("mm"), "\(amount): \(line)")
+        }
+    }
+
+    func testDatalineShowsSnowAmountOnSnowyDays() {
+        let line = ForecastPhrase.dataline(for: snap(sky: "34", precip: 80, snow: 3), now: noon)  // 34 = snow
+        XCTAssertTrue(line.lowercased().contains("3 mm de nieve"), line)
+    }
+
+    func testDatalineOmitsTraceSnow() {
+        let line = ForecastPhrase.dataline(for: snap(snow: 0.0), now: noon)
+        XCTAssertFalse(line.lowercased().contains("nieve"), line)
+    }
+
+    func testDatalineShowsStormRiskWhenLikely() {
+        let line = ForecastPhrase.dataline(for: snap(precip: 40, storm: 55), now: noon)
+        XCTAssertTrue(line.lowercased().contains("tormenta"), line)
+        XCTAssertTrue(line.contains("55%"), line)
+    }
+
+    func testDatalineShowsFeelsLikeOnlyWhenItDiverges() {
+        // currentTemp is 21 in the helper; 30 diverges (≥3) → shown, 22 does not.
+        let diverges = ForecastPhrase.dataline(for: snap(feels: 30), now: noon)
+        XCTAssertTrue(diverges.lowercased().contains("sensación de 30°"), diverges)
+        for day in 0..<12 {
+            let close = ForecastPhrase.dataline(for: snap(feels: 22),
+                                                now: noon.addingTimeInterval(Double(day) * 86_400))
+            XCTAssertFalse(close.lowercased().contains("sensación"), close)
+        }
+    }
+
+    func testPrecipAmountParsing() {
+        XCTAssertEqual(WeatherSnapshot.precipAmount("0"), 0)
+        XCTAssertEqual(WeatherSnapshot.precipAmount("0.4"), 0.4)
+        XCTAssertEqual(WeatherSnapshot.precipAmount("1,2"), 1.2)
+        XCTAssertEqual(WeatherSnapshot.precipAmount("Ip"), 0)   // trace reads as 0
+        XCTAssertNil(WeatherSnapshot.precipAmount(""))
+        XCTAssertNil(WeatherSnapshot.precipAmount("—"))
     }
 
     // MARK: Headline rules

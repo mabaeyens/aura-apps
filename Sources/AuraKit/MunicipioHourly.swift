@@ -4,7 +4,9 @@ import Foundation
 ///
 /// Each `Dia` carries parallel hourly arrays keyed by `periodo` (the hour, "00"–"23"), except
 /// `probPrecipitacion`, which AEMET reports in coarser multi-hour blocks (periodo like "0814").
-/// All values arrive as strings.
+/// All values arrive as strings. `precipitacion` and `nieve` are the hourly *amounts* in mm (keyed by
+/// the single hour, same as `temperatura`); a value can be "Ip" (precipitación inapreciable — a trace),
+/// which reads as ~0. They're optional because some municipal responses omit them.
 public struct MunicipioHourly: Decodable, Sendable {
     public let nombre: String
     public let provincia: String
@@ -22,6 +24,14 @@ public struct MunicipioHourly: Decodable, Sendable {
         public let estadoCielo: [SkyValue]
         public let humedadRelativa: [HourValue]
         public let probPrecipitacion: [HourValue]
+        /// Feels-like temperature, hourly (°C, same keying as `temperatura`).
+        public let sensTermica: [HourValue]?
+        /// Rain and snow *amounts*, hourly, in mm (single-hour periodo). "Ip" = a trace.
+        public let precipitacion: [HourValue]?
+        public let nieve: [HourValue]?
+        /// Storm and snow probabilities, in the same coarse multi-hour blocks as `probPrecipitacion`.
+        public let probTormenta: [HourValue]?
+        public let probNieve: [HourValue]?
         /// Wind and peak gust, hour by hour. Mixed entries: wind entries carry `direccion`+`velocidad`
         /// (single-element string arrays), gust entries only a scalar `value`. Optional — some
         /// municipal responses omit it.

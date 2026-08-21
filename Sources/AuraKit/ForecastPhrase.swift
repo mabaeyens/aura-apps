@@ -77,6 +77,11 @@ public enum ForecastPhrase {
         if let h = snapshot.currentHumidity {
             mid.append(rng.bool() ? "humedad del \(h)%" : "un \(h)% de humedad")
         }
+        // Feels-like earns a mention only when it diverges from the temperature shown above (≥ 3°),
+        // otherwise it just echoes the number the hero already displays.
+        if let feels = snapshot.currentFeelsLike, let ref = snapshot.heroTemp, abs(feels - ref) >= 3 {
+            mid.append("sensación de \(feels)°")
+        }
         if !mid.isEmpty {
             let connector = clauses.isEmpty ? "" : (rangeFirst ? ", con " : "; ")
             clauses = [ (clauses.first ?? "") + connector + joinList(mid) ]
@@ -85,9 +90,18 @@ public enum ForecastPhrase {
 
         var sentence = clauses.isEmpty ? "" : finish(clauses.joined(separator: ". "))
 
-        // Rain as its own closing sentence, so it never gets buried.
-        if let p = snapshot.currentPrecipProb {
-            sentence += (sentence.isEmpty ? "" : " ") + rainSentence(prob: p, rng: &rng)
+        // Rain as its own closing sentence, so it never gets buried — fired by probability, a meaningful
+        // amount, or a storm risk.
+        let mm = snapshot.currentPrecipMm
+        let storm = snapshot.currentStormProb
+        if snapshot.currentPrecipProb != nil || (mm ?? 0) >= 0.1 || (storm ?? 0) >= 30 {
+            let rain = rainSentence(prob: snapshot.currentPrecipProb, mm: mm, storm: storm, rng: &rng)
+            if !rain.isEmpty { sentence += (sentence.isEmpty ? "" : " ") + rain }
+        }
+        // Snow amount as its own note on snowy days.
+        if let snow = snapshot.currentSnowMm, snow >= 0.1 {
+            sentence += (sentence.isEmpty ? "" : " ")
+                + rng.pick(["Unos \(mmText(snow)) de nieve.", "Con unos \(mmText(snow)) de nieve."])
         }
         return sentence.isEmpty ? (snapshot.currentSkyText ?? "") : sentence
     }
@@ -170,12 +184,36 @@ public enum ForecastPhrase {
         }
     }
 
-    private static func rainSentence(prob p: Int, rng: inout SplitMix) -> String {
-        if p <= 0 { return rng.pick(["Sin lluvia.", "No se espera lluvia.", "Jornada seca."]) }
-        if p >= 70 {
-            return rng.pick(["La lluvia es probable: un \(p)%.", "Alta probabilidad de lluvia, del \(p)%."])
+    /// The closing rain sentence: probability first (the primary signal), then the mm amount when it's
+    /// meaningful (≥ 0.1 mm; a trace or 0 is left unsaid), then a storm note when that's likely. Every
+    /// part is optional, so a dry day still reads cleanly.
+    private static func rainSentence(prob: Int?, mm: Double?, storm: Int?, rng: inout SplitMix) -> String {
+        let amount: String? = (mm ?? 0) >= 0.1 ? mmText(mm!) : nil
+        let stormNote = (storm ?? 0) >= 30 ? rng.pick(["Con riesgo de tormenta (\(storm!)%).",
+                                                       "Posible tormenta (\(storm!)%)."]) : nil
+        func withStorm(_ s: String) -> String { stormNote.map { s.isEmpty ? $0 : s + " " + $0 } ?? s }
+
+        guard let p = prob else {
+            let s = amount.map { rng.pick(["Se esperan unos \($0).", "Acumulará en torno a \($0)."]) } ?? ""
+            return withStorm(s)
         }
-        return rng.pick(["Probabilidad de lluvia del \(p)%.", "Un \(p)% de probabilidad de lluvia."])
+        if p <= 0 {
+            if let a = amount { return withStorm(rng.pick(["Apenas \(a).", "Solo unos \(a)."])) }
+            return withStorm(rng.pick(["Sin lluvia.", "No se espera lluvia.", "Jornada seca."]))
+        }
+        var base = p >= 70
+            ? rng.pick(["La lluvia es probable: un \(p)%", "Alta probabilidad de lluvia, del \(p)%"])
+            : rng.pick(["Probabilidad de lluvia del \(p)%", "Un \(p)% de probabilidad de lluvia"])
+        if let a = amount { base += rng.pick([", unos \(a)", ", con unos \(a)"]) }
+        return withStorm(base + ".")
+    }
+
+    /// A rain/snow amount in Spanish: whole numbers plain ("2 mm"), otherwise one decimal with a comma
+    /// ("0,4 mm").
+    private static func mmText(_ mm: Double) -> String {
+        let r = (mm * 10).rounded() / 10
+        if r == r.rounded() { return "\(Int(r)) mm" }
+        return String(format: "%.1f", r).replacingOccurrences(of: ".", with: ",") + " mm"
     }
 
     // MARK: Assembly helpers
