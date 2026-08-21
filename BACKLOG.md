@@ -1,6 +1,12 @@
 # Backlog
 
 ## Done
+- 2026-08-21 — Sun arc card (`AuraSunArcCard`) + full-width wind card (`AuraWindCard`): replaced the
+  two-up next-event/wind row with a full-width orto→ocaso arc — the sun glyph rides its live position
+  (recomputed from `sunrise/sunset` + `now` at display, so it re-anchors like the hourly strip), warm
+  travelled arc, orto/ocaso times at the ends, and a centre readout ("Quedan Xh de luz" by day,
+  "Amanece en Xh" after dark, arc dims + sun rests at the horizon). Wind moved to its own full-width
+  card reusing the `AuraWindCircular` compass rose. Verified at four times of day, phone + Watch.
 - 2026-08-21 — Robust hourly re-anchor + UI polish (`af462de`): `upcomingHours(now:)`
   reconstructs each nil-date slot's instant from `updated`, so an already-cached overnight
   snapshot re-anchors to the current hour without waiting for a refresh; predicción and hero
@@ -26,8 +32,6 @@ New data-card requests — full spec to arrive in a fresh session:
 - **Air-quality (miteco, not AEMET)** — investigate the `ica.miteco.es` /
   `backend.ica.miteco.es` (`/s/sgca`?) JSON backend for nearest-station air quality; the
   OpenData portal exposes no obvious air-quality feed.
-- **Sun chart card** — sunrise→sunset arc with times and the sun's current relative position in
-  the sky.
 
 ## Notes
 - Data plumbing: endpoint calls in `Sources/AuraKit/AEMETClient.swift`, assembly in

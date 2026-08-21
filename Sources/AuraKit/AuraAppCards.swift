@@ -91,7 +91,8 @@ public struct AuraForecastStack: View {
                 AuraHourlyCard(hours: upcoming, size: size, scrolls: hoursScroll)
             }
             if !snapshot.days.isEmpty { AuraDailyCard(days: snapshot.days, size: size) }
-            AuraSunWindCard(snapshot: snapshot, size: size, now: now)
+            AuraSunArcCard(snapshot: snapshot, size: size, now: now)
+            AuraWindCard(snapshot: snapshot, size: size)
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
@@ -365,9 +366,16 @@ public struct AuraDailyCard: View {
     }
 }
 
-// MARK: - Sun & wind
+// MARK: - Sun arc
 
-public struct AuraSunWindCard: View {
+/// A full-width daytime arc. The sun rides from orto (left / east) to ocaso (right / west) along a
+/// shallow curve, sitting at its live position for the hour — the same east→noon→west travel the
+/// `AuraSky` background paints, so the card and the sky agree. Orto and ocaso times anchor the two ends;
+/// the centre reads the daylight still to come, or after dark the countdown to the next sunrise.
+///
+/// No baked-in "now": the arc position is recomputed from `snapshot.sunrise/sunset` and the passed
+/// `now` at display time, so an overnight-cached snapshot re-anchors like the hourly strip does.
+public struct AuraSunArcCard: View {
     let snapshot: WeatherSnapshot
     let size: AuraSize
     let now: Date
@@ -375,54 +383,206 @@ public struct AuraSunWindCard: View {
         self.snapshot = snapshot; self.size = size; self.now = now
     }
 
+    private var sunrise: Date? { snapshot.sunrise }
+    private var sunset: Date? { snapshot.sunset }
+    private var hasTimes: Bool { sunrise != nil && sunset != nil }
+
+    /// Daytime: now sits between orto and ocaso.
+    private var isDay: Bool {
+        guard let sr = sunrise, let ss = sunset else { return false }
+        return now >= sr && now <= ss
+    }
+
+    /// 0 at orto → 1 at ocaso, clamped; pinned to the near horizon end while it's dark.
+    private var fraction: CGFloat {
+        guard let sr = sunrise, let ss = sunset, ss > sr else { return 0.5 }
+        if now < sr { return 0 }
+        if now > ss { return 1 }
+        return CGFloat(now.timeIntervalSince(sr) / ss.timeIntervalSince(sr))
+    }
+
     public var body: some View {
-        HStack(spacing: size.stackSpacing) {
-            AuraCard(size: size) {
-                cell(icon: "wind",
-                     value: snapshot.windSpeed.map { "\($0) km/h" } ?? "—",
-                     detail: snapshot.windDirection?.abbreviation,
-                     tint: Palette.tempTeal)
-            }
-            AuraCard(size: size) {
-                if let event = snapshot.nextSunEvent(now: now) {
-                    switch event {
-                    case .sunrise(let d):
-                        cell(icon: "sunrise.fill", value: hhmm(d), detail: "Orto", tint: Palette.tempOrange)
-                    case .sunset(let d):
-                        cell(icon: "sunset.fill", value: hhmm(d), detail: "Ocaso", tint: Palette.tempOrange)
-                    }
-                } else {
-                    cell(icon: "sun.max.fill", value: "—", detail: nil, tint: Palette.tempOrange)
+        AuraCard(size: size) {
+            if hasTimes {
+                VStack(spacing: size == .phone ? 12 : 7) {
+                    arc
+                    ends
+                    Text(readout)
+                        .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
+            } else {
+                Text("Horario solar no disponible")
+                    .font(.system(size: size.bodySize - 2))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, size == .phone ? 10 : 6)
             }
+        }
+        .auraSectionTitle("Sol".uppercased(), size)
+    }
+
+    // The arc itself: horizon line, the full day arc (faint), the travelled portion (warm), and the sun
+    // glyph glowing at its live position. At night the whole arc dims and the sun rests at the horizon.
+    private var arc: some View {
+        let arcHeight: CGFloat = size == .phone ? 96 : 58
+        let glyphR: CGFloat = size == .phone ? 12 : 7.5
+        let night = !isDay
+        return GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let baseline = h - 1
+            let rise = h - glyphR - 3
+            let f = fraction
+            let sun = CGPoint(x: f * w, y: baseline - sin(Double(f) * .pi) * Double(rise))
+            ZStack {
+                // Horizon.
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: baseline))
+                    p.addLine(to: CGPoint(x: w, y: baseline))
+                }
+                .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+
+                // The full day arc, faint (dashed once the sun has passed / at night).
+                Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: 1)
+                    .stroke(.white.opacity(night ? 0.16 : 0.24),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
+
+                // The travelled portion, orto → now, in warm light (daytime only).
+                if !night {
+                    Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: f)
+                        .stroke(
+                            LinearGradient(colors: [Palette.tempOrange, Palette.tempYellow],
+                                           startPoint: .leading, endPoint: .trailing),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                }
+
+                // The sun: a soft glow under a solid disc. Muted and pale after dark.
+                let core = night ? Color(white: 0.82) : Palette.tempYellow
+                let glow = night ? Color(white: 0.6) : Palette.tempOrange
+                Circle().fill(glow.opacity(night ? 0.35 : 0.6))
+                    .frame(width: glyphR * 2.8, height: glyphR * 2.8)
+                    .blur(radius: size == .phone ? 7 : 4)
+                    .position(sun)
+                Circle().fill(core)
+                    .frame(width: glyphR * 2, height: glyphR * 2)
+                    .position(sun)
+            }
+        }
+        .frame(height: arcHeight)
+        // Inset by the glyph radius so the sun disc sits fully inside the card at the orto/ocaso ends
+        // (fraction 0 and 1) instead of half-clipping on the card edge.
+        .padding(.horizontal, glyphR)
+    }
+
+    // Orto on the left, ocaso on the right, each with its icon and precise, location-based time.
+    private var ends: some View {
+        HStack(alignment: .top) {
+            end(icon: "sunrise.fill", label: "Orto", time: sunrise)
+            Spacer()
+            end(icon: "sunset.fill", label: "Ocaso", time: sunset, trailing: true)
         }
     }
 
-    private func cell(icon: String, value: String, detail: String?, tint: Color) -> some View {
-        // Centred, and larger than the body scale, so each half-width card fills its box instead of
-        // hugging the left edge with the right half left blank.
-        VStack(spacing: size == .phone ? 6 : 3) {
-            Image(systemName: icon)
-                .font(.system(size: size.iconSize + (size == .phone ? 10 : 4)))
-                .foregroundStyle(tint)
-            Text(value)
-                .font(.system(size: size.bodySize + (size == .phone ? 5 : 2), weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            if let detail {
-                Text(detail)
-                    .font(.system(size: size.smallSize + (size == .phone ? 2 : 1)))
-                    .foregroundStyle(.white.opacity(0.75))
+    private func end(icon: String, label: String, time: Date?, trailing: Bool = false) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: size.smallSize))
+                    .foregroundStyle(Palette.tempOrange)
+                Text(time.map(hhmm) ?? "—")
+                    .font(.system(size: size.bodySize - (size == .phone ? 2 : 3), weight: .semibold))
+                    .foregroundStyle(.white)
             }
+            Text(label)
+                .font(.system(size: size.smallSize - 2))
+                .foregroundStyle(.white.opacity(0.6))
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.vertical, size == .phone ? 6 : 2)
+    }
+
+    /// Centre line: daylight remaining while the sun is up, else the countdown to the next sunrise.
+    private var readout: String {
+        if isDay, let ss = sunset, let left = Self.compact(from: now, to: ss) {
+            return "Quedan \(left) de luz"
+        }
+        // After dark: the snapshot only carries today's sunrise; sun times barely move day to day, so
+        // this morning's orto stands in for tomorrow's — wrap the negative interval by 24 h.
+        if let sr = sunrise, let until = Self.compact(from: now, to: sr, wrapDay: true) {
+            return "Amanece en \(until)"
+        }
+        return ""
     }
 
     private func hhmm(_ date: Date) -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"
         return f.string(from: date)
+    }
+
+    /// A quadratic-looking arc sampled as a polyline: y follows sin(π·t) so it's flat at both horizons
+    /// and highest at solar noon, matching `AuraSunPath`'s own altitude curve.
+    private static func arcPath(w: CGFloat, baseline: CGFloat, rise: CGFloat,
+                                from: CGFloat, to: CGFloat) -> Path {
+        var p = Path()
+        guard to > from else { return p }
+        let steps = 48
+        for i in 0...steps {
+            let t = from + (to - from) * CGFloat(i) / CGFloat(steps)
+            let point = CGPoint(x: t * w, y: baseline - CGFloat(sin(Double(t) * .pi)) * rise)
+            if i == 0 { p.move(to: point) } else { p.addLine(to: point) }
+        }
+        return p
+    }
+
+    /// Compact "3 h 12" / "43 min". `wrapDay` adds 24 h to a negative span (tomorrow's sunrise).
+    private static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
+        var seconds = Int(to.timeIntervalSince(from))
+        if wrapDay && seconds < 0 { seconds += 24 * 3600 }
+        guard seconds > 0 else { return nil }
+        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
+        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes))" : "\(minutes) min"
+    }
+}
+
+// MARK: - Wind
+
+/// Full-width wind card: the same compass rose the Watch complication draws (arrow + speed in the
+/// centre), with the direction spelled out beside it. Reusing `AuraWindCircular` keeps the phone, Watch
+/// face and this card visually identical.
+public struct AuraWindCard: View {
+    let snapshot: WeatherSnapshot
+    let size: AuraSize
+    public init(snapshot: WeatherSnapshot, size: AuraSize) {
+        self.snapshot = snapshot; self.size = size
+    }
+
+    public var body: some View {
+        let rose: CGFloat = size == .phone ? 100 : 62
+        return AuraCard(size: size) {
+            HStack(spacing: size.stackSpacing) {
+                AuraWindCircular(snapshot: snapshot)
+                    .frame(width: rose, height: rose)
+                VStack(alignment: .leading, spacing: size == .phone ? 4 : 2) {
+                    Text(snapshot.windSpeed.map { "\($0) km/h" } ?? "—")
+                        .font(.system(size: size.bodySize + (size == .phone ? 6 : 2), weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Text(directionText)
+                        .font(.system(size: size.smallSize))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .auraSectionTitle("Viento".uppercased(), size)
+    }
+
+    /// "del Sudoeste", or "En calma" when there's no measurable direction. The abbreviation is left to
+    /// the compass arrow beside it (and the hero card), so the full name gets the room to read clearly.
+    private var directionText: String {
+        guard let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 else { return "En calma" }
+        return "del \(dir.spanishName)"
     }
 }
 
