@@ -111,6 +111,7 @@ public struct AuraForecastStack: View {
             }
             if !snapshot.days.isEmpty { AuraDailyCard(days: snapshot.days, size: size) }
             AuraSunArcCard(snapshot: snapshot, size: size, now: now)
+            AuraMoonArcCard(snapshot: snapshot, size: size, now: now)
             AuraWindCard(snapshot: snapshot, size: size)
             if let airQuality = snapshot.airQuality {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
@@ -549,6 +550,190 @@ public struct AuraSunArcCard: View {
     }
 
     /// Compact "3 h 12" / "43 min". `wrapDay` adds 24 h to a negative span (tomorrow's sunrise).
+    private static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
+        var seconds = Int(to.timeIntervalSince(from))
+        if wrapDay && seconds < 0 { seconds += 24 * 3600 }
+        guard seconds > 0 else { return nil }
+        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
+        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes)) min" : "\(minutes) min"
+    }
+}
+
+// MARK: - Moon arc
+
+/// The night twin of `AuraSunArcCard`. The moon rides from ocaso (left / east) to the next orto
+/// (right / west) along the same shallow curve, sitting at its live position for the hour — mirroring the
+/// dimmer moon `AuraSky` now draws after dark. Ocaso and orto anchor the two ends; the centre reads the
+/// night still to come, or by day the countdown to the next ocaso while the moon rests at the horizon.
+///
+/// The moon's path is the night span (ocaso → next orto) — the very arc `AuraSunPath` follows after dark.
+/// Like the sun card it re-anchors from `snapshot.sunrise/sunset` and the passed `now` at display time,
+/// so an overnight-cached snapshot stays honest.
+public struct AuraMoonArcCard: View {
+    let snapshot: WeatherSnapshot
+    let size: AuraSize
+    let now: Date
+    public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date()) {
+        self.snapshot = snapshot; self.size = size; self.now = now
+    }
+
+    private var sunrise: Date? { snapshot.sunrise }
+    private var sunset: Date? { snapshot.sunset }
+    private var hasTimes: Bool { sunrise != nil && sunset != nil }
+
+    /// Night: now is before this morning's orto or after this evening's ocaso.
+    private var isNight: Bool {
+        guard let sr = sunrise, let ss = sunset else { return false }
+        return now < sr || now > ss
+    }
+
+    private func clamp(_ v: CGFloat) -> CGFloat { min(max(v, 0), 1) }
+
+    /// 0 at ocaso → 1 at the next orto, clamped; pinned to the ocaso end by day while the moon rests.
+    private var fraction: CGFloat {
+        guard let sr = sunrise, let ss = sunset else { return 0.5 }
+        let day: TimeInterval = 24 * 3600
+        if now > ss {                       // evening/night: ocaso tonight → orto tomorrow
+            let end = sr.addingTimeInterval(day)
+            return clamp(CGFloat(now.timeIntervalSince(ss) / end.timeIntervalSince(ss)))
+        }
+        if now < sr {                       // early morning: ocaso last night → orto this morning
+            let start = ss.addingTimeInterval(-day)
+            return clamp(CGFloat(now.timeIntervalSince(start) / sr.timeIntervalSince(start)))
+        }
+        return 0                            // daytime: the night hasn't begun; the moon rests at ocaso
+    }
+
+    public var body: some View {
+        AuraCard(size: size) {
+            if hasTimes {
+                VStack(spacing: size == .phone ? 12 : 7) {
+                    arc
+                    ends
+                    Text(readout)
+                        .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            } else {
+                Text("Horario lunar no disponible")
+                    .font(.system(size: size.bodySize - 2))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, size == .phone ? 10 : 6)
+            }
+        }
+        .auraSectionTitle("Luna".uppercased(), size)
+    }
+
+    // Horizon, the full night arc (faint), the travelled portion (cool moonlight, night only), and the
+    // moon glyph at its live position. By day the arc dims and the moon rests at the ocaso horizon.
+    private var arc: some View {
+        let arcHeight: CGFloat = size == .phone ? 96 : 58
+        let glyphR: CGFloat = size == .phone ? 12 : 7.5
+        let resting = !isNight
+        return GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let baseline = h - 1
+            let rise = h - glyphR - 3
+            let f = fraction
+            let moon = CGPoint(x: f * w, y: baseline - sin(Double(f) * .pi) * Double(rise))
+            ZStack {
+                // Horizon.
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: baseline))
+                    p.addLine(to: CGPoint(x: w, y: baseline))
+                }
+                .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+
+                // The full night arc, faint.
+                Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: 1)
+                    .stroke(.white.opacity(resting ? 0.16 : 0.24),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
+
+                // The travelled portion, ocaso → now, in cool moonlight (night only).
+                if !resting {
+                    Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: f)
+                        .stroke(
+                            LinearGradient(colors: [Palette.tempBlue, Color(white: 0.95)],
+                                           startPoint: .leading, endPoint: .trailing),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                }
+
+                // The moon: a soft cool glow under a pale disc — dimmer than the sun, paler still at rest.
+                let core = resting ? Color(white: 0.72) : Color(white: 0.92)
+                let glow = Color(red: 0.66, green: 0.72, blue: 0.92)
+                Circle().fill(glow.opacity(resting ? 0.25 : 0.45))
+                    .frame(width: glyphR * 2.8, height: glyphR * 2.8)
+                    .blur(radius: size == .phone ? 7 : 4)
+                    .position(moon)
+                Circle().fill(core)
+                    .frame(width: glyphR * 2, height: glyphR * 2)
+                    .position(moon)
+            }
+        }
+        .frame(height: arcHeight)
+        // Inset by the glyph radius so the moon disc sits fully inside the card at the ocaso/orto ends.
+        .padding(.horizontal, glyphR)
+    }
+
+    // Ocaso on the left (night begins), orto on the right (night ends).
+    private var ends: some View {
+        HStack(alignment: .top) {
+            end(icon: "sunset.fill", label: "Ocaso", time: sunset)
+            Spacer()
+            end(icon: "sunrise.fill", label: "Orto", time: sunrise, trailing: true)
+        }
+    }
+
+    private func end(icon: String, label: String, time: Date?, trailing: Bool = false) -> some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: size.smallSize))
+                    .foregroundStyle(Palette.tempBlue)
+                Text(time.map(hhmm) ?? "—")
+                    .font(.system(size: size.bodySize - (size == .phone ? 2 : 3), weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            Text(label)
+                .font(.system(size: size.smallSize - 2))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+    }
+
+    /// Centre line: the night still to come while the moon is up, else the countdown to the next ocaso.
+    private var readout: String {
+        if isNight, let sr = sunrise, let until = Self.compact(from: now, to: sr, wrapDay: true) {
+            return "Quedan \(until) de noche"
+        }
+        if !isNight, let ss = sunset, let until = Self.compact(from: now, to: ss) {
+            return "Anochece en \(until)"
+        }
+        return ""
+    }
+
+    private func hhmm(_ date: Date) -> String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
+
+    /// Same sin(π·t) polyline as the sun arc, so the moon's curve matches the sun's exactly.
+    private static func arcPath(w: CGFloat, baseline: CGFloat, rise: CGFloat,
+                                from: CGFloat, to: CGFloat) -> Path {
+        var p = Path()
+        guard to > from else { return p }
+        let steps = 48
+        for i in 0...steps {
+            let t = from + (to - from) * CGFloat(i) / CGFloat(steps)
+            let point = CGPoint(x: t * w, y: baseline - CGFloat(sin(Double(t) * .pi)) * rise)
+            if i == 0 { p.move(to: point) } else { p.addLine(to: point) }
+        }
+        return p
+    }
+
+    /// Compact "3 h 12 min" / "43 min". `wrapDay` adds 24 h to a negative span (tomorrow's orto).
     private static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
         var seconds = Int(to.timeIntervalSince(from))
         if wrapDay && seconds < 0 { seconds += 24 * 3600 }
