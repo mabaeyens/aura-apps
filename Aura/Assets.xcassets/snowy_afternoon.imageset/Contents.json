@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "snowy_afternoon.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
