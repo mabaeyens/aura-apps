@@ -30,7 +30,7 @@ public struct AuraSunPath: Sendable {
         if now >= sr && now <= ss {
             let f = now.timeIntervalSince(sr) / ss.timeIntervalSince(sr)   // 0 at sunrise → 1 at sunset
             let alt = sin(f * .pi)                                          // 0 → 1 → 0 across the day
-            point = UnitPoint(x: f, y: 0.90 - alt * 0.78)                  // low at the horizon, high at noon
+            point = UnitPoint(x: f, y: 0.80 - alt * 0.66)                  // low at the horizon, high at noon
             isNight = false; altitude = alt
         } else {
             // Night: fraction from this sunset to the next sunrise. Before dawn we're past *yesterday's*
@@ -80,12 +80,12 @@ public struct AuraSky: View {
                 // 3 — the light: a warm (or cool, at night) glow centred exactly where the sun/moon is.
                 // Day glow eases off as the sun climbs, so the gold doesn't overpower the blue at noon
                 // (which read as a green cast); it stays strong low on the horizon at dawn/dusk.
-                RadialGradient(colors: [sun.opacity((path.isNight ? 0.55 : 0.82 - path.altitude * 0.34)
-                                                        * (1 - veil * 0.7)),
+                RadialGradient(colors: [sun.opacity((path.isNight ? 0.55 : 0.92 - path.altitude * 0.30)
+                                                        * (1 - veil * 0.5)),
                                         sun.opacity(0)],
                                center: path.point,
                                startRadius: 0,
-                               endRadius: max(size.width, size.height) * 0.72)
+                               endRadius: max(size.width, size.height) * 0.78)
 
                 // 4 — stars, night only.
                 if path.isNight {

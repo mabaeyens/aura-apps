@@ -103,6 +103,19 @@ public extension WeatherSnapshot {
     /// Whether the hero is a real station observation. Now always false — kept for API compatibility.
     var heroIsObserved: Bool { false }
 
+    /// The hourly strip re-anchored to `now`: hours already past are dropped so the strip always begins
+    /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours later).
+    /// The current hour itself is kept as the first column. Snapshots cached before `HourSlot` carried a
+    /// date have `nil` dates and fall back to the stored order unchanged.
+    func upcomingHours(now: Date = Date(),
+                       timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> [HourSlot] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let hourStart = cal.dateInterval(of: .hour, for: now)?.start ?? now
+        let anchored = hours.filter { ($0.date ?? .distantFuture) >= hourStart }
+        return anchored.isEmpty ? hours : anchored
+    }
+
     /// The next sun event to happen, for the sunrise/sunset complication: sunrise if it's still to
     /// come today, otherwise sunset if that's still to come, otherwise the next sunrise (sun times
     /// barely move day to day, so today's sunrise stands in for tomorrow's after dark).
@@ -132,15 +145,21 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
     public let sky: String?       // AEMET estadoCielo code
     public let precipProb: Int?   // %
     public let windSpeed: Int?    // km/h, for the hourly card's wind row
+    /// The absolute instant this hour begins, so the strip can be re-anchored to the *real* current
+    /// hour at display time — a snapshot built at 20:00 and served from cache at 09:55 the next day
+    /// must still start at 09h, not 20h. Optional: snapshots cached before this field decode it as nil.
+    public let date: Date?
 
     public var id: Int { hour }
 
-    public init(hour: Int, temp: Int?, sky: String?, precipProb: Int?, windSpeed: Int? = nil) {
+    public init(hour: Int, temp: Int?, sky: String?, precipProb: Int?, windSpeed: Int? = nil,
+                date: Date? = nil) {
         self.hour = hour
         self.temp = temp
         self.sky = sky
         self.precipProb = precipProb
         self.windSpeed = windSpeed
+        self.date = date
     }
 }
 
@@ -244,8 +263,8 @@ public extension WeatherSnapshot {
         let currentHour = cal.component(.hour, from: now)
 
         let dias = forecast.prediccion.dia
-        let day0 = dias.first.map { slots(for: $0).filter { $0.hour >= currentHour } } ?? []
-        let day1 = dias.count > 1 ? slots(for: dias[1]) : []
+        let day0 = dias.first.map { slots(for: $0, timeZone: timeZone).filter { $0.hour >= currentHour } } ?? []
+        let day1 = dias.count > 1 ? slots(for: dias[1], timeZone: timeZone) : []
         let upcoming = day0 + day1
 
         let current = upcoming.first
@@ -329,8 +348,9 @@ public extension WeatherSnapshot {
         return nil
     }
 
-    /// Merge one day's parallel hourly arrays into ordered `HourSlot`s.
-    private static func slots(for dia: MunicipioHourly.Dia) -> [HourSlot] {
+    /// Merge one day's parallel hourly arrays into ordered `HourSlot`s, each stamped with the absolute
+    /// instant it begins (in `timeZone`) so the strip can be re-anchored to the current hour at display.
+    private static func slots(for dia: MunicipioHourly.Dia, timeZone: TimeZone) -> [HourSlot] {
         let temps = pairs(dia.temperatura)
         let skies = Dictionary(dia.estadoCielo.compactMap { s -> (Int, String)? in
             guard let h = Int(s.periodo) else { return nil }
@@ -351,12 +371,33 @@ public extension WeatherSnapshot {
             return (h, v)
         }, uniquingKeysWith: { a, _ in a })
 
+        let dayStart = dayMidnight(dia.fecha, timeZone: timeZone)
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+
         let hours = Set(temps.keys).union(skies.keys).sorted()
         return hours.map { hour in
             let prob = blocks.first { $0.start <= hour && hour < $0.end }?.value
+            let date = dayStart.flatMap { cal.date(byAdding: .hour, value: hour, to: $0) }
             return HourSlot(hour: hour, temp: temps[hour], sky: skies[hour], precipProb: prob,
-                            windSpeed: winds[hour])
+                            windSpeed: winds[hour], date: date)
         }
+    }
+
+    /// Midnight (local, in `timeZone`) of the calendar day AEMET's hourly `fecha` names, e.g.
+    /// "2026-08-21T00:00:00" → that day's 00:00 in Madrid — the anchor for each hour's absolute instant.
+    private static func dayMidnight(_ raw: String, timeZone: TimeZone) -> Date? {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = timeZone
+        for format in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd"] {
+            f.dateFormat = format
+            if let date = f.date(from: raw) {
+                var cal = Calendar(identifier: .gregorian); cal.timeZone = timeZone
+                return cal.startOfDay(for: date)
+            }
+        }
+        return nil
     }
 
     /// The daytime sky code for a daily forecast block — prefers the whole-day/afternoon block so the

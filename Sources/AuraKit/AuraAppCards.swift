@@ -20,12 +20,12 @@ public enum AuraSize: Sendable {
     var stackSpacing: CGFloat { self == .phone ? 16 : 8 }
     var cardPadding: CGFloat  { self == .phone ? 18 : 10 }
     var cardCorner: CGFloat   { self == .phone ? 26 : 15 }
-    var heroTemp: CGFloat     { self == .phone ? 74 : 42 }
-    var heroIcon: CGFloat     { self == .phone ? 62 : 30 }
-    var titleSize: CGFloat    { self == .phone ? 14 : 10 }
-    var bodySize: CGFloat     { self == .phone ? 19 : 13 }
-    var smallSize: CGFloat    { self == .phone ? 15 : 10 }
-    var iconSize: CGFloat     { self == .phone ? 24 : 16 }
+    var heroTemp: CGFloat     { self == .phone ? 78 : 44 }
+    var heroIcon: CGFloat     { self == .phone ? 66 : 34 }
+    var titleSize: CGFloat    { self == .phone ? 16 : 12 }
+    var bodySize: CGFloat     { self == .phone ? 22 : 16 }
+    var smallSize: CGFloat    { self == .phone ? 18 : 13 }
+    var iconSize: CGFloat     { self == .phone ? 27 : 19 }
     var hourGap: CGFloat      { self == .phone ? 20 : 10 }
     var rowGap: CGFloat       { self == .phone ? 16 : 8 }
 }
@@ -81,8 +81,11 @@ public struct AuraForecastStack: View {
         VStack(alignment: .leading, spacing: size.stackSpacing) {
             AuraHeroCard(snapshot: snapshot, size: size, now: now)
             if let alert = snapshot.alert { AuraAlertCard(alert: alert, size: size) }
-            if !snapshot.hours.isEmpty {
-                AuraHourlyCard(hours: snapshot.hours, size: size, scrolls: hoursScroll)
+            // Re-anchor the strip to the real current hour: a snapshot served from cache must still
+            // start at "now", not at the hour it was built.
+            let upcoming = snapshot.upcomingHours(now: now)
+            if !upcoming.isEmpty {
+                AuraHourlyCard(hours: upcoming, size: size, scrolls: hoursScroll)
             }
             if !snapshot.days.isEmpty { AuraDailyCard(days: snapshot.days, size: size) }
             AuraSunWindCard(snapshot: snapshot, size: size, now: now)
@@ -90,10 +93,10 @@ public struct AuraForecastStack: View {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
             Text("Elaborado con datos de AEMET")
-                .font(.system(size: size == .phone ? 11 : 9))
-                .foregroundStyle(.white.opacity(0.5))
+                .font(.system(size: size == .phone ? 14 : 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 2)
+                .padding(.top, size == .phone ? 4 : 2)
         }
         .environment(\.colorScheme, .dark)   // dark frosted materials + light text over the sky
     }
@@ -123,23 +126,35 @@ public struct AuraHeroCard: View {
                         Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
                             .font(.system(size: size.heroTemp, weight: .bold, design: .rounded))
                             .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         if let sky = snapshot.currentSkyText {
                             Text(sky)
                                 .font(.system(size: size.bodySize, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.9)).lineLimit(2)
                         }
                     }
+                    .layoutPriority(1)   // the temperature keeps its width; the range column yields first
                     Spacer(minLength: 4)
-                    VStack(alignment: .trailing, spacing: size == .phone ? 8 : 4) {
+                    // Icon pinned to the top, Máx/Mín pushed to the bottom, so the right column spans the
+                    // full height of the tall temperature instead of clustering up top and leaving a gap.
+                    VStack(alignment: .trailing, spacing: size == .phone ? 6 : 3) {
                         Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky,
                                                              isNight: snapshot.isNight(at: now)))
                             .symbolRenderingMode(.multicolor)
                             .font(.system(size: size.heroIcon))
+                        // On the wide phone hero, push the range to the bottom so the column spans the
+                        // full height of the tall temperature. The narrow Watch keeps them clustered.
+                        if size == .phone { Spacer(minLength: 8) }
                         Text("Máx \(fmt(snapshot.tempMax))").foregroundStyle(Palette.temperature(snapshot.tempMax))
                         Text("Mín \(fmt(snapshot.tempMin))").foregroundStyle(Palette.temperature(snapshot.tempMin))
                     }
                     .font(.system(size: size.bodySize - 1, weight: .semibold))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(maxHeight: size == .phone ? .infinity : nil, alignment: .top)
                 }
 
                 // Wind gets its own full-width row so the speed *and* direction always fit; humidity and
@@ -185,8 +200,17 @@ public struct AuraHourlyCard: View {
         self.hours = hours; self.size = size; self.scrolls = scrolls
     }
 
-    /// Fixed height for the four stacked rows, so the width-reading `GeometryReader` has a definite box.
-    private var contentHeight: CGFloat { size == .phone ? 134 : 86 }
+    /// True when at least one hour carries a rain chance — otherwise the precip row is empty and dropped.
+    private var showPrecip: Bool { hours.contains { ($0.precipProb ?? 0) > 0 } }
+
+    /// Fixed height for the stacked rows, so the width-reading `GeometryReader` has a definite box. When
+    /// there's no rain anywhere in the strip the precip row is dropped and the card shrinks to match, so
+    /// a dry day doesn't reserve an empty band.
+    private var contentHeight: CGFloat {
+        let rows: CGFloat = size == .phone ? 100 : 66      // hour + icon + degree
+        let precipRow: CGFloat = size == .phone ? 34 : 20
+        return showPrecip ? rows + precipRow : rows
+    }
 
     public var body: some View {
         AuraCard(size: size) {
@@ -237,12 +261,14 @@ public struct AuraHourlyCard: View {
                         .colWidth(columnWidth)
                 }
             }
-            GridRow {
-                ForEach(items) { h in
-                    Text(h.precipProb.map { $0 > 0 ? "\($0)%" : "" } ?? "")
-                        .font(.system(size: size.smallSize - 1, weight: .semibold))
-                        .foregroundStyle(auraPrecipColor)
-                        .colWidth(columnWidth)
+            if showPrecip {
+                GridRow {
+                    ForEach(items) { h in
+                        Text(h.precipProb.map { $0 > 0 ? "\($0)%" : "" } ?? "")
+                            .font(.system(size: size.smallSize - 1, weight: .semibold))
+                            .foregroundStyle(auraPrecipColor)
+                            .colWidth(columnWidth)
+                    }
                 }
             }
         }
@@ -275,7 +301,7 @@ public struct AuraDailyCard: View {
                 ForEach(days) { d in
                     HStack(spacing: size == .phone ? 10 : 6) {
                         Text(Self.weekday(d.date))
-                            .frame(width: size == .phone ? 46 : 30, alignment: .leading)
+                            .frame(width: size == .phone ? 52 : 34, alignment: .leading)
                             .foregroundStyle(.white)
                         VStack(spacing: 1) {
                             Image(systemName: WeatherIcon.symbol(forSky: d.sky))
@@ -285,15 +311,17 @@ public struct AuraDailyCard: View {
                                 Text("\(p)%")
                                     .font(.system(size: size.smallSize - 2, weight: .semibold))
                                     .foregroundStyle(auraPrecipColor)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
                             }
                         }
-                        .frame(width: size == .phone ? 30 : 20)
+                        .frame(width: size == .phone ? 40 : 27)
 
                         Text(fmt(d.min)).foregroundStyle(Palette.temperature(d.min))
-                            .frame(width: size == .phone ? 40 : 26, alignment: .trailing)
+                            .frame(width: size == .phone ? 46 : 30, alignment: .trailing)
                         rangeBar(d)
                         Text(fmt(d.max)).fontWeight(.bold).foregroundStyle(Palette.temperature(d.max))
-                            .frame(width: size == .phone ? 40 : 26, alignment: .leading)
+                            .frame(width: size == .phone ? 46 : 30, alignment: .leading)
                     }
                     .font(.system(size: size.bodySize - 1, weight: .medium))
                     .monospacedDigit()
@@ -368,14 +396,25 @@ public struct AuraSunWindCard: View {
     }
 
     private func cell(icon: String, value: String, detail: String?, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: size == .phone ? 4 : 2) {
-            Image(systemName: icon).font(.system(size: size.iconSize)).foregroundStyle(tint)
-            Text(value).font(.system(size: size.bodySize, weight: .semibold)).foregroundStyle(.white)
+        // Centred, and larger than the body scale, so each half-width card fills its box instead of
+        // hugging the left edge with the right half left blank.
+        VStack(spacing: size == .phone ? 6 : 3) {
+            Image(systemName: icon)
+                .font(.system(size: size.iconSize + (size == .phone ? 10 : 4)))
+                .foregroundStyle(tint)
+            Text(value)
+                .font(.system(size: size.bodySize + (size == .phone ? 5 : 2), weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             if let detail {
-                Text(detail).font(.system(size: size.smallSize)).foregroundStyle(.white.opacity(0.7))
+                Text(detail)
+                    .font(.system(size: size.smallSize + (size == .phone ? 2 : 1)))
+                    .foregroundStyle(.white.opacity(0.75))
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, size == .phone ? 6 : 2)
     }
 
     private func hhmm(_ date: Date) -> String {
@@ -421,16 +460,16 @@ public struct AuraBulletinCard: View {
 
     public var body: some View {
         AuraCard(size: size) {
-            VStack(alignment: .leading, spacing: size == .phone ? 6 : 4) {
+            VStack(alignment: .leading, spacing: size == .phone ? 9 : 6) {
                 if let phenomenon {
                     Label(phenomenon, systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: size.smallSize, weight: .medium))
+                        .font(.system(size: size == .phone ? 16 : 12, weight: .semibold))
                         .foregroundStyle(Palette.tempOrange)
                 }
                 ForEach(Array(BulletinText.sentences(text).enumerated()), id: \.offset) { _, line in
                     Text(line)
-                        .font(.system(size: size.smallSize + 0.5))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .font(.system(size: size == .phone ? 17 : 13))
+                        .foregroundStyle(.white.opacity(0.88))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }

@@ -99,8 +99,8 @@ func todayAt(_ h: Int, _ m: Int) -> Date {
 }
 for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
                       ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
-    let phone = CGSize(width: 300, height: 900)    // tall enough to show the whole stack (device scrolls)
-    let watch = CGSize(width: 184, height: 620)    // tall enough to show the full stack (device scrolls)
+    let phone = CGSize(width: 300, height: 1500)   // tall enough to show the whole stack (device scrolls)
+    let watch = CGSize(width: 184, height: 1080)   // tall enough to show the full stack (device scrolls)
     write(appScreen(size: phone, now: when), name: "app-phone-\(label)", size: phone)
     write(appScreen(size: watch, now: when), name: "app-watch-\(label)", size: watch)
 }
@@ -119,3 +119,21 @@ func hoursPreview() -> some View {
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 }
 write(hoursPreview(), name: "app-hours-populated", size: CGSize(width: 320, height: 150))
+
+// The same hourly card with a dry day (no precip anywhere): the precip row is dropped and the card
+// shrinks to the three remaining rows instead of reserving an empty band.
+@MainActor
+func dryHoursPreview() -> some View {
+    let dry = WeatherSnapshot.preview.hours.map {
+        HourSlot(hour: $0.hour, temp: $0.temp, sky: $0.sky, precipProb: 0)
+    }
+    return ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(8, 0))
+        AuraHourlyCard(hours: dry, size: .phone, scrolls: false)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 320, height: 150)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+}
+write(dryHoursPreview(), name: "app-hours-dry", size: CGSize(width: 320, height: 150))

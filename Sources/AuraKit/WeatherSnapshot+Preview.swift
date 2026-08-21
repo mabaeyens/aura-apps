@@ -32,6 +32,8 @@ public extension WeatherSnapshot {
                                 phenomenon: "Temperatura máxima", zona: "280401",
                                 areaDesc: "Metropolitana", onset: base,
                                 expires: base.addingTimeInterval(3 * 3600)),
+            bulletin: "Cielos poco nubosos o despejados por la mañana con intervalos de nubes altas por la tarde y nubosidad de evolución. Probables chubascos en la Sierra por la tarde con posibilidad de tormenta. Temperaturas máximas en descenso generalizado, podría ser notable en zonas de la Sierra. Viento flojo del oeste y suroeste, pasando a noroeste en la Sierra durante la tarde.",
+            bulletinPhenomenon: "Descenso notable de las máximas en zonas de la Sierra",
             updated: base
         )
     }

@@ -52,7 +52,7 @@ public struct AuraRectHours: View {
     public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
 
     public var body: some View {
-        let hours = Array(snapshot.hours.prefix(5))
+        let hours = Array(snapshot.upcomingHours().prefix(5))
         if hours.isEmpty {
             AuraAccessoryEmpty()
         } else {
