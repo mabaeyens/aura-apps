@@ -68,6 +68,12 @@ struct TodayView: View {
                                  exists: { UIImage(named: $0) != nil })
     }
 
+    /// Whether any `city_*` art is actually in the bundle. Until it is, there's nothing to switch to, so
+    /// the family selector stays hidden (same gate as Settings).
+    private var hasCityscapeArt: Bool {
+        HeroBackground.assetNames(for: .cityscape).contains { UIImage(named: $0) != nil }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -136,6 +142,16 @@ struct TodayView: View {
     /// opens Predicción, Ubicaciones and Ajustes without a persistent bottom bar.
     private var heroMenu: some View {
         Menu {
+            // Switch the hero-art family right from the menu (mirrors the Settings control), so the theme is
+            // one tap from the hero itself. Only offered once cityscape art ships (`hasCityscapeArt`).
+            if hasCityscapeArt {
+                Picker("Fondo del cielo", selection: $heroFamily) {
+                    ForEach(HeroBackground.Family.allCases, id: \.rawValue) { family in
+                        Text(family.displayName).tag(family.rawValue)
+                    }
+                }
+                Divider()
+            }
             Button { route = .forecast }  label: { Label("Predicción", systemImage: "text.alignleft") }
             Button { route = .locations } label: { Label("Ubicaciones", systemImage: "mappin.and.ellipse") }
             Button { route = .settings }  label: { Label("Ajustes", systemImage: "gearshape") }
