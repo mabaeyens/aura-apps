@@ -44,6 +44,10 @@ struct AboutView: View {
 
                 Spacer().frame(height: 28)
 
+                dedication
+
+                Spacer().frame(height: 28)
+
                 Text("Créditos")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -82,6 +86,33 @@ struct AboutView: View {
         }
         .navigationTitle("Acerca de")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// A quiet personal dedication, set apart from the functional "Créditos" list below it — a
+    /// dedication is not an attribution. First person, warm and plain. The lines live in one array so
+    /// I can add my brothers and sisters by name later without touching the layout.
+    private let dedicationLines = [
+        "A mi padre, que me enseñó a mirar al cielo y a las estrellas, y me introdujo en el fabuloso mundo de la tecnología que tanto disfruto hoy.",
+        "A mi madre, que me descubrió otros mundos que no se podían ver con los ojos, a través de los libros y en los que encuentro gran dicha.",
+    ]
+
+    @ViewBuilder
+    private var dedication: some View {
+        Text("Dedicatoria")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 10)
+
+        VStack(spacing: 8) {
+            ForEach(dedicationLines, id: \.self) { line in
+                Text(line)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+            }
+        }
+        .frame(maxWidth: 360)
     }
 
     /// One credit line: the source name (tappable when it has a link) over a one-line note of what it
