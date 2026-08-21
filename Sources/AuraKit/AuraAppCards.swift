@@ -104,20 +104,37 @@ public struct AuraForecastStack: View {
             if let uvIndex = snapshot.uvIndex {
                 AuraUVCard(uvIndex: uvIndex, size: size)
             }
+            if let fireRisk = snapshot.fireRisk {
+                AuraFireRiskCard(fireRisk: fireRisk, size: size)
+            }
             if let radar { AuraRadarCard(radar: radar, size: size, now: now) }
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
-            // MITECO is credited alongside AEMET whenever the air-quality card is present (its ICA feed
-            // is CC-BY 4.0, which requires attribution); AEMET alone otherwise.
-            Text(snapshot.airQuality == nil ? "Elaborado con datos de AEMET"
-                                            : "Elaborado con datos de AEMET y MITECO")
+            // Credit every source whose card is present: AEMET always; MITECO when the ICA air-quality
+            // card shows (CC-BY 4.0 requires it); EFFIS when the fire-risk card shows (EU data licence).
+            Text(creditLine)
                 .font(.system(size: size == .phone ? 14 : 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, size == .phone ? 4 : 2)
         }
         .environment(\.colorScheme, .dark)   // dark frosted materials + light text over the sky
+    }
+
+    /// "Elaborado con datos de AEMET", extended to "… AEMET y MITECO" or "… AEMET, MITECO y EFFIS" as the
+    /// air-quality and fire-risk cards (each carrying its own attribution obligation) appear.
+    private var creditLine: String {
+        var sources = ["AEMET"]
+        if snapshot.airQuality != nil { sources.append("MITECO") }
+        if snapshot.fireRisk != nil { sources.append("EFFIS") }
+        let joined: String
+        switch sources.count {
+        case 1:  joined = sources[0]
+        case 2:  joined = "\(sources[0]) y \(sources[1])"
+        default: joined = sources.dropLast().joined(separator: ", ") + " y " + sources.last!
+        }
+        return "Elaborado con datos de \(joined)"
     }
 }
 
@@ -701,6 +718,49 @@ public struct AuraUVCard: View {
             }
         }
         .auraSectionTitle("Índice UV".uppercased(), size)
+    }
+}
+
+// MARK: - Fire risk
+
+/// Per-location forest-fire danger from EFFIS / GWIS: the 1–6 danger class in its colour, the class
+/// name ("Muy alto"), and the raw FWI value. Shown only when a value resolved for the point (out of
+/// season or over water GWIS returns no data, and the card is dropped).
+public struct AuraFireRiskCard: View {
+    let fireRisk: FireRisk
+    let size: AuraSize
+    public init(fireRisk: FireRisk, size: AuraSize) {
+        self.fireRisk = fireRisk; self.size = size
+    }
+
+    public var body: some View {
+        let color = Palette.fireRisk(fireRisk.dangerClass)
+        let swatch: CGFloat = size == .phone ? 46 : 30
+        return AuraCard(size: size) {
+            HStack(spacing: size.stackSpacing) {
+                ZStack {
+                    Circle().fill(color)
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: size.bodySize + (size == .phone ? 2 : 0), weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: swatch, height: swatch)
+                .shadow(color: color.opacity(0.6), radius: 5)
+
+                VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
+                    Text(fireRisk.categoryName)
+                        .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Text("Índice FWI \(Int(fireRisk.fwi.rounded()))")
+                        .font(.system(size: size.smallSize - 1))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1).minimumScaleFactor(0.65)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .auraSectionTitle("Riesgo de incendio".uppercased(), size)
     }
 }
 

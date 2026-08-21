@@ -1,6 +1,17 @@
 # Backlog
 
 ## Done
+- 2026-08-21 — Fire-risk card (`AuraFireRiskCard`, `FireRisk` + `EFFISFireRisk` in
+  `Sources/AuraKit/FireRisk.swift`): a real **per-coordinate** forest-fire-danger reading — AEMET's own
+  fire risk is map-only, so the value comes from the EU's **EFFIS / GWIS** GeoServer via an anonymous
+  WMS `GetFeatureInfo` (`ecmwf.query`, `INFO_FORMAT=text/html`, no key). We parse the FWI float out of
+  the returned HTML table and bucket it ourselves into the classic EFFIS 1–6 danger scale (Muy bajo…
+  Extremo, `Palette.fireRisk`). FWI is a single float, so it rides in `WeatherSnapshot` (back-compatible)
+  and shows on phone **and** Watch. Fetched per location in the refresh loop, never throws (a miss —
+  outage, out-of-window date, sea pixel — just hides the card). Credit line now lists EFFIS when present.
+  Tests in `FireRiskTests` (bucket boundaries, HTML parse, URL shape). Verified in the render.
+  **On-device check:** confirm a live query for the real current date returns a value (the research
+  sandbox clock fell outside GWIS's rolling window).
 - 2026-08-21 — Radar Phase 1 (`AuraRadarCard` + `AuraRadarInfo` in AuraKit, `RadarService` +
   `RadarSite` in the app): the **nearest regional radar** frame shown as-is (the 240 km circle is
   already local, so no georeferencing). `RadarSite.nearest(…)` picks 1 of the 15 sites by haversine;
@@ -45,31 +56,13 @@
 
 ## Pending
 
-### Building now
-- **Fire risk** — DECISION: use **EFFIS FWI** (EU/Copernicus GWIS). AEMET's own fire risk is map-only
-  (no per-coordinate value), but the JRC GWIS GeoServer exposes a **fully anonymous per-lat/lon** query,
-  confirmed live against the server:
-  - `GET https://ies-ows.jrc.ec.europa.eu/gwis` — WMS 1.3.0 `GetFeatureInfo`, `LAYERS=ecmwf.query`
-    (the `.query` layer is queryable; `ecmwf.fwi` is display-only → `LayerNotDefined`). Required params:
-    `STYLES=` (empty but present), `CRS=EPSG:4326`, `INFO_FORMAT=text/html` (only format carrying values),
-    `TIME=YYYY-MM-DD`. WMS 1.3.0 axis order is **lat,lon**, so `BBOX=lat−.05,lon−.05,lat+.05,lon+.05`
-    with `WIDTH=101&HEIGHT=101&I=50&J=50` samples the centre pixel. ECMWF ~8 km grid, **global** (covers
-    peninsula + Canarias), daily, 1–9-day forecast horizon.
-  - Response is an HTML table; parse the cell after "Fire Weather Index (FWI)" (a float) and "Danger
-    Index" (1–6 integer). **Bucket the FWI float ourselves** (don't trust the integer's meaning blindly):
-    classic EFFIS breakpoints → 1 Muy bajo <5.2 · 2 Bajo 5.2 · 3 Moderado 11.2 · 4 Alto 21.3 ·
-    5 Muy alto 38.0 · 6 Extremo >50.0. (3/4/5 boundaries confirmed from live data; 1↔2 at 5.2 inferred.)
-  - No key, no registration (`<Fees>none</Fees>`). Shared public JRC service → **cache 1 value per
-    location per day**. Attribution required: "Fuente: EFFIS / GWIS — Copernicus EMS, © Unión Europea".
-  - On-device check before shipping: the sandbox clock (2026-08-21) was outside the server's rolling
-    window in research, so confirm a live query for the real current date returns a value.
-- **Radar images** — Phase 1 shipped (see Done). Phase 2 (GeoTIFF crop) optional, see plan below.
-
 ### Later
 - **Ozono card** — `/api/red/especial/ozono` is **total-column ozone in Dobson Units** (stratospheric,
   ~320 DU, *not* surface air quality), daily-mean, not produced on weekends/holidays. Low everyday
   value + JSON keys still unknown. Keep for later — only worth it as an "capa de ozono" angle, not as
   air quality (the ICA card already covers that).
+- **Radar Phase 2 (optional)** — precise crop/overlay from the EPSG:4326 GeoTIFF rasters; only worth it
+  if the regional frame isn't local enough. Full plan retained below.
 - **Other AEMET cards surveyed**: montaña/nivológica (mountain + freezing level + avalanche), marítima
   (coastal/altamar sea state), playa (beach: sky/waves/water temp + UV max). No pollen in AEMET
   (SEAIC/regional).

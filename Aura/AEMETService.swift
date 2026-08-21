@@ -88,6 +88,10 @@ enum AEMETService {
                                                       longitude: location.longitude,
                                                       in: airStations)
             let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
+            // Per-location forest-fire danger from EFFIS/GWIS (anonymous, not AEMET). One lightweight
+            // query per location; never throws — a miss just leaves the fire-risk card hidden.
+            let fireRisk = await EFFISFireRisk.fireRisk(latitude: location.latitude,
+                                                        longitude: location.longitude)
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?
                 .topActive(forProvince: location.provinciaCode)
@@ -95,6 +99,7 @@ enum AEMETService {
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
                                                     observed: observed, alert: alert,
                                                     airQuality: airQuality, uvIndex: uvIndex,
+                                                    fireRisk: fireRisk,
                                                     bulletin: bulletin,
                                                     timeZone: location.timeZone))
             didUpdate = true
