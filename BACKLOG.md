@@ -1,174 +1,55 @@
 # Backlog
 
 ## Done
-- 2026-08-21 — Documentation refresh + WatchSync hardening (`389acc1`, `a606c98`): brought README +
-  `docs/` in line with what actually shipped — Aura is a **Lock Screen + Watch-complication** product
-  (location-configurable only, no Home Screen / per-metric widgets), with the rich UI in the app's "Hoy"
-  card stack. README gained the missing AuraKit pieces (air quality/MITECO, UV, radar, news, scale
-  sheets, the `Aura*Card` suite, `AuraSky`) and now credits **MITECO (CC-BY 4.0)** + the news feeds;
-  `WATCHOS.md` says the Watch renders the full shared stack; `PLAN.md` / `WIDGETS.md` / `CONVERSATION.md`
-  got archived/superseded banners; news source count fixed to four (RTVE, AEMET, Meteored, AEMET Blog).
-  **WatchSync hardening**: added `WeatherSnapshot.hasCurrentHourData` and made `WatchSync.cache(_:)`
-  refuse to overwrite a good cached snapshot with a "thin" one (hourly feed empty → hero + wind blank
-  while daily/AQI/UV still populate — the regression seen this session, cleared by a manual refresh).
-  Guarded per-INE, so a real location switch or first-ever sync is never blocked; 3 tests lock the
-  signal, 38 pass.
-- 2026-08-21 — Tap-through scale sheets + per-pollutant air quality + single-needle wind (`40d45cd`):
-  the wind, air-quality and UV cards open a detail sheet (`AuraScaleSheets.swift`) built on Aura's own
-  idiom — a continuous colour ramp with a "you are here" marker plus a legend of levels (Beaufort force,
-  ICA 1–6, WHO UV bands), not a reproduction of reference charts — with a text-less `hand.tap` affordance
-  on the phone card (`.auraDetail(_:)`, phone-only). **Air quality reworked to match how MITECO builds the
-  ICA**: `MitecoAirQuality.breakdown(…)` probes stations nearest-first (one `sql1` each, cap 10 / 80 km)
-  and takes every pollutant from the nearest station that measures it (O₃/SO₂ rarely sit in the closest
-  urban-traffic station), each `AirComponent` carrying its own station/distance/time; `composite(…)` sets
-  the índice from the worst pollutant's band using the running means the ICA is built from
-  (`valor_media_movil`: 8 h O₃, 24 h particulates — a real correctness fix over the raw hourly value), and
-  falls back to the single-station published índice on a miss. The sheet names each pollutant's source +
-  freshness and spells out the method. **Wind rose**: a single continuous needle through the dial on both
-  app cards (was two detached tips); the watch card aligned to the phone (needle + clean centre, since the
-  speed is already spelled out beside it) on the plain 32-point rose, while the watch-face complication
-  keeps its centre number + tips. Breakpoints confirmed exact vs MITECO `rangos`. 35 tests pass; render +
-  new `app-wind-card-watch` preview verified. Cost note: up to ~10 MITECO POSTs/location/refresh (bounded,
-  separate host; a per-refresh station cache would cut it).
-- 2026-08-21 — Radar Phase 1 (`AuraRadarCard` + `AuraRadarInfo` in AuraKit, `RadarService` +
-  `RadarSite` in the app): the **nearest regional radar** frame shown as-is (the 240 km circle is
-  already local, so no georeferencing). `RadarSite.nearest(…)` picks 1 of the 15 sites by haversine;
-  `AEMETClient.radarRegional(code)` fetches `/red/radar/regional/{code}` bytes; `RadarService` decodes
-  `UIImage` and caches per code on disk with a **10-min TTL** (falls back to any stale frame offline).
-  Kept OUT of `WeatherSnapshot` (image bytes would bloat the App-Group/Watch snapshot) — `TodayView`
-  loads it lazily after each snapshot. Card = image + "Radar de {sitio} · hace N min". **iOS only.**
-  Chrome verified via render (real imagery needs on-device verification). Phase 2 (GeoTIFF precise
-  crop) still optional — see below.
-- 2026-08-21 — UV Index card (`AuraUVCard`, `UVIndex` in `Sources/AuraKit/UVIndex.swift`): AEMET's
-  forecast clear-sky daily-max UV (`/prediccion/especifica/uvi/0`) as a WHO band-coloured swatch +
-  band name ("Muy alto") + protection cue. Payload confirmed live: a single object with
-  `CIUDAD:[{id,valor,uv,canarias}]` where `id` is the INE municipio code, so it's selected per location
-  by `location.ine` — one AEMET call lists every capital (fetched once per refresh, like the ICA feed).
-  Snapshot gains optional `uvIndex` (back-compatible). Placed in the environmental cluster after the ICA
-  card. Verified phone + Watch. (Render canvas heightened to fit the taller stack.)
-- 2026-08-21 — Air-quality card (`AuraAirQualityCard`) from MITECO's national ICA feed (`AirQuality` +
-  `MitecoAirQuality` in `Sources/AuraKit/AirQuality.swift`): one ~50 KB `ica-ultima-hora.csv` download
-  per refresh (in `AEMETService`, alongside `observacionTodas`), nearest active station resolved locally
-  by haversine, shown as the official 1–6 ICA colour swatch + category name + "por O₃ · estación · a
-  X km". Índice encoding confirmed from the MITECO data dictionary: 1–6 category, ×10 = same category
-  from partial pollutants (flagged "parcial"), 0 = no data (card hidden). Snapshot gains an optional
-  `airQuality` (back-compatible decode); credit reads "AEMET y MITECO" when present (CC-BY 4.0). Tests
-  in `AirQualityTests`. Verified phone + Watch. Note: uses a non-AEMET host with a slightly incomplete
-  cert chain (curl accepted it) — **confirm URLSession accepts it on-device**.
-- 2026-08-21 — Sun arc card (`AuraSunArcCard`) + full-width wind card (`AuraWindCard`): replaced the
-  two-up next-event/wind row with a full-width orto→ocaso arc — the sun glyph rides its live position
-  (recomputed from `sunrise/sunset` + `now` at display, so it re-anchors like the hourly strip), warm
-  travelled arc, orto/ocaso times at the ends, and a centre readout ("Quedan Xh de luz" by day,
-  "Amanece en Xh" after dark, arc dims + sun rests at the horizon). Wind moved to its own full-width
-  card reusing the `AuraWindCircular` compass rose. Verified at four times of day, phone + Watch.
-- 2026-08-21 — Robust hourly re-anchor + UI polish (`af462de`): `upcomingHours(now:)`
-  reconstructs each nil-date slot's instant from `updated`, so an already-cached overnight
-  snapshot re-anchors to the current hour without waiting for a refresh; predicción and hero
-  fonts larger; uniform `Próximos días` row height (precip line always reserved); lighter card
-  frost (`ultraThinMaterial` @ 0.7) so the sky reads through.
-- 2026-08-21 — App-screen type + layout pass (`c1eeacf`): whole `AuraSize` type scale bumped
-  (phone + Watch); phone hero right column fills its height; `HourSlot` gains an absolute
-  `date`; hourly strip re-anchored at display; dry-day hourly drops the empty precip row;
-  sun/wind cards centred; sky low-sun arc lifted so its light reaches the visible sky; bigger
-  "Elaborado con datos de AEMET" credit.
+- 2026-08-21 — Editorial hero rework + hourly data enrichment (`b9ff23e`, `6a9adb8`, `f56e8d1`, `6f0b463`, `bdf6bcd`, `788e8cb`): the hero dissolved from a card into an **editorial layout** — the temperature and two lines of natural-language Spanish prose sitting straight on the sky, generated on-device by the new **`ForecastPhrase`** (template/grammar composition, no LLM; seeded per location + day so it's deterministic yet varies town to town and day to day). The place shows as `LOCALIDAD · Momento` (Amanecer / Mañana / Mediodía / Tarde / Atardecer / Noche). **`AuraSky` occlusion**: the live sun/moon disc now dims, shrinks and blurs under cloud/rain/fog off the same `veil` the icon uses, so a "nuboso" sky reads as a sun *behind* the cloud rather than a bright disc on grey — with `occlusion-noon` / `occlusion-night` dev previews in `aura-render` and the HTML mockup deck rebuilt to match. **Hourly data enrichment**: `MunicipioHourly.Dia` now decodes `sensTermica`, `precipitacion`, `nieve`, `probTormenta`, `probNieve`, and `WeatherSnapshot` resolves the current hour's `currentPrecipMm`, `currentSnowMm`, `currentFeelsLike` and `currentStormProb` (defensive `precipAmount` parser: "Ip"/empty/comma-or-dot). `ForecastPhrase.dataline` folds them in conditionally — rain mm after the probability (only ≥ 0.1 mm; trace/0 stays unsaid), a snow note on snowy days ("unos 3 mm de nieve"), feels-like only when it diverges ≥ 3° from the shown temperature, storm risk when ≥ 30% — Spanish decimal comma throughout (`0,4 mm`; `2 mm` whole). **`HeroBackground`** gained a landscape/cityscape **`Family`** axis (canonical `condition_time` names × 2 families = 96, `resolve(...)` stays in-family) with a persisted **Ajustes** picker gated behind a `city_*` bundle probe, so no dead control shows until cityscape art ships. **About** gained a **"Dedicatoria"** to my parents. News feed: confirmed the sort + cap were already correct, so thumbnails were deliberately skipped. Tests: 14 for the hero-art contract, 69 for the hero phrasing, all green.
+- 2026-08-21 — Documentation refresh + WatchSync hardening (`389acc1`, `a606c98`): brought README + `docs/` in line with what actually shipped — Aura is a **Lock Screen + Watch-complication** product (location-configurable only, no Home Screen / per-metric widgets), with the rich UI in the app's "Hoy" card stack. README gained the missing AuraKit pieces (air quality/MITECO, UV, radar, news, scale sheets, the `Aura*Card` suite, `AuraSky`) and now credits **MITECO (CC-BY 4.0)** + the news feeds; `WATCHOS.md` says the Watch renders the full shared stack; `PLAN.md` / `WIDGETS.md` / `CONVERSATION.md` got archived/superseded banners; news source count fixed to four (RTVE, AEMET, Meteored, AEMET Blog). **WatchSync hardening**: added `WeatherSnapshot.hasCurrentHourData` and made `WatchSync.cache(_:)` refuse to overwrite a good cached snapshot with a "thin" one (hourly feed empty → hero + wind blank while daily/AQI/UV still populate — the regression seen this session, cleared by a manual refresh). Guarded per-INE, so a real location switch or first-ever sync is never blocked; 3 tests lock the signal, 38 pass.
+- 2026-08-21 — Tap-through scale sheets + per-pollutant air quality + single-needle wind (`40d45cd`): the wind, air-quality and UV cards open a detail sheet (`AuraScaleSheets.swift`) built on Aura's own idiom — a continuous colour ramp with a "you are here" marker plus a legend of levels (Beaufort force, ICA 1–6, WHO UV bands), not a reproduction of reference charts — with a text-less `hand.tap` affordance on the phone card (`.auraDetail(_:)`, phone-only). **Air quality reworked to match how MITECO builds the ICA**: `MitecoAirQuality.breakdown(…)` probes stations nearest-first (one `sql1` each, cap 10 / 80 km) and takes every pollutant from the nearest station that measures it (O₃/SO₂ rarely sit in the closest urban-traffic station), each `AirComponent` carrying its own station/distance/time; `composite(…)` sets the índice from the worst pollutant's band using the running means the ICA is built from (`valor_media_movil`: 8 h O₃, 24 h particulates — a real correctness fix over the raw hourly value), and falls back to the single-station published índice on a miss. The sheet names each pollutant's source + freshness and spells out the method. **Wind rose**: a single continuous needle through the dial on both app cards (was two detached tips); the watch card aligned to the phone (needle + clean centre, since the speed is already spelled out beside it) on the plain 32-point rose, while the watch-face complication keeps its centre number + tips. Breakpoints confirmed exact vs MITECO `rangos`. 35 tests pass; render + new `app-wind-card-watch` preview verified. Cost note: up to ~10 MITECO POSTs/location/refresh (bounded, separate host; a per-refresh station cache would cut it).
+- 2026-08-21 — Radar Phase 1 (`AuraRadarCard` + `AuraRadarInfo` in AuraKit, `RadarService` + `RadarSite` in the app): the **nearest regional radar** frame shown as-is (the 240 km circle is already local, so no georeferencing). `RadarSite.nearest(…)` picks 1 of the 15 sites by haversine; `AEMETClient.radarRegional(code)` fetches `/red/radar/regional/{code}` bytes; `RadarService` decodes `UIImage` and caches per code on disk with a **10-min TTL** (falls back to any stale frame offline). Kept OUT of `WeatherSnapshot` (image bytes would bloat the App-Group/Watch snapshot) — `TodayView` loads it lazily after each snapshot. Card = image + "Radar de {sitio} · hace N min". **iOS only.** Chrome verified via render (real imagery needs on-device verification). Phase 2 (GeoTIFF precise crop) still optional — see below.
+- 2026-08-21 — UV Index card (`AuraUVCard`, `UVIndex` in `Sources/AuraKit/UVIndex.swift`): AEMET's forecast clear-sky daily-max UV (`/prediccion/especifica/uvi/0`) as a WHO band-coloured swatch + band name ("Muy alto") + protection cue. Payload confirmed live: a single object with `CIUDAD:[{id,valor,uv,canarias}]` where `id` is the INE municipio code, so it's selected per location by `location.ine` — one AEMET call lists every capital (fetched once per refresh, like the ICA feed). Snapshot gains optional `uvIndex` (back-compatible). Placed in the environmental cluster after the ICA card. Verified phone + Watch. (Render canvas heightened to fit the taller stack.)
+- 2026-08-21 — Air-quality card (`AuraAirQualityCard`) from MITECO's national ICA feed (`AirQuality` + `MitecoAirQuality` in `Sources/AuraKit/AirQuality.swift`): one ~50 KB `ica-ultima-hora.csv` download per refresh (in `AEMETService`, alongside `observacionTodas`), nearest active station resolved locally by haversine, shown as the official 1–6 ICA colour swatch + category name + "por O₃ · estación · a X km". Índice encoding confirmed from the MITECO data dictionary: 1–6 category, ×10 = same category from partial pollutants (flagged "parcial"), 0 = no data (card hidden). Snapshot gains an optional `airQuality` (back-compatible decode); credit reads "AEMET y MITECO" when present (CC-BY 4.0). Tests in `AirQualityTests`. Verified phone + Watch. Note: uses a non-AEMET host with a slightly incomplete cert chain (curl accepted it) — **confirm URLSession accepts it on-device**.
+- 2026-08-21 — Sun arc card (`AuraSunArcCard`) + full-width wind card (`AuraWindCard`): replaced the two-up next-event/wind row with a full-width orto→ocaso arc — the sun glyph rides its live position (recomputed from `sunrise/sunset` + `now` at display, so it re-anchors like the hourly strip), warm travelled arc, orto/ocaso times at the ends, and a centre readout ("Quedan Xh de luz" by day, "Amanece en Xh" after dark, arc dims + sun rests at the horizon). Wind moved to its own full-width card reusing the `AuraWindCircular` compass rose. Verified at four times of day, phone + Watch.
+- 2026-08-21 — Robust hourly re-anchor + UI polish (`af462de`): `upcomingHours(now:)` reconstructs each nil-date slot's instant from `updated`, so an already-cached overnight snapshot re-anchors to the current hour without waiting for a refresh; predicción and hero fonts larger; uniform `Próximos días` row height (precip line always reserved); lighter card frost (`ultraThinMaterial` @ 0.7) so the sky reads through.
+- 2026-08-21 — App-screen type + layout pass (`c1eeacf`): whole `AuraSize` type scale bumped (phone + Watch); phone hero right column fills its height; `HourSlot` gains an absolute `date`; hourly strip re-anchored at display; dry-day hourly drops the empty precip row; sun/wind cards centred; sky low-sun arc lifted so its light reaches the visible sky; bigger "Elaborado con datos de AEMET" credit.
 
 ## Pending
 
 ### Blocked
-- **Fire risk (EFFIS/GWIS FWI)** — BUILT then REVERTED 2026-08-21 (commit `cf2d7b9`, reverted). The
-  anonymous EFFIS/GWIS WMS `GetFeatureInfo` path (`ecmwf.query`, `INFO_FORMAT=text/html`, no key) works
-  only for a `TIME` that **exactly matches a currently-loaded slice**, and cannot reliably return "today":
-  - `ecmwf.query` is the only FWI layer that responds; `ecmwf_fwi_ens.query` returns empty and the
-    `fwi_gadm_admin1/2.*` (administrative-unit) layers are `LayerNotDefined`.
-  - The layer sets `nearestValue="0"` (the server refuses to snap to the nearest date) and advertises a
-    synthetic extent (`2018-01-01/2099-12-31`, `default="2019-01-01"`) instead of the real loaded dates —
-    so the valid slice can't be discovered from GetCapabilities.
-  - Live probing (2026-08-21): **every** explicit real date — 2026/2025/2024, date or full ISO datetime —
-    returns HTTP 200 with an **empty table**. Only *omitting* `TIME` returns a value, pinned to the frozen
-    `default="2019-01-01"` (FWI ≈ 2, a fixed winter day → always "Muy bajo"). The window also rolls with
-    short retention: dates that returned FWI during the initial research no longer do.
-  - Net: no anonymous way to request "the latest available FWI", which a live app needs. The card was
-    hidden on-device (fetch correctly returned nil for the computed date).
-  - The card/model/fetch were well isolated (`FireRisk.swift`, one `WeatherSnapshot` field, one card, one
-    per-location fetch) and reverted cleanly. If revisited: (a) find the EFFIS "Current Situation"
-    viewer's real REST/time-series API (it must resolve "latest" somehow), or (b) OpenWeatherMap's FWI
-    API — clean per-lat/lon JSON, 5-day, 6 classes, but needs an API key and is OWM's own computation,
-    not EFFIS data.
+- **Fire risk (EFFIS/GWIS FWI)** — BUILT then REVERTED 2026-08-21 (commit `cf2d7b9`, reverted). The anonymous EFFIS/GWIS WMS `GetFeatureInfo` path (`ecmwf.query`, `INFO_FORMAT=text/html`, no key) works only for a `TIME` that **exactly matches a currently-loaded slice**, and cannot reliably return "today":
+  - `ecmwf.query` is the only FWI layer that responds; `ecmwf_fwi_ens.query` returns empty and the `fwi_gadm_admin1/2.*` (administrative-unit) layers are `LayerNotDefined`.
+  - The layer sets `nearestValue="0"` (the server refuses to snap to the nearest date) and advertises a synthetic extent (`2018-01-01/2099-12-31`, `default="2019-01-01"`) instead of the real loaded dates — so the valid slice can't be discovered from GetCapabilities.
+  - Live probing (2026-08-21): **every** explicit real date — 2026/2025/2024, date or full ISO datetime — returns HTTP 200 with an **empty table**. Only *omitting* `TIME` returns a value, pinned to the frozen `default="2019-01-01"` (FWI ≈ 2, a fixed winter day → always "Muy bajo"). The window also rolls with short retention: dates that returned FWI during the initial research no longer do.
+  - Net: no anonymous way to request "the latest available FWI", which a live app needs. The card was hidden on-device (fetch correctly returned nil for the computed date).
+  - The card/model/fetch were well isolated (`FireRisk.swift`, one `WeatherSnapshot` field, one card, one per-location fetch) and reverted cleanly. If revisited: (a) find the EFFIS "Current Situation" viewer's real REST/time-series API (it must resolve "latest" somehow), or (b) OpenWeatherMap's FWI API — clean per-lat/lon JSON, 5-day, 6 classes, but needs an API key and is OWM's own computation, not EFFIS data.
 
 ### Later
-- **Ozono card** — `/api/red/especial/ozono` is **total-column ozone in Dobson Units** (stratospheric,
-  ~320 DU, *not* surface air quality), daily-mean, not produced on weekends/holidays. Low everyday
-  value + JSON keys still unknown. Keep for later — only worth it as an "capa de ozono" angle, not as
-  air quality (the ICA card already covers that).
-- **Other AEMET cards surveyed**: montaña/nivológica (mountain + freezing level + avalanche), marítima
-  (coastal/altamar sea state), playa (beach: sky/waves/water temp + UV max). No pollen in AEMET
-  (SEAIC/regional).
+- **Ozono card** — `/api/red/especial/ozono` is **total-column ozone in Dobson Units** (stratospheric, ~320 DU, *not* surface air quality), daily-mean, not produced on weekends/holidays. Low everyday value + JSON keys still unknown. Keep for later — only worth it as an "capa de ozono" angle, not as air quality (the ICA card already covers that).
+- **Other AEMET cards surveyed**: montaña/nivológica (mountain + freezing level + avalanche), marítima (coastal/altamar sea state), playa (beach: sky/waves/water temp + UV max). No pollen in AEMET (SEAIC/regional).
 
 _(Contaminación de fondo dropped — the MITECO ICA card already covers local air quality.)_
 
 ### Radar plan — "radar for the displayed location"
 
-AEMET OpenData radar (tag `red-radares`), two products, each a **single latest image frame** (GIF,
-burnt-in dBZ legend), fetched via the existing two-step client (`AEMETClient.fetchBinary` already
-returns raw payload bytes):
-- `/api/red/radar/nacional` — Península+Baleares composite, **30-min** cadence, **no published
-  geographic bounds** (can't crop cleanly).
-- `/api/red/radar/regional/{code}` — one radar, a **240 km-radius circle centred on the radar city**,
-  **10-min** cadence. 15 codes: `am` Almería, `sa` Asturias, `pm` Balears, `ba` Barcelona, `cc` Cáceres,
-  `co` A Coruña, **`ma` Madrid**, `ml` Málaga, `mu` Murcia, `vd` Palencia, `ca` Las Palmas, `se` Sevilla,
-  `va` Valencia, `ss` Vizcaya, `za` Zaragoza.
+AEMET OpenData radar (tag `red-radares`), two products, each a **single latest image frame** (GIF, burnt-in dBZ legend), fetched via the existing two-step client (`AEMETClient.fetchBinary` already returns raw payload bytes):
+- `/api/red/radar/nacional` — Península+Baleares composite, **30-min** cadence, **no published geographic bounds** (can't crop cleanly).
+- `/api/red/radar/regional/{code}` — one radar, a **240 km-radius circle centred on the radar city**, **10-min** cadence. 15 codes: `am` Almería, `sa` Asturias, `pm` Balears, `ba` Barcelona, `cc` Cáceres, `co` A Coruña, **`ma` Madrid**, `ml` Málaga, `mu` Murcia, `vd` Palencia, `ca` Las Palmas, `se` Sevilla, `va` Valencia, `ss` Vizcaya, `za` Zaragoza.
 
-**Phase 1 (ship first — simple, robust, no georeferencing):** show the **nearest regional radar** image
-as-is. The regional frame is *already* local (a circle around a nearby city), so no bounds/cropping math
-is needed — this sidesteps the un-georeferenced-image problem entirely.
-- Map location → nearest of the 15 radar sites by haversine (hardcode the 15 approx city coords; Madrid
-  → `ma`).
-- Fetch `/red/radar/regional/{code}` with `fetchBinary`; decode bytes → `UIImage`/`NSImage` (handle GIF
-  and PNG). New `AuraRadarCard`: the image + radar name + "hace N min" freshness.
-- **Keep the image OUT of `WeatherSnapshot`** (image bytes would bloat the Codable/App-Group/Watch-synced
-  snapshot). Instead a small `RadarService` in the app fetches + caches per radar code with a **10-min
-  TTL** (disk in the App Group or in-memory). Fetch lazily when the card appears, or once per refresh.
-- **iOS only in v1** — don't ship heavy images to the Watch over WatchConnectivity; revisit with a
-  downscaled frame later.
+**Phase 1 (ship first — simple, robust, no georeferencing):** show the **nearest regional radar** image as-is. The regional frame is *already* local (a circle around a nearby city), so no bounds/cropping math is needed — this sidesteps the un-georeferenced-image problem entirely.
+- Map location → nearest of the 15 radar sites by haversine (hardcode the 15 approx city coords; Madrid → `ma`).
+- Fetch `/red/radar/regional/{code}` with `fetchBinary`; decode bytes → `UIImage`/`NSImage` (handle GIF and PNG). New `AuraRadarCard`: the image + radar name + "hace N min" freshness.
+- **Keep the image OUT of `WeatherSnapshot`** (image bytes would bloat the Codable/App-Group/Watch-synced snapshot). Instead a small `RadarService` in the app fetches + caches per radar code with a **10-min TTL** (disk in the App Group or in-memory). Fetch lazily when the card appears, or once per refresh.
+- **iOS only in v1** — don't ship heavy images to the Watch over WatchConnectivity; revisit with a downscaled frame later.
 
-**Phase 2 (optional — precise crop/overlay):** AEMET also distributes the radar rasters as **EPSG:4326
-GeoTIFF** (self-georeferenced, with an `ESCALA` RGBA→dBZ field, 3 latest frames). If reachable via the
-OpenData REST endpoint (confirm with a live `metadatos.formato` check: `image/gif` vs `image/tiff` —
-needs the API key), use it to crop to the exact point and/or overlay reflectivity on a MapKit snapshot.
-Only pursue if Phase 1 isn't local enough.
+**Phase 2 (optional — precise crop/overlay):** AEMET also distributes the radar rasters as **EPSG:4326 GeoTIFF** (self-georeferenced, with an `ESCALA` RGBA→dBZ field, 3 latest frames). If reachable via the OpenData REST endpoint (confirm with a live `metadatos.formato` check: `image/gif` vs `image/tiff` — needs the API key), use it to crop to the exact point and/or overlay reflectivity on a MapKit snapshot. Only pursue if Phase 1 isn't local enough.
 
-Note: AEMET has **no precipitation-nowcast** product — the radar raster is the only observed "raining
-near me now" surface (HARMONIE-AROME is forecast, not observation).
+Note: AEMET has **no precipitation-nowcast** product — the radar raster is the only observed "raining near me now" surface (HARMONIE-AROME is forecast, not observation).
 
 ## Notes
-- Data plumbing: endpoint calls in `Sources/AuraKit/AEMETClient.swift`, assembly in
-  `WeatherSnapshot.make(...)`. Shared cards in `Sources/AuraKit/AuraAppCards.swift` are composed
-  once and reused by both iOS (`Aura/TodayView.swift`) and watchOS
-  (`AuraWatch/WatchRootView.swift`) — new cards should follow that shared pattern.
-- `aura-render` (`Sources/AuraRender/main.swift`) renders the full stack at four times of day
-  for offline visual review; use it before committing any card visuals.
-- Hourly-strip staleness is handled at display time by `WeatherSnapshot.upcomingHours(now:)` —
-  any new time-sensitive card should re-anchor similarly rather than baking "now" into the
-  stored snapshot.
+- Data plumbing: endpoint calls in `Sources/AuraKit/AEMETClient.swift`, assembly in `WeatherSnapshot.make(...)`. Shared cards in `Sources/AuraKit/AuraAppCards.swift` are composed once and reused by both iOS (`Aura/TodayView.swift`) and watchOS (`AuraWatch/WatchRootView.swift`) — new cards should follow that shared pattern.
+- `aura-render` (`Sources/AuraRender/main.swift`) renders the full stack at four times of day for offline visual review; use it before committing any card visuals.
+- Hourly-strip staleness is handled at display time by `WeatherSnapshot.upcomingHours(now:)` — any new time-sensitive card should re-anchor similarly rather than baking "now" into the stored snapshot.
 
 ## Session log
 
-- **2026-08-21 (cont.)** — Added tap-through scale sheets to the wind/AQI/UV cards (Aura's own ramp
-  idiom, not copied charts), reworked air quality to per-pollutant nearest-station sourcing with a
-  transparent composite índice on the ICA running means, and turned the wind rose into a single needle —
-  aligning the watch card with the phone. All in `40d45cd`. A reported watch regression (empty wind rose,
-  hero missing humidity/precip) turned out to be a **stale watch snapshot**, cleared by a refresh — not a
-  code bug (hero code untouched; those fields all come from the one hourly slice, so they vanish together
-  while the separately-cached AQI still looked right). **Then hardened `WatchSync` anyway** (`a606c98`):
-  it now refuses to overwrite a good cached snapshot with one whose current-hour fields are all nil
-  (`WeatherSnapshot.hasCurrentHourData`, guarded per-INE). Also **refreshed all docs** (`389acc1`) to the
-  shipped reality — see the Done entry above.
-- **2026-08-21** — Shipped the sun arc, wind, air-quality (MITECO ICA) and UV cards, plus **Radar
-  Phase 1** (nearest regional frame, iOS only) — all on `main`. Radar looks good on-device; **Phase 2
-  (GeoTIFF crop) parked**. Tried a **fire-risk card off EFFIS/GWIS FWI and reverted it** — the anonymous
-  WMS path can't return a current value (see **Blocked**). Dropped Contaminación (ICA covers it); Ozono
-  parked in **Later**.
-- **Next up: more app-screen design options.** The redesign north star is in memory
-  [[aura-visual-redesign-direction]]; use `aura-render` for offline visual review before committing any
-  card visuals, and keep the shared-card pattern (compose once in `AuraAppCards.swift`, reused by iOS +
-  watchOS). No data-plumbing work is queued — this is a visual/layout exploration lane.
+- **2026-08-21 (cont.)** — Added tap-through scale sheets to the wind/AQI/UV cards (Aura's own ramp idiom, not copied charts), reworked air quality to per-pollutant nearest-station sourcing with a transparent composite índice on the ICA running means, and turned the wind rose into a single needle — aligning the watch card with the phone. All in `40d45cd`. A reported watch regression (empty wind rose, hero missing humidity/precip) turned out to be a **stale watch snapshot**, cleared by a refresh — not a code bug (hero code untouched; those fields all come from the one hourly slice, so they vanish together while the separately-cached AQI still looked right). **Then hardened `WatchSync` anyway** (`a606c98`): it now refuses to overwrite a good cached snapshot with one whose current-hour fields are all nil (`WeatherSnapshot.hasCurrentHourData`, guarded per-INE). Also **refreshed all docs** (`389acc1`) to the shipped reality — see the Done entry above.
+- **2026-08-21** — Shipped the sun arc, wind, air-quality (MITECO ICA) and UV cards, plus **Radar Phase 1** (nearest regional frame, iOS only) — all on `main`. Radar looks good on-device; **Phase 2 (GeoTIFF crop) parked**. Tried a **fire-risk card off EFFIS/GWIS FWI and reverted it** — the anonymous WMS path can't return a current value (see **Blocked**). Dropped Contaminación (ICA covers it); Ozono parked in **Later**.
+- **Next up: land the sunless hero art, then wire it in (Phase 2).** The editorial hero shipped; the redesign north star is in memory [[aura-visual-redesign-direction]] and the art brief in [`docs/HERO_BACKGROUNDS.md`](docs/HERO_BACKGROUNDS.md). Once the 48 sunless landscape PNGs land under their canonical `condition_time` names, wire `HeroBackground.resolve(...)` → `AuraSky(snapshot:now:heroImage:)` in the app hero (the resolver and asset contract already exist and are tested; the image hook is unused for now). Cityscape is the second family after that. Keep using `aura-render` for offline visual review before committing any card visuals, and keep the shared-card pattern (compose once in `AuraAppCards.swift`, reused by iOS + watchOS).

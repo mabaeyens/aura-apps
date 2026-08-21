@@ -1,30 +1,14 @@
 # Aura — widgets & complications spec
 
-> **Aspirational design spec (2026-08-19), not shipped reality.** What actually shipped is narrower
-> than this document: **Lock Screen accessory widgets** (`.accessoryCircular / .accessoryRectangular
-> / .accessoryInline`) and a **Watch complication** (those three plus `.accessoryCorner`), each
-> configurable by **location only** — there is no per-metric configuration, and no Home Screen /
-> StandBy / Mac widgets (the Home Screen is left to AEMET's own app). The rich per-metric UI described
-> here landed instead as the app's **"Hoy" card stack** (see the README and `AuraAppCards.swift`). The
-> metric/colour-scale tables below are still a useful design reference; read the rest as intent, not
-> as a description of the code.
+> **Aspirational design spec (2026-08-19), not shipped reality.** What actually shipped is narrower than this document: **Lock Screen accessory widgets** (`.accessoryCircular / .accessoryRectangular / .accessoryInline`) and a **Watch complication** (those three plus `.accessoryCorner`), each configurable by **location only** — there is no per-metric configuration, and no Home Screen / StandBy / Mac widgets (the Home Screen is left to AEMET's own app). The rich per-metric UI described here landed instead as the app's **"Hoy" card stack** (see the README and `AuraAppCards.swift`). The metric/colour-scale tables below are still a useful design reference; read the rest as intent, not as a description of the code.
 
-Derived from the two watch faces I use today (Modular Ultra + California/analog Ultra) and
-three style anchors: **Apple Weather** (clean, colorful), the **new AEMET app** (simplicity),
-and **Carrot Weather** (deep customizability). Aura is meant to replace my Carrot family
-subscription, so **per-surface configurability is a hard requirement**, not a nice-to-have.
+Derived from the two watch faces I use today (Modular Ultra + California/analog Ultra) and three style anchors: **Apple Weather** (clean, colorful), the **new AEMET app** (simplicity), and **Carrot Weather** (deep customizability). Aura is meant to replace my Carrot family subscription, so **per-surface configurability is a hard requirement**, not a nice-to-have.
 
 ## Guiding principles
 
-1. **One adaptive design per metric.** Each metric renders itself into whatever slot it lands
-   in — full detail on big widgets, condensed on Lock Screen / Ultra faces, tightest form in a
-   circular slot. Same data, responsive layout.
-2. **Configurable everywhere.** Every widget and complication is an App Intent config: pick the
-   **location** (GPS or a saved favorite) and, for combo/single surfaces, pick **which metric(s)**
-   to show. This is the Carrot-replacement lever.
-3. **Colorful where allowed, legible in mono.** Full color on Home Screen / StandBy / Mac and
-   color-capable watch faces; every glyph still reads in a single tint on Lock Screen and tinted
-   faces (shape carries meaning, hue is a bonus).
+1. **One adaptive design per metric.** Each metric renders itself into whatever slot it lands in — full detail on big widgets, condensed on Lock Screen / Ultra faces, tightest form in a circular slot. Same data, responsive layout.
+2. **Configurable everywhere.** Every widget and complication is an App Intent config: pick the **location** (GPS or a saved favorite) and, for combo/single surfaces, pick **which metric(s)** to show. This is the Carrot-replacement lever.
+3. **Colorful where allowed, legible in mono.** Full color on Home Screen / StandBy / Mac and color-capable watch faces; every glyph still reads in a single tint on Lock Screen and tinted faces (shape carries meaning, hue is a bonus).
 4. **Apple Weather-clean typography, AEMET-simple density.** No clutter.
 
 ## Metrics (data types)
@@ -45,8 +29,7 @@ subscription, so **per-surface configurability is a hard requirement**, not a ni
 ## Color scales
 
 - **Temperature gauge:** blue (cold) → cyan → green → yellow → orange → red (hot), by absolute °C.
-- **UV gauge:** green (0–2) → yellow (3–5) → orange (6–7) → red (8–10) → purple (11+). Matches the
-  `9` gauge on my California face.
+- **UV gauge:** green (0–2) → yellow (3–5) → orange (6–7) → red (8–10) → purple (11+). Matches the `9` gauge on my California face.
 - **Precipitation probability:** blue, intensity by %.
 - **Condition icons:** day/night variants (the purple moon+stars in the hourly strip = clear night).
 - **Avisos:** the official AEMET amarillo / naranja / rojo.
