@@ -94,10 +94,31 @@ func appScreen(size: CGSize, now: Date) -> some View {
     .fontDesign(.rounded)   // mirror RootView so the preview reflects the app's single typeface
 }
 
+// iPad / Mac (Designed for iPad): the card column is capped to a comfortable width and centred over a
+// full-bleed sky (mirrors TodayView's `.frame(maxWidth: 620)` on the regular size class), so the cards
+// sit inset instead of stretching the full window width.
+@MainActor
+func appScreenWide(size: CGSize, now: Date) -> some View {
+    ZStack(alignment: .top) {
+        AuraSky(snapshot: .preview, now: now)
+        AuraForecastStack(snapshot: .preview, size: .phone, now: now, hoursScroll: false)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: 620)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16)
+    }
+    .frame(width: size.width, height: size.height, alignment: .top)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .environment(\.colorScheme, .dark)
+    .fontDesign(.rounded)
+}
 let renderCal = Calendar.current
 func todayAt(_ h: Int, _ m: Int) -> Date {
     renderCal.date(bySettingHour: h, minute: m, second: 0, of: Date()) ?? Date()
 }
+// Mac window aspect from the screenshot (~1010×860 content), tall enough to show the top cards.
+write(appScreenWide(size: CGSize(width: 1010, height: 1500), now: todayAt(20, 40)),
+      name: "app-ipad-wide", size: CGSize(width: 1010, height: 1500))
 for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
                       ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
     let phone = CGSize(width: 300, height: 1880)   // tall enough to show the whole stack (device scrolls)
@@ -328,3 +349,13 @@ for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
                       ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
     write(skyOnly(now: when), name: "sky-\(label)", size: CGSize(width: 300, height: 640))
 }
+
+// PROTOTYPE: phased moon (MoonPreview.swift). The eight principal phases, a crescent traversing the
+// arc, and tonight's actual moon — brightness of disc + glow tracks illumination.
+write(moonPhaseChart(), name: "moon-phases", size: CGSize(width: 1360, height: 220))
+write(moonTraverse(fraction: 0.15,
+                   positions: [.init(x: 0.5, y: 0.55), .init(x: 0.5, y: 0.42),
+                               .init(x: 0.5, y: 0.30), .init(x: 0.5, y: 0.42),
+                               .init(x: 0.5, y: 0.55)]),
+      name: "moon-traverse", size: CGSize(width: 820, height: 200))
+write(moonTonight(now: Date()), name: "moon-tonight", size: CGSize(width: 340, height: 360))
