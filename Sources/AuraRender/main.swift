@@ -106,6 +106,42 @@ for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
     write(appScreen(size: watch, now: when), name: "app-watch-\(label)", size: watch)
 }
 
+// ---- Sun/moon occlusion across conditions ----
+// One tall sky tile per condition at the *same* solar position, so the disc going from a crisp point
+// of light (clear) to a swollen, dim smudge (rain / storm / fog) is visible side by side. Same at
+// night for the moon. Occlusion is driven off the `veil` table (radius shrink + blur growth).
+@MainActor
+func occlusionTile(code: String, now: Date) -> some View {
+    let s = WeatherSnapshot(ine: "0", localidad: "", provincia: "",
+                            tempMin: nil, tempMax: nil, humedadMax: nil,
+                            currentSky: code, sunrise: todayAt(7, 0), sunset: todayAt(21, 0),
+                            updated: Date())
+    return AuraSky(snapshot: s, now: now)
+        .frame(width: 120, height: 220)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .environment(\.colorScheme, .dark)
+}
+@MainActor
+func occlusionMatrix(now: Date) -> some View {
+    let conds: [(name: String, code: String)] = [
+        ("despejado", "11"), ("poco nub.", "12"), ("nuboso", "14"), ("cubierto", "16"),
+        ("niebla", "81"), ("lluvia", "25"), ("tormenta", "52"), ("nieve", "34"),
+    ]
+    return HStack(spacing: 8) {
+        ForEach(conds, id: \.code) { c in
+            VStack(spacing: 4) {
+                occlusionTile(code: c.code, now: now)
+                Text(c.name).font(.system(size: 10, weight: .semibold)).foregroundStyle(.white)
+            }
+        }
+    }
+    .padding(10)
+    .background(Color(white: 0.10))
+}
+let occSize = CGSize(width: 120 * 8 + 8 * 7 + 20, height: 260)
+write(occlusionMatrix(now: todayAt(13, 0)), name: "occlusion-noon", size: occSize)
+write(occlusionMatrix(now: todayAt(23, 0)), name: "occlusion-night", size: occSize)
+
 // The hourly card on its own over a morning sky — the strip now distributes edge to edge (no scroll),
 // so ImageRenderer lays it out in full.
 @MainActor

@@ -105,28 +105,35 @@ public struct AuraSky: View {
 
                 // 3.5 — the light source itself: a defined sun (or moon) disc with a soft corona, sitting
                 // exactly where the glow is centred. This is "the signature" — the sun you can point at,
-                // not just an ambient wash. Static per render (position from `now`), and it dims as cloud
-                // veils it, so a storm hides it and a clear dawn shows it low and warm at the screen edge.
+                // not just an ambient wash. Static per render (position from `now`). Cloud doesn't just dim
+                // it: the same `veil` occludes it — the disc shrinks and its blur swells, so rain/storm/fog
+                // read as the sun *hidden* behind weather (a soft, low-contrast smudge) while a clear sky
+                // keeps it a pin-sharp point of light. Occlusion is alpha + radius + blur only; the disc
+                // never leaves the true solar position.
+                let occlusion = veil
                 let discR = min(size.width, size.height) * 0.075
-                let discAlpha = (path.isNight ? 0.90 : 1.0) * (1 - veil * 0.85)
+                let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
+                let discAlpha = (path.isNight ? 0.90 : 1.0) * (1 - occlusion * 0.85)
+                let discBlur = discR * (0.05 + occlusion * 0.9)         // sharp when clear, swollen under cloud
                 if discAlpha > 0.02 {
                     let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
                     let centre = CGPoint(x: path.point.x * size.width, y: path.point.y * size.height)
-                    // Corona — a wide soft halo around the disc.
+                    // Corona — a wide soft halo around the disc; fades and tightens as the disc is occluded.
+                    let coronaR = discR * (1 - occlusion * 0.2)
                     Circle()
                         .fill(RadialGradient(colors: [disc.glow.opacity(0.55 * discAlpha), disc.glow.opacity(0)],
-                                             center: .center, startRadius: discR * 0.7, endRadius: discR * 3.2))
-                        .frame(width: discR * 6.4, height: discR * 6.4)
+                                             center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * 3.2))
+                        .frame(width: coronaR * 6.4, height: coronaR * 6.4)
                         .position(centre)
                         .blendMode(path.isNight ? .normal : .screen)
                     // The disc — bright core to warm rim, lit slightly off-centre for depth.
                     Circle()
                         .fill(RadialGradient(colors: [disc.core.opacity(discAlpha), disc.rim.opacity(discAlpha)],
                                              center: UnitPoint(x: 0.42, y: 0.38),
-                                             startRadius: 0, endRadius: discR))
-                        .frame(width: discR * 2, height: discR * 2)
+                                             startRadius: 0, endRadius: occludedR))
+                        .frame(width: occludedR * 2, height: occludedR * 2)
                         .position(centre)
-                        .blur(radius: discR * 0.05)
+                        .blur(radius: discBlur)
                 }
 
                 // 4 — stars, night only. Skipped over an image (the art carries its own).
