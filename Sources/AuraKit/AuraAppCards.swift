@@ -75,14 +75,18 @@ public struct AuraForecastStack: View {
     /// Optional radar frame, fetched and passed by the app (kept out of the snapshot). Nil on the Watch
     /// and until the image loads, so the radar card simply doesn't appear.
     private let radar: AuraRadarInfo?
+    /// Optional Noticias stream, fetched and passed by the app. Empty on the Watch and until it loads,
+    /// so the news card simply doesn't appear.
+    private let news: [NewsItem]
 
     public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date(),
-                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil) {
+                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil, news: [NewsItem] = []) {
         self.snapshot = snapshot
         self.size = size
         self.now = now
         self.hoursScroll = hoursScroll
         self.radar = radar
+        self.news = news
     }
 
     public var body: some View {
@@ -108,6 +112,7 @@ public struct AuraForecastStack: View {
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
+            if !news.isEmpty { AuraNewsCard(items: news, size: size, now: now) }
             // MITECO is credited alongside AEMET whenever the air-quality card is present (its ICA feed
             // is CC-BY 4.0, which requires attribution); AEMET alone otherwise.
             Text(snapshot.airQuality == nil ? "Elaborado con datos de AEMET"
@@ -758,6 +763,80 @@ public struct AuraRadarCard: View {
         let mins = Int(now.timeIntervalSince(radar.time) / 60)
         let freshness = mins <= 0 ? "ahora" : "hace \(mins) min"
         return "Radar de \(radar.siteName) · \(freshness)"
+    }
+}
+
+// MARK: - News
+
+/// A single "Noticias" stream — the most recent official headlines from RTVE's weather desk and AEMET,
+/// round-robin merged so neither source dominates. Each row opens the article in the browser. iOS only:
+/// the app doesn't pass news to the Watch, so the card renders solely when the stack is given items.
+public struct AuraNewsCard: View {
+    let items: [NewsItem]
+    let size: AuraSize
+    let now: Date
+    @Environment(\.openURL) private var openURL
+
+    public init(items: [NewsItem], size: AuraSize, now: Date = Date()) {
+        self.items = items; self.size = size; self.now = now
+    }
+
+    public var body: some View {
+        AuraCard(size: size) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
+                        Divider().overlay(.white.opacity(0.12))
+                            .padding(.vertical, size == .phone ? 10 : 6)
+                    }
+                    row(item)
+                }
+            }
+        }
+        .auraSectionTitle("Noticias".uppercased(), size)
+    }
+
+    private func row(_ item: NewsItem) -> some View {
+        Button { openURL(item.link) } label: {
+            VStack(alignment: .leading, spacing: size == .phone ? 5 : 3) {
+                Text(item.title)
+                    .font(.system(size: size.bodySize - (size == .phone ? 4 : 3), weight: .semibold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(3)
+                HStack(spacing: 6) {
+                    Text(item.source.displayName)
+                        .font(.system(size: size.smallSize - 3, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Self.badgeColor(item.source), in: Capsule())
+                    Text(Self.relative(from: item.date, now: now))
+                        .font(.system(size: size.smallSize - 2))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// A distinct badge colour per source, so the mix is scannable at a glance.
+    private static func badgeColor(_ source: NewsSource) -> Color {
+        switch source {
+        case .rtve:  return Color(red: 0.00, green: 0.45, blue: 0.80)
+        case .aemet: return Color(red: 0.85, green: 0.38, blue: 0.10)
+        }
+    }
+
+    /// "hace 2 h", "hace 3 d", "hace 40 min", or "ahora" within the last five minutes.
+    static func relative(from date: Date, now: Date) -> String {
+        let seconds = max(0, Int(now.timeIntervalSince(date)))
+        let minutes = seconds / 60, hours = minutes / 60, days = hours / 24
+        if days >= 1 { return "hace \(days) d" }
+        if hours >= 1 { return "hace \(hours) h" }
+        if minutes >= 5 { return "hace \(minutes) min" }
+        return "ahora"
     }
 }
 

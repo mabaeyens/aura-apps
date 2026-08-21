@@ -170,3 +170,34 @@ func windCardPreview() -> some View {
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 }
 write(windCardPreview(), name: "app-wind-card", size: CGSize(width: 320, height: 200))
+
+// The Noticias card: a round-robin RTVE + AEMET stream, each row a tappable headline with a source
+// badge and relative time. Sample items (the renderer has no network).
+@MainActor
+func newsCardPreview() -> some View {
+    let now = todayAt(13, 0)
+    let samples = [
+        NewsItem(title: "El tiempo el fin de semana: bajada de temperaturas y fuertes tormentas",
+                 link: URL(string: "https://rtve.es/1")!, source: .rtve,
+                 date: now.addingTimeInterval(-40 * 60)),
+        NewsItem(title: "Julio de 2026 fue el más cálido de la serie histórica, empatado con 2022",
+                 link: URL(string: "https://aemet.es/1")!, source: .aemet,
+                 date: now.addingTimeInterval(-3 * 3600)),
+        NewsItem(title: "Calor intenso en el este peninsular, con avisos rojos en Valencia y Alicante",
+                 link: URL(string: "https://rtve.es/2")!, source: .rtve,
+                 date: now.addingTimeInterval(-26 * 3600)),
+        NewsItem(title: "Predicción especial para el eclipse solar del 12 de agosto",
+                 link: URL(string: "https://aemet.es/2")!, source: .aemet,
+                 date: now.addingTimeInterval(-2 * 24 * 3600)),
+    ]
+    return ZStack {
+        AuraSky(snapshot: .preview, now: now)
+        AuraNewsCard(items: samples, size: .phone, now: now)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 340, height: 420)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .fontDesign(.rounded)
+}
+write(newsCardPreview(), name: "app-news-card", size: CGSize(width: 340, height: 420))

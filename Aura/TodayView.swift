@@ -15,6 +15,7 @@ struct TodayView: View {
 
     @State private var snapshot: WeatherSnapshot?
     @State private var radar: AuraRadarInfo?
+    @State private var news: [NewsItem] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     /// Which location `snapshot` belongs to, and when it was read — so a tab re-appearance or app
@@ -56,7 +57,7 @@ struct TodayView: View {
 
                 if let snapshot {
                     AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date(),
-                                      radar: radar)
+                                      radar: radar, news: news)
                 } else if isLoading {
                     notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }
                 } else if let errorMessage {
@@ -111,6 +112,7 @@ struct TodayView: View {
             WatchSync.shared.send(snap)
             errorMessage = nil
             await loadRadar(for: location, force: force)
+            news = await NewsService.latest(force: force)
         } else {
             // Nothing cached yet and the refresh couldn't fill it — surface why, if we know.
             errorMessage = refreshError ?? "No se pudieron obtener los datos."
