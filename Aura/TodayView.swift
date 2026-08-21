@@ -16,6 +16,10 @@ struct TodayView: View {
     /// way — only the card column is inset on the wider canvas so the cards don't stretch edge to edge.
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
+    /// The persisted hero-art family (landscape / cityscape). Drives which 48-asset grid the sky probes;
+    /// changing it in Settings re-resolves the background on the next render.
+    @AppStorage("heroFamily") private var heroFamily = HeroBackground.Family.landscape.rawValue
+
     @State private var snapshot: WeatherSnapshot?
     @State private var radar: AuraRadarInfo?
     @State private var news: [NewsItem] = []
@@ -30,10 +34,18 @@ struct TodayView: View {
     /// more often than this except on an explicit pull-to-refresh.
     private static let minInterval: TimeInterval = 15 * 60
 
+    /// The sunless hero art for the current sky+time, or `nil` to fall back to the procedural `AuraSky`.
+    /// Probes only the shipped assets in the app bundle; `AuraSky` still draws the live sun/moon on top.
+    private var heroImage: Image? {
+        HeroBackground.heroImage(for: snapshot,
+                                 family: HeroBackground.Family(storage: heroFamily),
+                                 exists: { UIImage(named: $0) != nil })
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                AuraSky(snapshot: snapshot).ignoresSafeArea()
+                AuraSky(snapshot: snapshot, heroImage: heroImage).ignoresSafeArea()
                 Group {
                     if let location = store.selected {
                         content(for: location)

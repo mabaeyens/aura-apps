@@ -69,6 +69,7 @@ public struct AuraSky: View {
         let path = AuraSunPath(now: now, sunrise: snapshot?.sunrise, sunset: snapshot?.sunset)
         let (category, _) = Palette.sky(forCode: snapshot?.currentSky)
         let veil = Self.veil(category)                     // how much cloud dulls the light, 0…1
+        let hidesDisc = Self.hidesDisc(category)           // heavy skies show glow but no defined disc
         let base = Palette.skyBaseColors(at: now)
         let sun = Self.glowColor(isNight: path.isNight, altitude: path.altitude)
         let scene = Self.sceneColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
@@ -115,7 +116,10 @@ public struct AuraSky: View {
                 let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
                 let discAlpha = (path.isNight ? 0.90 : 1.0) * (1 - occlusion * 0.85)
                 let discBlur = discR * (0.05 + occlusion * 0.9)         // sharp when clear, swollen under cloud
-                if discAlpha > 0.02 {
+                // Overcast, rain, storm, snow and fog never resolve into a disc you can point at — at any
+                // hour, sun or moon. The warm glow (step 3) still bleeds through the deck, but the defined
+                // core and its corona are dropped entirely; only clear/few-clouds/cloudy keep a real ball.
+                if discAlpha > 0.02 && !hidesDisc {
                     let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
                     let centre = CGPoint(x: path.point.x * size.width, y: path.point.y * size.height)
                     // Corona — a wide soft halo around the disc; fades and tightens as the disc is occluded.
@@ -168,6 +172,16 @@ public struct AuraSky: View {
         case .storm:            return 0.72
         case .snow:             return 0.50
         case .unknown:          return 0.10
+        }
+    }
+
+    /// Whether this sky is too veiled to ever show a *defined* sun/moon disc. Overcast, fog, rain, storm
+    /// and snow read as an even deck — a glow at most, never a ball you can point at — at every hour.
+    /// Clear, few-clouds and (dimmed) cloudy keep a real disc; `unknown` falls back to drawing one.
+    private static func hidesDisc(_ category: Palette.Sky) -> Bool {
+        switch category {
+        case .overcast, .fog, .rain, .storm, .snow: return true
+        case .clear, .fewClouds, .clouds, .unknown: return false
         }
     }
 

@@ -126,4 +126,19 @@ public enum HeroBackground {
         let d = abs(a - b)
         return min(d, n - d)
     }
+
+    /// Resolve the best hero **image** for a snapshot, given a predicate that reports which asset names
+    /// actually exist. `AuraKit` stays agnostic about the bundle: the app passes `exists`
+    /// (e.g. `{ UIImage(named: $0) != nil }`), and only the chosen family's 48 names are probed. Returns
+    /// `nil` — meaning "no art for this sky, use the procedural `AuraSky`" — for a missing snapshot, an
+    /// unknown/unmapped sky, or a family whose art for this condition hasn't shipped.
+    public static func heroImage(for snapshot: WeatherSnapshot?, now: Date = Date(),
+                                 family: Family = .landscape, exists: (String) -> Bool) -> Image? {
+        guard let snapshot else { return nil }
+        let available = Set(assetNames(for: family).filter(exists))
+        guard let name = resolve(for: snapshot, now: now, family: family, available: available) else {
+            return nil
+        }
+        return Image(name)
+    }
 }
