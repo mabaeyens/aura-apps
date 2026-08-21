@@ -218,3 +218,17 @@ func airQualityCardPreview() -> some View {
     .fontDesign(.rounded)
 }
 write(airQualityCardPreview(), name: "app-airquality-card", size: CGSize(width: 340, height: 190))
+
+// The sky ALONE (no cards) at the four times of day, so the sun/moon disc and its travel east→west can
+// be judged without the frosted stack covering it. Phone aspect.
+@MainActor
+func skyOnly(now: Date) -> some View {
+    AuraSky(snapshot: .preview, now: now)
+        .frame(width: 300, height: 640)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .environment(\.colorScheme, .dark)
+}
+for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
+                      ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
+    write(skyOnly(now: when), name: "sky-\(label)", size: CGSize(width: 300, height: 640))
+}

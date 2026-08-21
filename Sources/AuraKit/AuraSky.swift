@@ -87,6 +87,32 @@ public struct AuraSky: View {
                                startRadius: 0,
                                endRadius: max(size.width, size.height) * 0.78)
 
+                // 3.5 — the light source itself: a defined sun (or moon) disc with a soft corona, sitting
+                // exactly where the glow is centred. This is "the signature" — the sun you can point at,
+                // not just an ambient wash. Static per render (position from `now`), and it dims as cloud
+                // veils it, so a storm hides it and a clear dawn shows it low and warm at the screen edge.
+                let discR = min(size.width, size.height) * 0.075
+                let discAlpha = (path.isNight ? 0.90 : 1.0) * (1 - veil * 0.85)
+                if discAlpha > 0.02 {
+                    let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
+                    let centre = CGPoint(x: path.point.x * size.width, y: path.point.y * size.height)
+                    // Corona — a wide soft halo around the disc.
+                    Circle()
+                        .fill(RadialGradient(colors: [disc.glow.opacity(0.55 * discAlpha), disc.glow.opacity(0)],
+                                             center: .center, startRadius: discR * 0.7, endRadius: discR * 3.2))
+                        .frame(width: discR * 6.4, height: discR * 6.4)
+                        .position(centre)
+                        .blendMode(path.isNight ? .normal : .screen)
+                    // The disc — bright core to warm rim, lit slightly off-centre for depth.
+                    Circle()
+                        .fill(RadialGradient(colors: [disc.core.opacity(discAlpha), disc.rim.opacity(discAlpha)],
+                                             center: UnitPoint(x: 0.42, y: 0.38),
+                                             startRadius: 0, endRadius: discR))
+                        .frame(width: discR * 2, height: discR * 2)
+                        .position(centre)
+                        .blur(radius: discR * 0.05)
+                }
+
                 // 4 — stars, night only.
                 if path.isNight {
                     Canvas { ctx, sz in Self.drawStars(&ctx, size: sz) }
@@ -137,6 +163,23 @@ public struct AuraSky: View {
         let horizon = RGB(r: 1.00, g: 0.60, b: 0.34)   // low sun — warm orange
         let noon    = RGB(r: 1.00, g: 0.93, b: 0.72)   // high sun — bright gold
         return RGB.lerp(horizon, noon, altitude).color
+    }
+
+    /// The sun/moon disc's own colours: a bright core, a warm (or cool, at night) rim, and the corona
+    /// tint. The daytime core stays near-white so the disc reads as a light source, deepening its rim to
+    /// orange as the sun nears the horizon; the moon is a pale silver.
+    private static func discColors(isNight: Bool, altitude: Double, glow: Color)
+        -> (core: Color, rim: Color, glow: Color) {
+        if isNight {
+            return (core: RGB(r: 0.96, g: 0.97, b: 1.00).color,
+                    rim:  RGB(r: 0.80, g: 0.84, b: 0.98).color,
+                    glow: RGB(r: 0.76, g: 0.80, b: 0.96).color)
+        }
+        let rimHorizon = RGB(r: 1.00, g: 0.55, b: 0.28)   // low sun — orange rim
+        let rimNoon    = RGB(r: 1.00, g: 0.88, b: 0.60)   // high sun — soft gold rim
+        return (core: RGB(r: 1.00, g: 0.99, b: 0.94).color,
+                rim:  RGB.lerp(rimHorizon, rimNoon, altitude).color,
+                glow: glow)
     }
 
     /// Scenery tints. Daytime scenery warms toward dusk as the sun drops; night goes near-silhouette.
