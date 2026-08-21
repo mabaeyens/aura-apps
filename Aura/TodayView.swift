@@ -12,6 +12,9 @@ import UIKit
 /// AEMET directly, so it can't duplicate the launch refresh's requests.
 struct TodayView: View {
     @EnvironmentObject private var store: LocationStore
+    /// Compact on iPhone; regular on iPad and Mac (Designed for iPad). The sky stays full-bleed either
+    /// way — only the card column is inset on the wider canvas so the cards don't stretch edge to edge.
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     @State private var snapshot: WeatherSnapshot?
     @State private var radar: AuraRadarInfo?
@@ -65,6 +68,11 @@ struct TodayView: View {
                 }
             }
             .padding(.horizontal, 16)
+            // On iPad and Mac the window is far wider than a phone; cap the card column to a comfortable
+            // reading width and centre it, so the cards sit inset over a full-bleed sky instead of
+            // stretching the full window width. iPhone (compact) keeps the full width.
+            .frame(maxWidth: hSizeClass == .regular ? 620 : .infinity)
+            .frame(maxWidth: .infinity)   // centre the capped column in the scroll view's full width
             .padding(.top, 6)
             .padding(.bottom, 64)   // let the sky's horizon breathe below the last card
         }
