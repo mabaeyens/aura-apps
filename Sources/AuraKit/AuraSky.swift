@@ -58,11 +58,17 @@ public struct AuraSky: View {
     /// The app resolves this via `HeroBackground` and its bundle; `AuraKit` stays agnostic about where the
     /// image comes from.
     private let heroImage: Image?
+    /// Where the hero art anchors when the view's aspect differs from the 9:19.5 art. The phone matches
+    /// the art almost exactly, so `.center` shows the whole scene; the near-square Watch would crop the
+    /// landscape off the bottom, so it passes `.bottom` to keep the mountains, tree and river in frame.
+    private let heroAnchor: Alignment
 
-    public init(snapshot: WeatherSnapshot?, now: Date = Date(), heroImage: Image? = nil) {
+    public init(snapshot: WeatherSnapshot?, now: Date = Date(), heroImage: Image? = nil,
+                heroAnchor: Alignment = .center) {
         self.snapshot = snapshot
         self.now = now
         self.heroImage = heroImage
+        self.heroAnchor = heroAnchor
     }
 
     public var body: some View {
@@ -81,7 +87,7 @@ public struct AuraSky: View {
                 // landscape), or the procedural top-to-bottom gradient that tracks the hour.
                 if let heroImage {
                     heroImage.resizable().scaledToFill()
-                        .frame(width: size.width, height: size.height).clipped()
+                        .frame(width: size.width, height: size.height, alignment: heroAnchor).clipped()
                 } else {
                     LinearGradient(colors: [base.top, base.bottom], startPoint: .top, endPoint: .bottom)
                 }

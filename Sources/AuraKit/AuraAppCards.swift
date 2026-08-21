@@ -78,20 +78,30 @@ public struct AuraForecastStack: View {
     /// Optional Noticias stream, fetched and passed by the app. Empty on the Watch and until it loads,
     /// so the news card simply doesn't appear.
     private let news: [NewsItem]
+    /// When > 0, the hero is stretched to fill this height (one screen) so every forecast card falls
+    /// **below the fold**: the first screen is just the clean sky, landscape and editorial text, and the
+    /// cards are revealed on scroll. The apps pass their scroll viewport height; `aura-render` leaves it 0
+    /// so the offline full-stack previews render as one continuous image, unchanged.
+    private let heroFillHeight: CGFloat
 
     public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date(),
-                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil, news: [NewsItem] = []) {
+                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil, news: [NewsItem] = [],
+                heroFillHeight: CGFloat = 0) {
         self.snapshot = snapshot
         self.size = size
         self.now = now
         self.hoursScroll = hoursScroll
         self.radar = radar
         self.news = news
+        self.heroFillHeight = heroFillHeight
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: size.stackSpacing) {
             AuraHeroCard(snapshot: snapshot, size: size, now: now)
+                // Push the cards below the fold: on a real screen the hero fills the first viewport so the
+                // clean sky + landscape read on their own; 0 (aura-render) keeps the hero its natural height.
+                .frame(minHeight: heroFillHeight > 0 ? heroFillHeight : nil, alignment: .top)
             if let alert = snapshot.alert { AuraAlertCard(alert: alert, size: size) }
             // Re-anchor the strip to the real current hour: a snapshot served from cache must still
             // start at "now", not at the hour it was built.

@@ -22,13 +22,26 @@ struct WatchRootView: View {
 
     var body: some View {
         ZStack {
-            AuraSky(snapshot: snapshot, heroImage: heroImage).ignoresSafeArea()
+            // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
+            // crop the mountains, tree and river off the bottom of the tall art).
+            AuraSky(snapshot: snapshot, heroImage: heroImage, heroAnchor: .bottom).ignoresSafeArea()
             if let snapshot {
-                ScrollView {
-                    AuraForecastStack(snapshot: snapshot, size: .watch, now: snapshot.updated)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 6)
+                // Hero fills the wrist screen — clean sky + landscape, system clock in its top-right
+                // corner — and the cards sit below the fold, revealed on scroll (`heroFillHeight`). The
+                // content reaches into the top safe area so the editorial text sits high, not marooned
+                // below a tall blank band; the system time still floats in its corner.
+                // `ignoresSafeArea` on the reader (not the ScrollView) so `geo` measures the full reclaimed
+                // height — the hero then fills the whole wrist screen and the cards stay below the fold.
+                GeometryReader { geo in
+                    ScrollView {
+                        AuraForecastStack(snapshot: snapshot, size: .watch, now: snapshot.updated,
+                                          heroFillHeight: geo.size.height)
+                            .padding(.horizontal, 4)
+                            .padding(.top, 40)   // clear the system clock and the rounded top corners
+                            .padding(.bottom, 6)
+                    }
                 }
+                .ignoresSafeArea(.container, edges: .top)
             } else {
                 ContentUnavailableView("Abre Aura en el iPhone", systemImage: "iphone")
                     .environment(\.colorScheme, .dark)

@@ -2,6 +2,12 @@ import AuraKit
 import SwiftUI
 import UIKit
 
+/// Reports the Hoy scroll view's vertical offset so the "MÁS" hint can fade as the cards come up.
+private struct ScrollOffsetKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 /// "Hoy" — the forecast for the selected location, rendered as Aura's signature screen: the shared
 /// `AuraForecastStack` (hero, hours, days, sun·wind, aviso, predicción) floating as frosted cards over
 /// a full-bleed `AuraSky` whose light sits where the sun actually is for the hour. The same cards the
@@ -29,6 +35,8 @@ struct TodayView: View {
     /// foreground doesn't trigger a refresh when the on-screen data is already recent.
     @State private var loadedINE: String?
     @State private var loadedAt: Date?
+    /// Hoy scroll offset (0 at the top, negative as you scroll down), driving the "MÁS" hint's fade.
+    @State private var scrollY: CGFloat = 0
 
     /// AEMET updates municipal forecasts only a few times a day; don't refresh the same location
     /// more often than this except on an explicit pull-to-refresh.
@@ -53,43 +61,119 @@ struct TodayView: View {
                         ContentUnavailableView(
                             "Sin ubicaciones",
                             systemImage: "mappin.slash",
-                            description: Text("Añade una ubicación en la pestaña Ubicaciones.")
+                            description: Text("Abre el menú (arriba a la derecha) y añade una ubicación.")
                         )
                     }
                 }
                 .environment(\.colorScheme, .dark)   // light text + dark frosted cards over the sky
             }
+            // No bottom tab bar (it chromed the sky): the other sections open from a discreet frosted
+            // menu on the hero, so the clean sky, landscape and editorial text own the screen.
+            .overlay(alignment: .topTrailing) { heroMenu }
+            .overlay(alignment: .bottom) { scrollHintOverlay }
             .toolbar(.hidden, for: .navigationBar)    // immersive: the hero card carries the location name
+        }
+        .sheet(item: $route) { route in
+            switch route {
+            case .forecast:  ForecastTextView()
+            case .locations: LocationsView()
+            case .settings:  SettingsView()
+            }
         }
         .task(id: store.selectedINE) { await load(force: false) }
     }
 
+    /// The sections that used to be tabs, now reachable from the hero menu. Presented as sheets (each
+    /// brings its own navigation and title; swipe down to dismiss).
+    private enum MenuRoute: Int, Identifiable { case forecast, locations, settings; var id: Int { rawValue } }
+    @State private var route: MenuRoute?
+
+    /// A discreet frosted control in the hero's top-trailing corner — opposite the editorial text — that
+    /// opens Predicción, Ubicaciones and Ajustes without a persistent bottom bar.
+    private var heroMenu: some View {
+        Menu {
+            Button { route = .forecast }  label: { Label("Predicción", systemImage: "text.alignleft") }
+            Button { route = .locations } label: { Label("Ubicaciones", systemImage: "mappin.and.ellipse") }
+            Button { route = .settings }  label: { Label("Ajustes", systemImage: "gearshape") }
+        } label: {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.28), radius: 6, y: 1)
+        }
+        .padding(.trailing, 16)
+        .padding(.top, 4)
+        .environment(\.colorScheme, .dark)
+    }
+
+    /// A gentle "MÁS ⌄" affordance centred at the bottom of the first screen, inviting a scroll to the
+    /// cards. Fades out as soon as the user scrolls; only shown when there's a forecast to reveal.
+    @ViewBuilder private var scrollHintOverlay: some View {
+        if snapshot != nil {
+            VStack(spacing: 1) {
+                Text("MÁS").font(.system(size: 11, weight: .bold)).tracking(2)
+                Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .shadow(color: .black.opacity(0.35), radius: 5, y: 1)
+            .padding(.bottom, 8)
+            .opacity(hintOpacity)
+            .allowsHitTesting(false)
+            .environment(\.colorScheme, .dark)
+        }
+    }
+
+    /// 1 at the top of the scroll, fading to 0 after ~50 pt of downward scroll.
+    private var hintOpacity: Double {
+        let scrolled = min(max(-scrollY, 0) / 50, 1)   // CGFloat, 0…1
+        return 1 - Double(scrolled)
+    }
+
     @ViewBuilder
     private func content(for location: Location) -> some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                if !store.apiKeyPresent { keyBanner }
+        // The hero fills the first screen (see `heroFillHeight`), so `geo` gives it the scroll viewport
+        // height and the cards start just below the fold — the clean sky + landscape read on their own.
+        GeometryReader { geo in
+            // The scroll viewport's top edge in global space is fixed (it doesn't move as the content
+            // scrolls); the content-top reader below reports its own global top minus this, giving 0 at
+            // rest and a growing negative offset on downward scroll. Global space is immune to the way
+            // `.refreshable` rewrites the ScrollView's internals — a named coordinate space wasn't tracking.
+            let viewportTop = geo.frame(in: .global).minY
+            ScrollView {
+                VStack(spacing: 14) {
+                    if !store.apiKeyPresent { keyBanner }
 
-                if let snapshot {
-                    AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date(),
-                                      radar: radar, news: news)
-                } else if isLoading {
-                    notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }
-                } else if let errorMessage {
-                    notice { Label(errorMessage, systemImage: "exclamationmark.triangle") }
+                    if let snapshot {
+                        AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date(),
+                                          radar: radar, news: news, heroFillHeight: geo.size.height)
+                    } else if isLoading {
+                        notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }
+                    } else if let errorMessage {
+                        notice { Label(errorMessage, systemImage: "exclamationmark.triangle") }
+                    }
                 }
+                .padding(.horizontal, 16)
+                // On iPad and Mac the window is far wider than a phone; cap the card column to a comfortable
+                // reading width and centre it, so the cards sit inset over a full-bleed sky instead of
+                // stretching the full window width. iPhone (compact) keeps the full width.
+                .frame(maxWidth: hSizeClass == .regular ? 620 : .infinity)
+                .frame(maxWidth: .infinity)   // centre the capped column in the scroll view's full width
+                .padding(.top, 40)      // start the editorial text a touch lower, off the status bar
+                .padding(.bottom, 64)   // let the sky's horizon breathe below the last card
+                .background(
+                    GeometryReader { g in
+                        Color.clear.preference(key: ScrollOffsetKey.self,
+                                               value: g.frame(in: .global).minY - viewportTop)
+                    }
+                )
             }
-            .padding(.horizontal, 16)
-            // On iPad and Mac the window is far wider than a phone; cap the card column to a comfortable
-            // reading width and centre it, so the cards sit inset over a full-bleed sky instead of
-            // stretching the full window width. iPhone (compact) keeps the full width.
-            .frame(maxWidth: hSizeClass == .regular ? 620 : .infinity)
-            .frame(maxWidth: .infinity)   // centre the capped column in the scroll view's full width
-            .padding(.top, 6)
-            .padding(.bottom, 64)   // let the sky's horizon breathe below the last card
+            .onPreferenceChange(ScrollOffsetKey.self) { scrollY = $0 }
+            .scrollContentBackground(.hidden)
+            .refreshable { await load(force: true) }
         }
-        .scrollContentBackground(.hidden)
-        .refreshable { await load(force: true) }
     }
 
     /// A translucent banner used for the API-key prompt, loading and error states, so they sit on the
