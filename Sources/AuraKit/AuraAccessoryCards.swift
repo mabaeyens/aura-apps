@@ -86,55 +86,57 @@ public struct AuraAccessoryRectangular: View {
         }
     }
 
-    /// iPhone / Watch: the original compact stack.
+    /// The day's four figures as a single line, so `minimumScaleFactor` scales them together and the
+    /// last one never truncates off the narrow slot — as four separate labels, humidity was clipped off
+    /// the right edge instead of the row shrinking. Each icon sits snug against its value (a thin space),
+    /// with a wider gap between groups.
+    private var metricsLine: Text {
+        let gap = Text("   ")
+        let thin = "\u{2009}"
+        var line = Text(Image(systemName: "arrow.up")) + Text(thin + AccessoryFormat.temp(snapshot.tempMax))
+            + gap + Text(Image(systemName: "arrow.down")) + Text(thin + AccessoryFormat.temp(snapshot.tempMin))
+        if let p = snapshot.currentPrecipProb {
+            line = line + gap + Text(Image(systemName: "umbrella.fill")) + Text(thin + "\(p)%")
+        }
+        if let h = snapshot.currentHumidity {
+            line = line + gap + Text(Image(systemName: "humidity.fill")) + Text(thin + "\(h)%")
+        }
+        return line
+    }
+
+    /// iPhone / Watch: a two-row compact stack sized for the short Lock Screen rectangular slot.
     private var compact: some View {
-        // The Lock Screen renders accessory widgets in a desaturated "vibrant" mode, so colour is
-        // largely dropped: hierarchy comes from weight and grayscale, not tint (Apple HIG). Semantic
-        // font styles — not fixed point sizes — so the text scales with Dynamic Type and never
-        // overflows the way a hardcoded 30pt did once the icon was added.
-        VStack(alignment: .leading, spacing: 2) {
-            // Row 1: condition glyph + temperature, both large — and alone on the line. The real Lock
-            // Screen rectangular slot is narrow (~160pt when two share the row), so anything placed
-            // beside the temperature squeezed it into "2…". Nothing shares this row now.
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+        // The Lock Screen renders accessory widgets in a desaturated "vibrant" mode, so hierarchy comes
+        // from weight and grayscale, not tint (Apple HIG). The rectangular slot is short — it fits only
+        // about two tall lines, so the earlier three-row stack (hero / sky word / figures) clipped its
+        // bottom metric row off on-device. Two rows now: the hero on top, the day's figures below. The
+        // sky WORD is dropped — the glyph already carries the condition, exactly as the iPad `wide`
+        // variant does — and an active aviso keeps its signal as a triangle pinned beside the temperature.
+        VStack(alignment: .leading, spacing: 5) {
+            // Row 1: condition glyph + temperature, prominent and alone on the line so nothing squeezes
+            // the number. Sized one step down from .title2 so the card breathes, with a wider glyph↔temp
+            // gap; an aviso triangle rides the trailing edge when a warning is active.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                    .font(.title2)
+                    .font(.title3)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
+                    .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
                     .lineLimit(1).minimumScaleFactor(0.7)
-            }
-            // Row 2: the sky word, led by a warning triangle when an aviso is active so the severe
-            // weather reads even in this tiny slot. Falls back to "Aviso" alone when the sky text is thin.
-            if snapshot.alert != nil || snapshot.currentSkyText != nil {
-                HStack(spacing: 3) {
-                    if snapshot.alert != nil {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                    }
-                    Text(snapshot.currentSkyText ?? "Aviso")
+                if snapshot.alert != nil {
+                    Spacer(minLength: 3)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
+            }
+            // Row 2: today's high and low, then the rain chance and humidity — one Text so the whole line
+            // scales to fit (see `metricsLine`). Wind is dropped from this ~160pt-wide slot and keeps its
+            // own dedicated complication instead.
+            metricsLine
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            }
-            // Row 3: today's high and low, then the rain chance and humidity. Wind is dropped from this
-            // ~160pt-wide slot — it holds four short figures but not a fifth long "km/h SO" string — and
-            // keeps its own dedicated complication instead.
-            HStack(spacing: 5) {
-                Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
-                Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
-                if let p = snapshot.currentPrecipProb {
-                    Label("\(p)%", systemImage: "umbrella.fill")
-                }
-                if let h = snapshot.currentHumidity {
-                    Label("\(h)%", systemImage: "humidity.fill")
-                }
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .labelStyle(TightLabelStyle())
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
