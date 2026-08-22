@@ -100,11 +100,16 @@ struct TodayView: View {
     }
 
     /// The snapshot to render. In DEBUG a screenshot run can swap the current sky condition via
-    /// `AURA_FAKE_SKY` (an AEMET code), so a single clear day can produce every veil for the store shots.
+    /// `AURA_FAKE_SKY` (an AEMET code), rename the displayed city via `AURA_FAKE_CITY`, and inject a
+    /// synthetic aviso card via `AURA_FAKE_ALERT` — so a single clear day can produce every veil, city and
+    /// warning for the store shots. Overrides compose; any subset can be set.
     private var displaySnapshot: WeatherSnapshot? {
         #if DEBUG
-        if let base = snapshot, let sky = ScreenshotOverride.skyCode {
-            return base.overridingSky(sky)
+        if var base = snapshot {
+            if let sky = ScreenshotOverride.skyCode { base = base.overridingSky(sky) }
+            if let city = ScreenshotOverride.city { base = base.overridingCity(city.name, provincia: city.provincia) }
+            if let alert = ScreenshotOverride.alert { base = base.overridingAlert(level: alert.level, phenomenon: alert.phenomenon) }
+            return base
         }
         #endif
         return snapshot
@@ -150,6 +155,7 @@ struct TodayView: View {
             case .forecast:  ForecastTextView()
             case .locations: LocationsView()
             case .settings:  SettingsView()
+            case .help:      HelpView()
             case .tip:       TipJarView()
             }
         }
@@ -175,7 +181,7 @@ struct TodayView: View {
 
     /// The sections that used to be tabs, now reachable from the hero menu. Presented as sheets (each
     /// brings its own navigation and title; swipe down to dismiss).
-    private enum MenuRoute: Int, Identifiable { case forecast, locations, settings, tip; var id: Int { rawValue } }
+    private enum MenuRoute: Int, Identifiable { case forecast, locations, settings, help, tip; var id: Int { rawValue } }
     @State private var route: MenuRoute?
 
     /// A discreet frosted control in the hero's top-trailing corner — opposite the editorial text — that
@@ -195,6 +201,7 @@ struct TodayView: View {
             Button { route = .forecast }  label: { Label("Predicción", systemImage: "text.alignleft") }
             Button { route = .locations } label: { Label("Ubicaciones", systemImage: "mappin.and.ellipse") }
             Button { route = .settings }  label: { Label("Ajustes", systemImage: "gearshape") }
+            Button { route = .help }      label: { Label("Ayuda", systemImage: "questionmark.circle") }
             Divider()
             Button { route = .tip }       label: { Label("Propina", systemImage: "cup.and.saucer") }
         } label: {
