@@ -1,6 +1,6 @@
 # Aura — build plan
 
-> **Archived (2026-08-21).** This is the original pre-implementation build plan, kept as a record. Phases 0–4 have shipped. Two things here did **not** land as written: the "Home Screen (small / medium / large) + StandBy + Mac widgets" and the per-metric widget configuration — Aura shipped as a **Lock Screen + Watch-complication** product, location-configurable only, with the rich UI living in the app's "Hoy" screen instead. For the current state and live work, see `BACKLOG.md` at the repo root.
+> **Archived (2026-08-21, updated 2026-08-22).** This is the original pre-implementation build plan, kept as a record. Phases 0–4 have shipped. **Home Screen widgets** (small / medium / large + iPad extra-large) shipped on 2026-08-22 — over the live sky with the sunless hero art, configurable by location and a Naturaleza / Ciudad scene. What still did **not** land as written: **StandBy** and a native **Mac** widget, and **per-metric** widget configuration — widgets are location-configurable (plus the Home scene), with the rich per-metric UI living in the app's "Hoy" screen instead. For the current state and live work, see `BACKLOG.md` at the repo root.
 
 Personal Apple-ecosystem weather app for Spain, powered by my AEMET OpenData API key. It fills the gaps the official AEMET app leaves: a rich **"Hoy"** screen, **Apple Watch complications**, and **Lock Screen widgets**. The product is the app's card stack, mirrored to the Watch and the small surfaces.
 

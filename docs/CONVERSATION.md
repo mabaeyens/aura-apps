@@ -2,7 +2,7 @@
 
 A faithful record of the planning session that created Aura, so the reasoning behind every decision lives in the repo. Turns are labelled **Me** (the owner) and **Claude**. Dated 2026-08-19.
 
-> **Historical — superseded by `BACKLOG.md`.** This is the origin conversation, kept verbatim. Some early intentions here were later dropped (Home Screen / StandBy / Mac widgets, per-metric widget configuration); the shipped shape is Lock Screen + Watch complication plus the app's "Hoy" card stack. Read this for the *why*, not the current state.
+> **Historical — superseded by `BACKLOG.md`.** This is the origin conversation, kept verbatim. Some early intentions here changed: **Home Screen widgets** shipped later (2026-08-22, location + a Naturaleza / Ciudad scene) but **StandBy / Mac widgets** and **per-metric** widget configuration were dropped; the shipped shape is Home & Lock Screen widgets + Watch complication plus the app's "Hoy" card stack. Read this for the *why*, not the current state.
 
 ---
 

@@ -1,15 +1,15 @@
 # Aura
 
-Personal Apple-ecosystem weather app for Spain, powered by the [AEMET OpenData](https://opendata.aemet.es/) API. It fills the gaps in the official AEMET app: **a rich "Hoy" screen, Apple Watch complications, and Lock Screen widgets** — all over a live, sun-tracking SwiftUI sky.
+Personal Apple-ecosystem weather app for Spain, powered by the [AEMET OpenData](https://opendata.aemet.es/) API. It fills the gaps in the official AEMET app: **a rich "Hoy" screen, Apple Watch complications, and Home & Lock Screen widgets** — all over a live, sun-tracking SwiftUI sky.
 
 Targets iOS, iPadOS, macOS and watchOS from one shared Swift package, so every widget and complication renders from identical code.
 
 ## Status
 
-Active development. The **iPhone app, the Lock Screen widgets, and the Apple Watch app + complication** are working and verified on device, all rendering from the shared `AuraKit`:
+Active development. The **iPhone app, the Home & Lock Screen widgets, and the Apple Watch app + complication** are working and verified on device, all rendering from the shared `AuraKit`:
 
-- **iOS app** — location management with favorites and a full **"Hoy" card stack**: an editorial hero, current conditions, the hourly strip, the multi-day outlook, a sunrise→sunset arc, wind, air quality, UV index, radar, the official AEMET narrative bulletin, and a news stream — over a live sun-tracking sky.
-- **Widgets** — Lock Screen (circular / rectangular / inline) families, each configurable to a specific saved location via App Intents. Aura is a Lock Screen + complication product; the Home Screen is left to AEMET's own app.
+- **iOS app** — location management with favorites and a full **"Hoy" card stack**: an editorial hero, current conditions, the hourly strip, the multi-day outlook, a sunrise→sunset arc, wind, air quality, UV index, radar, the official AEMET narrative bulletin, and a news stream — over a live sun-tracking sky. An **"Ayuda"** sheet explains how to get an AEMET key and gives a legend for every icon in the app.
+- **Widgets** — **Home Screen** (small / medium / large, plus the iPad extra-large) over the live sky with the sunless hero art behind it, and **Lock Screen** (circular / rectangular / inline) families. Each is configurable via App Intents — location for all, plus a Naturaleza / Ciudad scene for the Home Screen widget.
 - **Apple Watch** — the watch app (the same card stack, resized to the wrist) and a face complication (corner / circular / rectangular / inline), fed live from the phone over WatchConnectivity; both update in place as the phone syncs.
 - **Real observed temperature** from the nearest AEMET station, and **avisos** (CAP warnings) matched to each location by province.
 
@@ -17,14 +17,15 @@ Still to come: a dedicated **macOS** app (the shared code already builds for it)
 
 ## Aura (iOS app)
 
-A thin shell over `AuraKit`, Spanish-only, four tabs:
+A thin shell over `AuraKit`, Spanish-only: one immersive **"Hoy"** screen, with the other sections opening from a discreet frosted menu on the hero (no tab bar):
 
 - **Hoy** — the full card stack for the selected municipality over a live sun-tracking sky. It opens on an **editorial hero**: the temperature and two lines of natural-language Spanish prose (generated on-device by `ForecastPhrase`) sitting straight on the sky, with the place named `LOCALIDAD · Momento` (Amanecer / Mañana / Mediodía / Tarde / Atardecer / Noche). Below it: current conditions (with the nearest station's observed temperature), the hourly strip, the multi-day outlook, a sunrise→sunset arc, a wind compass, air quality (MITECO ICA), the UV index, the nearest regional radar, the AEMET narrative bulletin, and a "Noticias" stream. Each card renders from the shared `AuraKit`, so the Watch shows the same cards resized. The wind, air-quality and UV cards open a tap-through reference-scale sheet (Beaufort, ICA levels, WHO UV bands).
 - **Predicción** — the official, human-written forecast bulletin AEMET issues for the autonomous community, with its issue date. Read from AEMET's OpenData normalized-text products, resolved to the bulletin that covers today (AEMET's `hoy` product is amendment-only, so this falls back to the daily `manana` archive — see `AEMETClient.comunidadBulletin`). The same bulletin also appears as a card in the Hoy stack.
 - **Ubicaciones** — favorites: pick the active location, add from the bundled list of provincial capitals, use the current GPS location (nearest bundled city), reorder, delete.
-- **Ajustes** — enter the AEMET API key (stored in the Keychain), pick the sky-background family (Paisaje / Ciudad, shown once cityscape art ships), and reach the About screen (attribution and a dedication to my parents).
+- **Ajustes** — enter the AEMET API key (stored in the Keychain), pick the sky-background family (Paisaje / Ciudad), and reach the About screen (attribution and a dedication to my parents).
+- **Ayuda** — how to request your own free AEMET key (with a link to the sign-up page) and a legend for every icon in the app, even the obvious ones (the drop-with-waves is humidity, not rain). Colour scales aren't repeated — each card opens its own on a tap.
 
-The app is the fetch hub: it caches every saved location's `WeatherSnapshot` to the App Group and mirrors the favourites list so the **widgets** can render any of them. The Lock Screen (circular / rectangular / inline) families are supported, and each widget instance is **configurable to a specific location** via App Intents. An Apple Watch app and complication share the same layouts — targets `AuraWatch` and `AuraWatchComplication`, built from the same `AuraKit`; see [`docs/WATCHOS.md`](docs/WATCHOS.md) for running to a watch and placing the complication. Open `Aura.xcodeproj`, or build from the command line:
+The app is the fetch hub: it caches every saved location's `WeatherSnapshot` to the App Group and mirrors the favourites list so the **widgets** can render any of them. Both the **Home Screen** families (small / medium / large + iPad extra-large, over the live sky with the sunless hero art behind it) and the **Lock Screen** families (circular / rectangular / inline) are supported; each instance is **configurable to a specific location** via App Intents, and the Home Screen widget also picks a Naturaleza / Ciudad scene. An Apple Watch app and complication share the same layouts — targets `AuraWatch` and `AuraWatchComplication`, built from the same `AuraKit`; see [`docs/WATCHOS.md`](docs/WATCHOS.md) for running to a watch and placing the complication. Open `Aura.xcodeproj`, or build from the command line:
 
 ```bash
 xcodebuild -project Aura.xcodeproj -scheme Aura \
@@ -49,6 +50,7 @@ Building the `Aura` scheme also builds and embeds the Watch app + complication (
 - **`SharedLocations`** — the favourites list mirrored to the same App Group, so the widget's configuration picker lists exactly the user's saved locations.
 - **`WatchSync`** — the iPhone↔Apple Watch bridge (WatchConnectivity): the phone pushes the current snapshot, the Watch caches it for its complication. It refuses to overwrite a good cached snapshot with a "thin" one whose current-hour fields are all nil (`WeatherSnapshot.hasCurrentHourData`, guarded per-INE). Guarded so the package still builds on macOS.
 - **`AuraAccessoryCircular/Rectangular/Inline/Corner`** — the Lock Screen and Watch complication layouts, shared so every small surface renders identical code.
+- **`AuraHomeSmall/Medium/Large/XL`** — the Home Screen widget layouts (the extra-large is iPad-only), drawn over `AuraSky` with the sunless hero art behind. The extension loads that art from **pre-sized tiers** (`WidgetHero`, an extra-large tier plus a lighter `_w` tier) rather than decoding the full-resolution source, so a screen full of Aura widgets stays inside WidgetKit's per-process memory budget.
 - **`WeatherIcon`** — maps AEMET `estadoCielo` codes to SF Symbols, honouring the `n` night suffix.
 - **`StationObservation`** — decodes `/observacion/convencional/todas` and resolves the nearest recent station to a location (haversine, within 3h and 35km) for a real observed temperature.
 - **`WeatherAlert`** / **`AvisoArea`** / **`CAPParser`** — the avisos pipeline: fetch a community's CAP-XML `.tar`, parse it, and match warnings to a location by province (the warning-zone code carries the province INE). `TarReader` unpacks the plain tar on-device.
