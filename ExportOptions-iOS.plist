@@ -6,17 +6,11 @@
 	<string>app-store-connect</string>
 	<key>teamID</key>
 	<string>HTVGRBVW58</string>
+	<key>uploadBitcode</key>
+	<false/>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>signingStyle</key>
 	<string>automatic</string>
-	<key>destination</key>
-	<string>upload</string>
-	<key>authenticationKeyID</key>
-	<string>7FPX8JZ4UB</string>
-	<key>authenticationKeyIssuerID</key>
-	<string>69a6de82-2d44-47e3-e053-5b8c7c11a4d1</string>
-	<key>authenticationKeyPath</key>
-	<string>/Users/miguel/.appstoreconnect/private_keys/AuthKey_7FPX8JZ4UB.p8</string>
 </dict>
 </plist>
