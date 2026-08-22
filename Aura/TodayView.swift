@@ -110,6 +110,11 @@ struct TodayView: View {
         return snapshot
     }
 
+    /// The active aviso to surface at the top of the screen, if any. Reads from `displaySnapshot` so a
+    /// DEBUG screenshot run's overridden snapshot is honoured. When non-nil it lights the hero aviso badge
+    /// and tints the "MÁS" scroll hint, so an active warning is visible before the user reaches its card.
+    private var activeAlert: WeatherAlert? { displaySnapshot?.alert }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -130,6 +135,10 @@ struct TodayView: View {
             // No bottom tab bar (it chromed the sky): the other sections open from a discreet frosted
             // menu on the hero, so the clean sky, landscape and editorial text own the screen.
             .overlay(alignment: .topTrailing) { heroMenu }
+            // A small aviso mark in the hero's top-leading corner — opposite the menu — so an active
+            // warning reads as "hay un aviso" before the user scrolls down to its card. Present only when
+            // the location has an active alert (see `avisoBadge`).
+            .overlay(alignment: .topLeading) { avisoBadge }
             // The "MÁS" hint is a fixed overlay pinned to the bottom of the screen (not part of the scroll
             // content): it shows only while the scroll sits at the very top and fades fully the instant the
             // user scrolls (see `atTop` / `FadeHintAtTop`), so it never drifts up with the cards.
@@ -202,20 +211,58 @@ struct TodayView: View {
         .environment(\.colorScheme, .dark)
     }
 
+    /// The aviso mark pinned to the hero's top-leading corner. Shown only when the location has an active
+    /// warning (`activeAlert != nil`); nothing renders otherwise. A warning triangle in a frosted circle
+    /// rimmed and washed by the alert level's colour (`Palette.alert`) — the same tint the aviso card uses,
+    /// so it reads as "hay un aviso" at a glance without alarming. Tapping opens Predicción, where the
+    /// narrative forecast expands on the warning. Mirrors `heroMenu`'s 38-pt frosted-circle styling.
+    @ViewBuilder private var avisoBadge: some View {
+        if let alert = activeAlert {
+            Button { route = .forecast } label: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background {
+                        Circle().fill(.ultraThinMaterial)
+                        Circle().fill(Palette.alert(alert.level).opacity(0.45))
+                    }
+                    .overlay(Circle().strokeBorder(Palette.alert(alert.level).opacity(0.9), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.28), radius: 6, y: 1)
+            }
+            .accessibilityLabel("Aviso de \(alert.phenomenon ?? alert.event) activo")
+            .accessibilityHint("Abre la predicción")
+            .padding(.leading, 16)
+            .padding(.top, 4)
+            .environment(\.colorScheme, .dark)
+        }
+    }
+
     /// A gentle "MÁS ⌄" affordance pinned to the bottom of the screen, inviting a scroll to the cards.
     /// Shown only while the scroll is at the very top (`atTop`) and faded fully once the user scrolls, so
     /// it never rides up with the content. Only present when there's a forecast to reveal.
     @ViewBuilder private var scrollHint: some View {
         if snapshot != nil {
-            VStack(spacing: 1) {
-                Text("MÁS").font(.system(size: 11, weight: .bold)).tracking(2)
-                Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+            VStack(spacing: 3) {
+                // When there's an active aviso, cap the hint with a level-tinted warning triangle, so the
+                // cue to scroll also signals *why* there's something below. Absent otherwise.
+                if let alert = activeAlert {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Palette.alert(alert.level))
+                }
+                VStack(spacing: 1) {
+                    Text("MÁS").font(.system(size: 11, weight: .bold)).tracking(2)
+                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.85))
             }
-            .foregroundStyle(.white.opacity(0.85))
             .shadow(color: .black.opacity(0.35), radius: 5, y: 1)
             .padding(.bottom, 8)
             .opacity(atTop ? 1 : 0)
             .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(activeAlert.map { "Desliza para ver más, incluido un aviso de \($0.phenomenon ?? $0.event)" } ?? "Desliza para ver más")
             .environment(\.colorScheme, .dark)
         }
     }
