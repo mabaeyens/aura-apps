@@ -1,67 +1,84 @@
-# Hourly observed UVI — findings
+# Hourly UV index — data sources & findings
 
-**Question:** can Aura show the UV index *observed per hour* (like AEMET's page
-`https://www.aemet.es/es/eltiempo/observacion/radiacion/ultravioleta`), instead of only the
-clear-sky daily maximum it shows today?
+**Question (item 4):** can Aura show the UV index *per hour* (like AEMET's observation page),
+instead of only the clear-sky daily maximum it shows today?
 
-**Short answer: yes, as numeric data — but it's yesterday's, not "now".** The observation
-website's **table** view does expose a real, parseable HTML grid of hourly observed UVI per
-station. What it does *not* give is a live/current value: it updates once a day and shows the
-most recent complete day. And it's an HTML scrape of the public site, not an OpenData product.
+**Answer: yes — and the best source isn't AEMET.** There are three paths. The practical one for a
+live hourly curve is **CAMS via Open-Meteo** (modeled forecast, any coordinate, free JSON) — the
+same source the dedicated site uvi.today uses. AEMET's own site does expose hourly *observed*
+(measured) UV as a real table, but it's historical and station-sparse. Summary and trade-offs
+below; decisions flagged at the end.
 
-## What's actually there (rechecked 2026-08-23)
+## Source A — CAMS via Open-Meteo (recommended for a live hourly curve)
 
-- **The table view is real numeric data.** `…/ultravioleta?datos=tabla` (no `?l=` station
-  selector) renders a proper HTML `<table>`:
-  - One **row per station** (26 of them), each linking to `?l=<token>`.
-  - Columns **07 … 22** (16 hourly local-time slots) plus a **MAX** column.
-  - Each cell is the hourly observed UVI as an integer on the WHO 0–11+ scale (the page shows
-    the 1…11+ colour legend).
-  - A single **`Fecha:`** heading names the day the whole table covers.
-  - Example row (2026-08-21): Madrid, Ciudad Universitaria → `0 0 0 1 3 5 6 8 …`, Barcelona →
-    `0 0 0 1 3 5 6 7 7 5 3 2 1 0 0 0`, MAX 7.
-  - My earlier note here (that "Tabla" was just the same PNG) was **wrong** — that's the
-    per-station `?l=<token>` view, which *does* render the chart image. The bare
-    `?datos=tabla` view is the numeric grid.
-- **It's historical, updated daily — not live.** The page states *"Los valores se actualizan
-  diariamente"* and *"Los datos… han sido únicamente sometidos a controles automáticos de
-  calidad en tiempo real, por lo que no puede garantizarse la ausencia de errores."* Fetched on
-  Sun 2026-08-23 it still showed **Fri 2026-08-21** (observed-radiation QC doesn't seem to run
-  weekends — the same weekend/holiday gap noted for the ozone product). So the freshest value
-  you can ever show is the **previous complete day's** hourly curve, ≥1 day behind, more over
-  weekends. It cannot power a "UV ahora" figure.
-- **Not OpenData — a website scrape.** AEMET OpenData still has **no** observed-radiation /
-  hourly-UVI product; the only UV product there is the forecast **clear-sky daily maximum**
-  (`prediccion/especifica/uvi`), which Aura already uses. This numeric table lives only on the
-  public website, so consuming it means parsing HTML (fragile to layout changes). Reuse is
-  authorised with attribution: *"© AEMET. Autorizado el uso de la información y su reproducción
-  citando a AEMET como autora."*
-- **Coverage: 26 radiometric stations, nearest-match** (like air quality / radar), not per
-  municipality. Tokens (`?l=<token>`): `a-coruna, almeria, badajoz, barcelona, caceres, cadiz,
-  ciudad-real, cordoba, granada, izana, leon, madrid, malaga, maspalomas, arenosillo, murcia,
-  palma, navacerrada, salamanca, igueldo, santander, s-c-tenerife, roquetes, valencia,
-  valladolid, zaragoza`.
+`GET https://air-quality-api.open-meteo.com/v1/air-quality` with
+`hourly=uv_index,uv_index_clear_sky&timezone=auto`.
 
-## Options
+- **What it gives.** Hourly `uv_index` (includes forecast cloud effect) **and**
+  `uv_index_clear_sky`, for **today + tomorrow** (up to 7 forecast days; `past_days` up to 92 for
+  history), at **any lat/lon** — not stations. Fractional precision. Verified live 2026-08-23 for
+  Madrid (40.4165, −3.7026, elev 651 m): peak `8.15` at 14:00 today, full 48-hour series returned.
+- **Source & cadence.** Copernicus **CAMS** — 11 km CAMS-Europe + 45 km global, hourly, updated
+  daily; Open-Meteo caches ≤30 min. This is a **modeled forecast** (ozone + aerosols + forecast
+  cloud), not a ground measurement — but it's exactly what uvi.today shows as its hourly UV, and
+  it's live, unlike AEMET's observed table.
+- **Access.** Free tier needs **no API key**, JSON, `timezone=auto` → local time. Two knobs only
+  (lat/lon); response shape is trivial to decode into a `[hour: uv]` series.
+- **Caveats that need a call:**
+  - **Licence.** The Open-Meteo *free* endpoint is **non-commercial**, ≤10,000 calls/day. The
+    underlying CAMS *data* is CC BY 4.0 (commercial OK **with attribution**), so commercial use
+    means either the paid customer endpoint (`customer-api.open-meteo.com` + `apikey`) or
+    **self-hosting** the open-source Open-Meteo server against CC-BY CAMS. Whether a free,
+    non-monetised App Store app counts as "commercial" is the open question. Volume is a non-issue
+    for a personal app (Aura caches per location, refreshes on foreground — far under 10k/day), but
+    a widely-installed app could approach the cap.
+  - **Provenance / identity.** This is **not AEMET data**. Aura's pitch is "official AEMET open
+    data" — though it already mixes in MITECO (air quality) and news feeds, so a clearly-attributed
+    CAMS/Copernicus UV source isn't unprecedented. Needs a product call.
+  - **Attribution required:** credit the CAMS ENSEMBLE data provider **and** reference Open-Meteo
+    (both CC BY 4.0). Would join the existing "AEMET y MITECO" credit line.
 
-1. **"UV observado" card off the table (buildable).** Fetch `?datos=tabla` once per refresh,
-   parse the row for the nearest of the 26 stations, show its hourly curve + MAX, labelled
-   plainly as **observed** with the table's `Fecha` (e.g. "UV observado · 21 ago · estación
-   más cercana"). Honest real data, per-hour tint possible. Caveats: (a) it's **historical**
-   (yesterday), so it's a "what actually happened" / context card, not "your UV now"; (b) it's
-   an **HTML scrape**, so add a defensive parser (anchor on the `?l=` links + the 16 hourly
-   cells) and degrade gracefully when the layout shifts or no station is near; (c) sparse
-   coverage. Keep it separate from the forecast daily-max, don't conflate the two.
-2. **Official station chart image** (`uvi<Token>-CRN.png`, the `?l=` view) — the radar-style
-   image card. Simpler, no HTML parsing, but a picture not data, so no tint/complication.
-3. **Keep only the forecast daily-max** (current behaviour) — the one genuinely forward-looking
-   "is it high today" figure.
+## Source B — AEMET observed table (the only ground-*measured* hourly UV, but historical)
+
+`…/observacion/radiacion/ultravioleta?datos=tabla` (no `?l=` selector) renders a real HTML table:
+
+- One **row per station** (26 radiometric stations), columns **07 … 22** (hourly local) + **MAX**,
+  integers on the WHO 0–11+ scale, one `Fecha:` per table. Example (2026-08-21): Barcelona
+  `0 0 0 1 3 5 6 7 7 5 3 2 1 0 0 0`, MAX 7; Sta. Cruz de Tenerife peaked at 11.
+  (My first pass wrongly said "only a PNG" — that's the per-station `?l=<token>` view, which does
+  render the chart image. The bare `?datos=tabla` view is the numeric grid.)
+- **Historical, not live.** The page states *"Los valores se actualizan diariamente"* and
+  *"controles automáticos de calidad en tiempo real… no puede garantizarse la ausencia de errores."*
+  Fetched Sun 2026-08-23 it still showed Fri 2026-08-21 (weekend QC gap). Freshest = the previous
+  complete day, ≥1 day behind. **Cannot power a "UV ahora" figure.**
+- **Website scrape, not OpenData.** AEMET OpenData still has **no** observed-radiation product; the
+  only UV product there is the forecast clear-sky daily-max (`prediccion/especifica/uvi`, which Aura
+  already uses). Consuming this means a defensive HTML parser (anchor on the `?l=` links + 16 hourly
+  cells). Reuse authorised with attribution ("© AEMET. Autorizado el uso… citando a AEMET").
+- **Coverage:** 26 nearest-match stations. Tokens (`?l=<token>`): `a-coruna, almeria, badajoz,
+  barcelona, caceres, cadiz, ciudad-real, cordoba, granada, izana, leon, madrid, malaga, maspalomas,
+  arenosillo, murcia, palma, navacerrada, salamanca, igueldo, santander, s-c-tenerife, roquetes,
+  valencia, valladolid, zaragoza`.
+
+## Source C — AEMET forecast daily-max (current behaviour)
+
+`prediccion/especifica/uvi` — one integer per provincial capital per day, clear-sky daily maximum on
+the WHO scale. Official AEMET, forward-looking, but **daily** granularity only. This is what the app
+shows today, labelled "UV máximo".
 
 ## Recommendation
 
-The forecast clear-sky **daily maximum** stays the primary UV figure (correctly labelled "UV
-máximo") — it's the only forward-looking "should I cover up *today*" number. The observed table
-(option 1) is real and worth adding **as a distinct historical/context card** if a lagged
-"what the UV actually did yesterday, hour by hour, near you" earns a slot — but it can't make
-the live figure live. Needs a product decision on framing (and appetite for an HTML scraper)
-before building. Not implemented in this batch.
+- **If the goal is a live hourly UV curve in the app** (the practical read of item 4): use
+  **Source A (CAMS via Open-Meteo)** — hourly `uv_index` + `uv_index_clear_sky` for today/tomorrow,
+  per exact coordinate, trivial JSON, no key. It's what a dedicated UV service (uvi.today) uses.
+  Two decisions gate it: the **commercial-licence** question (free tier is non-commercial → pay for
+  the customer endpoint, self-host, or confirm the app is non-commercial) and the **non-AEMET
+  provenance** (attribute CAMS + Open-Meteo clearly). If both clear, this is the clean answer and
+  could even replace the daily-max as the primary UV figure (keeping AEMET's as a cross-check).
+- **If the goal is specifically ground-*observed* (measured) hourly UV:** only **Source B** gives
+  it, and only as a lagged, 26-station, HTML-scraped historical curve — worth it only as a
+  "what the UV actually did yesterday near you" context card, not a live figure.
+- **Otherwise:** keep **Source C** (forecast daily-max) as-is — the one official-AEMET,
+  forward-looking "is it high today" number.
+
+Not implemented in this batch — needs the licence + provenance call before building.
