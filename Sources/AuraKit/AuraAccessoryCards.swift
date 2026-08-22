@@ -103,20 +103,31 @@ public struct AuraAccessoryRectangular: View {
                     .font(.title).fontWeight(.semibold).fontDesign(.rounded)
                     .lineLimit(1).minimumScaleFactor(0.8)
             }
-            // Row 2: the sky word, on its own line.
-            if let text = snapshot.currentSkyText {
-                Text(text)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+            // Row 2: the sky word, led by a warning triangle when an aviso is active so the severe
+            // weather reads even in this tiny slot. Falls back to "Aviso" alone when the sky text is thin.
+            if snapshot.alert != nil || snapshot.currentSkyText != nil {
+                HStack(spacing: 3) {
+                    if snapshot.alert != nil {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    Text(snapshot.currentSkyText ?? "Aviso")
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             }
-            // Row 3: today's high and low, then the current wind.
+            // Row 3: today's high and low, then the rain chance and humidity. Wind is dropped from this
+            // ~160pt-wide slot — it holds four short figures but not a fifth long "km/h SO" string — and
+            // keeps its own dedicated complication instead.
             HStack(spacing: 5) {
                 Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
                 Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
-                if snapshot.windSpeed != nil {
-                    Label(AccessoryFormat.wind(snapshot), systemImage: "wind")
+                if let p = snapshot.currentPrecipProb {
+                    Label("\(p)%", systemImage: "umbrella.fill")
+                }
+                if let h = snapshot.currentHumidity {
+                    Label("\(h)%", systemImage: "humidity.fill")
                 }
             }
             .font(.caption2)
@@ -128,12 +139,13 @@ public struct AuraAccessoryRectangular: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
-    /// iPad: a richer two-column read that fills the generous rectangular slot — the condition and
-    /// temperature on the left, and today's range, the next sun event and an aviso dot stacked on the
-    /// right.
+    /// iPad: a richer read that fills the generous rectangular slot as a near-square — the condition,
+    /// temperature and place name across the top, then the day's figures in a 2-up grid (range, then rain
+    /// and humidity, then the next sun event). A level-tinted aviso triangle is pinned to the top-trailing
+    /// corner when a warning is active, so it reads as a mark without stealing a metric row.
     private var wide: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
                         .font(.largeTitle)
@@ -141,34 +153,50 @@ public struct AuraAccessoryRectangular: View {
                         .font(.system(.largeTitle, design: .rounded)).fontWeight(.semibold)
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
+                Text(snapshot.localidad)
+                    .font(.headline)
+                    .lineLimit(1).minimumScaleFactor(0.8)
                 if let text = snapshot.currentSkyText {
                     Text(text)
-                        .font(.callout)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2).minimumScaleFactor(0.8)
+                        .lineLimit(1).minimumScaleFactor(0.8)
                 }
+                Spacer(minLength: 4)
+                // The day's figures, two to a row so they read as a compact grid. Each renders only when
+                // its datum is known; a missing one just leaves its place empty.
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 14) {
+                        Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
+                        Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
+                    }
+                    if snapshot.currentPrecipProb != nil || snapshot.currentHumidity != nil {
+                        HStack(spacing: 14) {
+                            if let p = snapshot.currentPrecipProb {
+                                Label("\(p)%", systemImage: "umbrella.fill")
+                            }
+                            if let h = snapshot.currentHumidity {
+                                Label("\(h)%", systemImage: "humidity.fill")
+                            }
+                        }
+                    }
+                    if let sun = AccessoryFormat.sun(snapshot, now: now) {
+                        Label(sun.text, systemImage: sun.icon)
+                    }
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .labelStyle(TightLabelStyle())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 4) {
-                HStack(spacing: 6) {
-                    Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
-                    Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
-                }
-                if let sun = AccessoryFormat.sun(snapshot, now: now) {
-                    Label(sun.text, systemImage: sun.icon)
-                }
-                if snapshot.windSpeed != nil {
-                    Label(AccessoryFormat.wind(snapshot), systemImage: "wind")
-                }
-                if snapshot.alert != nil {
-                    Label("Aviso", systemImage: "exclamationmark.triangle.fill")
-                }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            if let alert = snapshot.alert {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Palette.alert(alert.level))
             }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .labelStyle(TightLabelStyle())
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

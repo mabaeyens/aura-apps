@@ -193,6 +193,41 @@ private struct HomeSunFooter: View {
     }
 }
 
+/// A compact row of the current secondary metrics — precip chance, humidity, wind (and UV on the
+/// larger cards). Each chip appears only when its datum is present, so a thin snapshot just shows fewer.
+private struct HomeMetricsRow: View {
+    let snapshot: WeatherSnapshot
+    var showUV: Bool = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let precip = snapshot.currentPrecipProb {
+                Label("\(precip)%", systemImage: "umbrella.fill")
+                    .labelStyle(HomeTightLabel())
+            }
+            if let humidity = snapshot.currentHumidity {
+                Label("\(humidity)%", systemImage: "humidity.fill")
+                    .labelStyle(HomeTightLabel())
+            }
+            if let speed = snapshot.windSpeed {
+                Label(wind(speed), systemImage: "wind")
+                    .labelStyle(HomeTightLabel())
+            }
+            if showUV, let uv = snapshot.uvIndex {
+                Label("UV \(uv.value)", systemImage: uv.glyph)
+                    .labelStyle(HomeTightLabel())
+            }
+        }
+        .font(.caption).fontWeight(.medium)
+        .skyText()
+    }
+
+    private func wind(_ speed: Int) -> String {
+        if let dir = snapshot.windDirection { return "\(speed) \(dir.abbreviation)" }
+        return "\(speed)"
+    }
+}
+
 /// A label whose icon sits snug against its title — the home cards' compact rows.
 private struct HomeTightLabel: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -269,6 +304,7 @@ public struct AuraHomeLarge: View {
         VStack(alignment: .leading, spacing: 10) {
             HomeLocationRow(snapshot: snapshot)
             HomeConditionBlock(snapshot: snapshot, now: now)
+            HomeMetricsRow(snapshot: snapshot)
 
             let hours = Array(snapshot.upcomingHours().prefix(5))
             if !hours.isEmpty {
@@ -287,6 +323,57 @@ public struct AuraHomeLarge: View {
             HomeSunFooter(snapshot: snapshot)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Extra Large (iPad / macOS)
+
+/// `.systemExtraLarge` (iPad and macOS only): the hero on the left — location, condition block, a
+/// one-line forecast description for the current time, and the key metrics — with próximas horas over
+/// próximos días filling the right. Aura's richest glance, sized for the iPad Home Screen.
+public struct AuraHomeXL: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        GeometryReader { geo in
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HomeLocationRow(snapshot: snapshot)
+                    Spacer(minLength: 0)
+                    HomeConditionBlock(snapshot: snapshot, now: now,
+                                       tempFont: .system(size: 52, weight: .semibold, design: .rounded))
+                    Text(ForecastPhrase.headline(for: snapshot, now: now))
+                        .font(.subheadline)
+                        .lineLimit(2).minimumScaleFactor(0.85)
+                        .skyText()
+                    HomeMetricsRow(snapshot: snapshot, showUV: true)
+                }
+                .frame(width: geo.size.width * 0.37, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    let hours = Array(snapshot.upcomingHours().prefix(7))
+                    let days = Array(snapshot.days.prefix(4))
+                    if !hours.isEmpty {
+                        HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0) } }
+                    }
+                    if !hours.isEmpty && !days.isEmpty {
+                        Divider().overlay(.white.opacity(0.25))
+                    }
+                    if !days.isEmpty {
+                        HStack(spacing: 0) { ForEach(days) { HomeDayColumn(day: $0) } }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
     }
 }
 

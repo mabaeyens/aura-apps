@@ -81,6 +81,22 @@ for p in [10, 45, 70, 95] {   // up the probability ramp: pálido → tempBlue �
     dump("rain-\(p)", size: CGSize(width: 76, height: 76)) { AuraRainCircular(snapshot: rainSnap(p)) }
 }
 
+// ---- New Lock Screen / complication faces: resumen, humedad, aviso ----
+// The preview snapshot already carries humidity (42%), precip (15%) and an active naranja aviso, so each
+// renders populated. `dump` writes both the colour (watch face) and desaturated (Lock Screen) versions.
+dump("summary-inline", size: CGSize(width: 180, height: 34)) { AuraSummaryInline(snapshot: snap) }
+dump("humidity",       size: CGSize(width: 76,  height: 76)) { AuraHumidityCircular(snapshot: snap) }
+dump("aviso-circular", size: CGSize(width: 76,  height: 76)) { AuraAvisoCircular(snapshot: snap) }
+dump("aviso-inline",   size: CGSize(width: 180, height: 34)) { AuraAvisoInline(snapshot: snap) }
+// The iPad rectangular takes the WIDE branch (width > 220): the near-square 2-up read with the
+// top-trailing aviso triangle. (The narrow "rectangular" render above now shows the enriched compact —
+// aviso-led sky line + rain/humidity figures.)
+dump("rectangular-ipad", size: CGSize(width: 330, height: 160)) { AuraAccessoryRectangular(snapshot: snap) }
+
+// NOTE: the Home Screen cards (AuraHomeSmall/Medium/Large/XL) are intentionally NOT rendered here —
+// ImageRenderer segfaults on them offline. They build green in the widget extension and are verified in
+// the simulator instead; only the Lock Screen / complication faces above are dev-rendered.
+
 // Temperature ramp: one swatch per degree from -5 to 45, each labelled, so the smooth AEMET/TVE
 // progression can be eyeballed (no hard bands, 20° green→yellow hand-off, red ~30°).
 @MainActor
@@ -382,3 +398,31 @@ write(moonTraverse(fraction: 0.15,
                                .init(x: 0.5, y: 0.55)]),
       name: "moon-traverse", size: CGSize(width: 820, height: 200))
 write(moonTonight(now: Date()), name: "moon-tonight", size: CGSize(width: 340, height: 360))
+
+// Sun-disc parity check: AuraSky at REAL device point sizes (phone portrait vs iPad landscape), same
+// clear noon. The disc radius is capped (see AuraSky), so the sun should read at the same physical size
+// on both rather than ballooning on the larger iPad canvas.
+@MainActor
+func discCheck(size: CGSize) -> some View {
+    AuraSky(snapshot: .preview, now: todayAt(13, 0))
+        .frame(width: size.width, height: size.height)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .environment(\.colorScheme, .dark)
+}
+write(discCheck(size: CGSize(width: 393, height: 852)), name: "disc-phone", size: CGSize(width: 393, height: 852))
+write(discCheck(size: CGSize(width: 1194, height: 834)), name: "disc-ipad", size: CGSize(width: 1194, height: 834))
+
+// The app UV card with the new band glyph beside the band name (the symbol the complication shows).
+@MainActor
+func uvCardPreview() -> some View {
+    ZStack {
+        AuraSky(snapshot: .preview, now: todayAt(13, 0))
+        AuraUVCard(uvIndex: UVIndex(value: 8), size: .phone)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 340, height: 150)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .fontDesign(.rounded)
+}
+write(uvCardPreview(), name: "app-uv-card", size: CGSize(width: 340, height: 150))
