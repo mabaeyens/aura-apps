@@ -2,7 +2,7 @@
 
 A faithful record of the planning session that created Aura, so the reasoning behind every decision lives in the repo. Turns are labelled **Me** (the owner) and **Claude**. Dated 2026-08-19.
 
-> **Historical — superseded by `BACKLOG.md`.** This is the origin conversation, kept verbatim. Some early intentions here changed: **Home Screen widgets** shipped later (2026-08-22, location + a Naturaleza / Ciudad scene) but **StandBy / Mac widgets** and **per-metric** widget configuration were dropped; the shipped shape is Home & Lock Screen widgets + Watch complication plus the app's "Hoy" card stack. Read this for the *why*, not the current state.
+> **Historical — superseded by `BACKLOG.md`.** This is the origin conversation, kept verbatim. Shipped so far: the app's "Hoy" card stack, **Home & Lock Screen widgets** (Home Screen landed 2026-08-22, location + a Naturaleza / Ciudad scene), and the four **Watch complications** (circular / rectangular / inline / corner). Still on the roadmap, not yet built: the fuller **per-metric Watch-complication catalog**, **per-metric widget configuration**, and **StandBy / Mac** widgets (see `docs/WIDGETS.md` and `BACKLOG.md`). Read this for the *why*, not the current state.
 
 ---
 
