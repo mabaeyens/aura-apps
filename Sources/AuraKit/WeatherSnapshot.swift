@@ -54,6 +54,10 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let airQuality: AirQuality?
 
     public let uvIndex: UVIndex?
+    /// CAMS hourly UV forecast (via Open-Meteo), today + tomorrow, for a live "ahora" reading and a
+    /// daytime curve — the hourly granularity AEMET's daily-max `uvIndex` lacks. Nil/empty when the
+    /// feed is unavailable. See `OpenMeteoUV`.
+    public let uvHourly: [UVHourSlot]?
 
     public let sunrise: Date?
     /// Sunset, computed on-device for the location.
@@ -89,6 +93,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
                 windGust: Int? = nil,
                 airQuality: AirQuality? = nil,
                 uvIndex: UVIndex? = nil,
+                uvHourly: [UVHourSlot]? = nil,
                 sunrise: Date?, sunset: Date?,
                 latitude: Double? = nil, longitude: Double? = nil,
                 days: [DaySnapshot] = [], hours: [HourSlot] = [],
@@ -117,6 +122,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.windGust = windGust
         self.airQuality = airQuality
         self.uvIndex = uvIndex
+        self.uvHourly = uvHourly
         self.sunrise = sunrise
         self.sunset = sunset
         self.latitude = latitude
@@ -273,6 +279,7 @@ public extension WeatherSnapshot {
                      alert: WeatherAlert? = nil,
                      airQuality: AirQuality? = nil,
                      uvIndex: UVIndex? = nil,
+                     uvHourly: [UVHourSlot]? = nil,
                      bulletin: ForecastBulletin? = nil,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
@@ -326,6 +333,7 @@ public extension WeatherSnapshot {
             windGust: wind?.gust ?? nil,
             airQuality: airQuality,
             uvIndex: uvIndex,
+            uvHourly: uvHourly,
             sunrise: sun.sunrise,
             sunset: sun.sunset,
             latitude: location.latitude,

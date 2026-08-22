@@ -54,10 +54,12 @@ struct AboutView: View {
                     .padding(.bottom, 12)
 
                 VStack(spacing: 12) {
-                    creditRow("AEMET", "Previsión, avisos, radar y UV (OpenData)",
+                    creditRow("AEMET", "Previsión, avisos, radar y UV máximo (OpenData)",
                               "https://opendata.aemet.es")
                     creditRow("MITECO", "Índice de calidad del aire (ICA · CC-BY 4.0)",
                               "https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/visualizacion-datos-calidad-del-aire/ica.html")
+                    creditRow("Copernicus (CAMS)", "Índice UV por hora, vía Open-Meteo (CC-BY 4.0)",
+                              "https://atmosphere.copernicus.eu")
                     creditRow("RTVE", "El Tiempo, el parte diario",
                               "https://www.rtve.es")
                     creditRow("Meteored", "Noticias y divulgación (tiempo.com)",

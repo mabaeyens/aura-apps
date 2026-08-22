@@ -17,6 +17,15 @@ public extension WeatherSnapshot {
             HourSlot(hour: (startHour + i) % 24, temp: 29 - i, sky: skies[i],
                      precipProb: [0, 0, 0, 0, 15, 15, 20, 20, 10, 0, 0, 5][i])
         }
+        // A realistic summer UV bell for today (matches live CAMS/Madrid), anchored to local midnight so
+        // `todaySlots` and `current(at:)` pick it up.
+        let sod = cal.startOfDay(for: base)
+        let uvCurve: [Double] = [0, 0, 0, 0, 0, 0, 0, 0.6, 1.5, 3, 5, 6,
+                                 7, 8, 8.2, 7, 5.5, 4, 2.5, 1, 0.4, 0, 0, 0]
+        let uvHourly = (0..<24).map { h in
+            UVHourSlot(date: sod.addingTimeInterval(Double(h) * 3600),
+                       uv: uvCurve[h], clearSky: min(uvCurve[h] + 0.3, 8.5))
+        }
         return WeatherSnapshot(
             ine: "28079", localidad: "Madrid", provincia: "Madrid",
             tempMin: 18, tempMax: 34, humedadMax: 55,
@@ -32,6 +41,7 @@ public extension WeatherSnapshot {
                                                 AirComponent(pollutant: "PM10", value: 12.5),
                                                 AirComponent(pollutant: "SO2", value: 4)]),
             uvIndex: UVIndex(value: 8),
+            uvHourly: uvHourly,
             sunrise: cal.date(bySettingHour: 7, minute: 12, second: 0, of: base),
             sunset: cal.date(bySettingHour: 21, minute: 11, second: 0, of: base),
             days: days, hours: hours,

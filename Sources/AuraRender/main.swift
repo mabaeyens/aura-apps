@@ -421,17 +421,21 @@ func discCheck(size: CGSize) -> some View {
 write(discCheck(size: CGSize(width: 393, height: 852)), name: "disc-phone", size: CGSize(width: 393, height: 852))
 write(discCheck(size: CGSize(width: 1194, height: 834)), name: "disc-ipad", size: CGSize(width: 1194, height: 834))
 
-// The app UV card with the new band glyph beside the band name (the symbol the complication shows).
+// The app UV card: AEMET's forecast daily-max swatch (band glyph beside the band name, the symbol the
+// complication shows) plus the CAMS hourly curve beneath it — today's UV hour by hour, current hour
+// outlined and its value called out.
 @MainActor
 func uvCardPreview() -> some View {
-    ZStack {
-        AuraSky(snapshot: .preview, now: todayAt(13, 0))
-        AuraUVCard(uvIndex: UVIndex(value: 8), size: .phone)
+    let when = todayAt(13, 0)
+    return ZStack {
+        AuraSky(snapshot: .preview, now: when)
+        AuraUVCard(uvIndex: UVIndex(value: 8), hourly: WeatherSnapshot.preview.uvHourly ?? [],
+                   now: when, size: .phone)
             .environment(\.colorScheme, .dark)
             .padding(16)
     }
-    .frame(width: 340, height: 150)
+    .frame(width: 340, height: 232)
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
     .fontDesign(.rounded)
 }
-write(uvCardPreview(), name: "app-uv-card", size: CGSize(width: 340, height: 150))
+write(uvCardPreview(), name: "app-uv-card", size: CGSize(width: 340, height: 232))

@@ -66,19 +66,17 @@ below; decisions flagged at the end.
 the WHO scale. Official AEMET, forward-looking, but **daily** granularity only. This is what the app
 shows today, labelled "UV máximo".
 
-## Recommendation
+## Decision & status (2026-08-23)
 
-- **If the goal is a live hourly UV curve in the app** (the practical read of item 4): use
-  **Source A (CAMS via Open-Meteo)** — hourly `uv_index` + `uv_index_clear_sky` for today/tomorrow,
-  per exact coordinate, trivial JSON, no key. It's what a dedicated UV service (uvi.today) uses.
-  Two decisions gate it: the **commercial-licence** question (free tier is non-commercial → pay for
-  the customer endpoint, self-host, or confirm the app is non-commercial) and the **non-AEMET
-  provenance** (attribute CAMS + Open-Meteo clearly). If both clear, this is the clean answer and
-  could even replace the daily-max as the primary UV figure (keeping AEMET's as a cross-check).
-- **If the goal is specifically ground-*observed* (measured) hourly UV:** only **Source B** gives
-  it, and only as a lagged, 26-station, HTML-scraped historical curve — worth it only as a
-  "what the UV actually did yesterday near you" context card, not a live figure.
-- **Otherwise:** keep **Source C** (forecast daily-max) as-is — the one official-AEMET,
-  forward-looking "is it high today" number.
+**Shipped: Source A (CAMS via Open-Meteo) as an hourly curve *alongside* AEMET's daily-max.**
+Aura is free (non-commercial), so the free tier fits; CAMS is CC BY 4.0 and credited next to AEMET +
+MITECO. `OpenMeteoUV` fetches it per location, `WeatherSnapshot.uvHourly` carries it, and `AuraUVCard`
+draws the band-tinted hourly bar strip + a live "Ahora N · máx N a las HHh" readout under the AEMET
+daily-max swatch. AEMET's forecast daily-max stays the official headline (item 4 asked to *complement*
+it, not replace it). **If Aura ever monetises**, switch to Open-Meteo's customer endpoint
+(`customer-api.open-meteo.com` + key) or self-host the open-source server against CC-BY CAMS.
 
-Not implemented in this batch — needs the licence + provenance call before building.
+Still open / not built:
+- **Source B** (AEMET observed table) — only if a distinct ground-*measured* "UV observado" card is
+  ever wanted; it's historical + a scrape, so low priority now the CAMS curve covers the practical need.
+- **Source C** stays as the headline daily-max.

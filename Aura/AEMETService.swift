@@ -100,6 +100,12 @@ enum AEMETService {
                 ?? MitecoAirQuality.nearest(toLatitude: location.latitude,
                                             longitude: location.longitude, in: airStations)
             let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
+            // Hourly UV from CAMS (via Open-Meteo) — the per-hour granularity AEMET doesn't publish;
+            // AEMET's daily max stays the official headline. One call/location to a separate free host
+            // (like MITECO); never throws — an empty result just hides the hourly curve. © CAMS /
+            // Copernicus + Open-Meteo (both credited).
+            let uvHourly = await OpenMeteoUV.fetch(latitude: location.latitude,
+                                                   longitude: location.longitude)
             let alert = AvisoArea.forProvincia(location.provinciaCode)
                 .flatMap { alertsByArea[$0] }?
                 .topActive(forProvince: location.provinciaCode)
@@ -107,6 +113,7 @@ enum AEMETService {
             SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
                                                     observed: observed, alert: alert,
                                                     airQuality: airQuality, uvIndex: uvIndex,
+                                                    uvHourly: uvHourly,
                                                     bulletin: bulletin,
                                                     timeZone: location.timeZone))
             didUpdate = true

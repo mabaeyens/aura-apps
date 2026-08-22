@@ -96,6 +96,19 @@ public struct AuraForecastStack: View {
         self.heroFillHeight = heroFillHeight
     }
 
+    /// The attribution line: AEMET always, plus each third-party source actually shown, in a natural
+    /// Spanish list ("AEMET", "AEMET y MITECO", "AEMET, MITECO y Copernicus", "AEMET y Copernicus").
+    /// Copernicus = the CAMS UV via Open-Meteo behind the hourly curve.
+    static func credit(hasAir: Bool, hasHourlyUV: Bool) -> String {
+        var sources = ["AEMET"]
+        if hasAir { sources.append("MITECO") }
+        if hasHourlyUV { sources.append("Copernicus") }
+        let list: String
+        if sources.count == 1 { list = sources[0] }
+        else { list = sources.dropLast().joined(separator: ", ") + " y " + sources.last! }
+        return "Elaborado con datos de " + list
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: size.stackSpacing) {
             AuraHeroCard(snapshot: snapshot, size: size, now: now)
@@ -121,17 +134,18 @@ public struct AuraForecastStack: View {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
             }
             if let uvIndex = snapshot.uvIndex {
-                AuraUVCard(uvIndex: uvIndex, size: size)
+                AuraUVCard(uvIndex: uvIndex, hourly: snapshot.uvHourly ?? [], now: now, size: size)
             }
             if let radar { AuraRadarCard(radar: radar, size: size, now: now) }
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
             if !news.isEmpty { AuraNewsCard(items: news, size: size, now: now) }
-            // MITECO is credited alongside AEMET whenever the air-quality card is present (its ICA feed
-            // is CC-BY 4.0, which requires attribution); AEMET alone otherwise.
-            Text(snapshot.airQuality == nil ? "Elaborado con datos de AEMET"
-                                            : "Elaborado con datos de AEMET y MITECO")
+            // Every third-party source present is credited alongside AEMET (each is CC-BY, which requires
+            // attribution): MITECO when the air-quality card shows, Copernicus (CAMS, via Open-Meteo) when
+            // the hourly UV curve does.
+            Text(Self.credit(hasAir: snapshot.airQuality != nil,
+                             hasHourlyUV: !(snapshot.uvHourly ?? []).isEmpty))
                 .font(.system(size: size == .phone ? 14 : 11, weight: .medium))
                 .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -955,48 +969,114 @@ public struct AuraAirQualityCard: View {
 /// ("Muy alto"), and a one-line protection cue. Shown only when a value resolved for the location.
 public struct AuraUVCard: View {
     let uvIndex: UVIndex
+    let hourly: [UVHourSlot]
+    let now: Date
     let size: AuraSize
-    public init(uvIndex: UVIndex, size: AuraSize) {
-        self.uvIndex = uvIndex; self.size = size
+    public init(uvIndex: UVIndex, hourly: [UVHourSlot] = [], now: Date = Date(), size: AuraSize) {
+        self.uvIndex = uvIndex; self.hourly = hourly; self.now = now; self.size = size
     }
 
     public var body: some View {
         let color = Palette.uvIndex(uvIndex.value)
         let swatch: CGFloat = size == .phone ? 46 : 30
+        // Today's daytime UV hours from CAMS — the per-hour granularity AEMET's daily-max lacks.
+        let today = hourly.todaySlots(reference: now).filter { $0.uv > 0 }
         return AuraCard(size: size) {
-            HStack(spacing: size.stackSpacing) {
-                ZStack {
-                    Circle().fill(color)
-                    Text("\(uvIndex.value)")
-                        .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
-                                      weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: swatch, height: swatch)
-                .shadow(color: color.opacity(0.6), radius: 5)
-
-                VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
-                    HStack(spacing: 6) {
-                        // The band's protection glyph — the same symbol the UV complication shows, so the
-                        // card teaches what that icon means (its legend lives in the tap-through sheet).
-                        Image(systemName: uvIndex.glyph)
-                            .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
-                            .foregroundStyle(color)
-                        Text(uvIndex.bandName)
-                            .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+            VStack(alignment: .leading, spacing: size == .phone ? 12 : 7) {
+                HStack(spacing: size.stackSpacing) {
+                    ZStack {
+                        Circle().fill(color)
+                        Text("\(uvIndex.value)")
+                            .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
+                                          weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
-                            .lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    Text(uvIndex.advice)
-                        .font(.system(size: size.smallSize - 1))
-                        .foregroundStyle(.white.opacity(0.65))
-                        .lineLimit(1).minimumScaleFactor(0.65)
+                    .frame(width: swatch, height: swatch)
+                    .shadow(color: color.opacity(0.6), radius: 5)
+
+                    VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
+                        HStack(spacing: 6) {
+                            // The band's protection glyph — the same symbol the UV complication shows, so
+                            // the card teaches what that icon means (its legend lives in the tap sheet).
+                            Image(systemName: uvIndex.glyph)
+                                .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                                .foregroundStyle(color)
+                            Text(uvIndex.bandName)
+                                .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1).minimumScaleFactor(0.8)
+                        }
+                        Text(uvIndex.advice)
+                            .font(.system(size: size.smallSize - 1))
+                            .foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(1).minimumScaleFactor(0.65)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+
+                // The hourly curve, only when CAMS data is present — the swatch above is AEMET's forecast
+                // daily maximum, this is how the UV actually rises and falls through today, hour by hour.
+                if today.count >= 3 {
+                    UVHourStrip(today: today, nowSlot: hourly.current(at: now), size: size)
+                }
             }
         }
         .auraDetail(size) { AuraUVSheet(uvIndex: uvIndex) }
         .auraSectionTitle("Índice UV".uppercased(), size)
+    }
+}
+
+/// Today's UV, hour by hour, as a slim band-tinted bar strip under the daily-max swatch. Bar heights
+/// track the day's own shape (scaled to today's peak so a low-UV winter day still reads); colour
+/// carries the absolute WHO band. The current hour is outlined and its value called out above.
+private struct UVHourStrip: View {
+    let today: [UVHourSlot]
+    let nowSlot: UVHourSlot?
+    let size: AuraSize
+
+    private var peak: UVHourSlot? { today.max { $0.uv < $1.uv } }
+
+    var body: some View {
+        let barsH: CGFloat = size == .phone ? 34 : 22
+        let scale = max(peak?.uv ?? 1, 1)
+        VStack(alignment: .leading, spacing: size == .phone ? 5 : 3) {
+            // A compact readout drawn from the same series: the live value now (honest per-hour, unlike
+            // the daily max) and today's peak with its hour.
+            HStack(spacing: 5) {
+                if let n = nowSlot, n.uv > 0 {
+                    Text("Ahora \(n.index)")
+                        .foregroundStyle(.white)
+                    Text("·").foregroundStyle(.white.opacity(0.4))
+                }
+                if let p = peak {
+                    Text("máx \(p.index) a las \(hour(p.date))h")
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                Spacer(minLength: 0)
+            }
+            .font(.system(size: size.smallSize - (size == .phone ? 2 : 2), weight: .semibold))
+            .lineLimit(1).minimumScaleFactor(0.7)
+
+            HStack(alignment: .bottom, spacing: size == .phone ? 3 : 2) {
+                ForEach(today) { slot in
+                    let isNow = slot.id == nowSlot?.id
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(Palette.uvIndex(slot.index))
+                        .frame(height: max(barsH * CGFloat(slot.uv / scale), 3))
+                        .frame(maxWidth: .infinity)
+                        .opacity(isNow || nowSlot == nil ? 1 : 0.72)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .strokeBorder(.white, lineWidth: isNow ? 1.5 : 0)
+                        )
+                }
+            }
+            .frame(height: barsH, alignment: .bottom)
+        }
+    }
+
+    private func hour(_ date: Date) -> Int {
+        Calendar.current.component(.hour, from: date)
     }
 }
 
