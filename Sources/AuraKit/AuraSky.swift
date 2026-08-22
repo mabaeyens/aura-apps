@@ -136,7 +136,11 @@ public struct AuraSky: View {
                 // keeps it a pin-sharp point of light. Occlusion is alpha + radius + blur only; the disc
                 // never leaves the true solar position.
                 let occlusion = veil
-                let discR = min(size.width, size.height) * 0.075
+                // Cap the disc's radius so the sun/moon reads at the same physical size on a large iPad
+                // screen as on a phone. Without the cap `min(width, height) * 0.075` scales with the
+                // canvas and the disc balloons on iPad; 32pt matches the largest phone, and the corona
+                // and blur below follow from `discR`, so the whole light source stays device-consistent.
+                let discR = min(min(size.width, size.height) * 0.075, 32)
                 let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
                 // The moon reads as reflected moonlight, not a second sun: markedly dimmer than the day
                 // disc and drawn with a soft base blur even on the clearest night, so its edge stays a
