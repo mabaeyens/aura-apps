@@ -58,16 +58,23 @@ public struct AuraSky: View {
     /// The app resolves this via `HeroBackground` and its bundle; `AuraKit` stays agnostic about where the
     /// image comes from.
     private let heroImage: Image?
+    /// When false, `heroImage` is a **conditionless base scene** (a plain clear-sky landscape/cityscape):
+    /// the cloud veil is still drawn over it so weather reads, while the live sun/moon and its glow sit on
+    /// top as usual. True (the default) means the image bakes in its own condition (the 8×6 grid), so the
+    /// veil is skipped. Ignored when `heroImage` is nil. This is what lets four wide base images
+    /// (family × day/night) stand in for the whole grid on the iPad, with the light and veil doing the rest.
+    private let heroCarriesCondition: Bool
     /// Where the hero art anchors when the view's aspect differs from the 9:19.5 art. The phone matches
     /// the art almost exactly, so `.center` shows the whole scene; the near-square Watch would crop the
     /// landscape off the bottom, so it passes `.bottom` to keep the mountains, tree and river in frame.
     private let heroAnchor: Alignment
 
     public init(snapshot: WeatherSnapshot?, now: Date = Date(), heroImage: Image? = nil,
-                heroAnchor: Alignment = .center) {
+                heroCarriesCondition: Bool = true, heroAnchor: Alignment = .center) {
         self.snapshot = snapshot
         self.now = now
         self.heroImage = heroImage
+        self.heroCarriesCondition = heroCarriesCondition
         self.heroAnchor = heroAnchor
     }
 
@@ -94,8 +101,9 @@ public struct AuraSky: View {
 
                 // 2 — the cloud veil: a soft, slightly cool scrim that greys the sky as it clouds over.
                 // A neutral-cool grey (not warm) keeps an overcast noon from reading muddy/brown. Skipped
-                // over an image — the art already carries its own condition.
-                if heroImage == nil {
+                // over a condition-baked image (the 8×6 art carries its own weather); drawn over a
+                // conditionless base scene so its weather still reads.
+                if heroImage == nil || !heroCarriesCondition {
                     (path.isNight ? Color(white: 0.12)
                                   : Color(red: 0.60, green: 0.65, blue: 0.72)).opacity(veil * 0.5)
                 }
@@ -293,65 +301,86 @@ public struct AuraSky: View {
                                     colors: (far: Color, near: Color, water: Color, tree: Color, trunk: Color),
                                     sunX: CGFloat) {
         let w = size.width, h = size.height
-        let band = h * 0.44                 // a taller scenery band, so the horizon sits higher up the
+        let band = h * 0.46                 // a taller scenery band, so the horizon sits higher up the
         let top = h - band                  // screen and shows through/behind the lower cards
 
-        // Far mountain ridge.
+        // A soft haze just above the horizon lifts the ridges off the sky and adds depth.
+        let hazeTop = top - band * 0.14
+        ctx.fill(Path(CGRect(x: 0, y: hazeTop, width: w, height: band * 0.62)),
+                 with: .linearGradient(Gradient(colors: [colors.far.opacity(0), colors.far.opacity(0.34)]),
+                                       startPoint: CGPoint(x: 0, y: hazeTop),
+                                       endPoint: CGPoint(x: 0, y: hazeTop + band * 0.62)))
+
+        // Distant ridge — hazier and higher, sitting behind the main range for a sense of depth.
+        var ridge = Path()
+        ridge.move(to: CGPoint(x: 0, y: top + band * 0.30))
+        ridge.addLine(to: CGPoint(x: w * 0.22, y: top + band * 0.12))
+        ridge.addLine(to: CGPoint(x: w * 0.40, y: top + band * 0.26))
+        ridge.addLine(to: CGPoint(x: w * 0.58, y: top + band * 0.06))
+        ridge.addLine(to: CGPoint(x: w * 0.78, y: top + band * 0.24))
+        ridge.addLine(to: CGPoint(x: w, y: top + band * 0.14))
+        ridge.addLine(to: CGPoint(x: w, y: h)); ridge.addLine(to: CGPoint(x: 0, y: h)); ridge.closeSubpath()
+        ctx.fill(ridge, with: .color(colors.far.opacity(0.55)))
+
+        // Far mountain range.
         var mountain = Path()
-        mountain.move(to: CGPoint(x: 0, y: top + band * 0.46))
-        mountain.addLine(to: CGPoint(x: w * 0.17, y: top + band * 0.10))
-        mountain.addLine(to: CGPoint(x: w * 0.30, y: top + band * 0.42))
-        mountain.addLine(to: CGPoint(x: w * 0.48, y: top - band * 0.04))
-        mountain.addLine(to: CGPoint(x: w * 0.66, y: top + band * 0.40))
-        mountain.addLine(to: CGPoint(x: w * 0.84, y: top + band * 0.14))
-        mountain.addLine(to: CGPoint(x: w, y: top + band * 0.42))
+        mountain.move(to: CGPoint(x: 0, y: top + band * 0.50))
+        mountain.addLine(to: CGPoint(x: w * 0.17, y: top + band * 0.16))
+        mountain.addLine(to: CGPoint(x: w * 0.30, y: top + band * 0.46))
+        mountain.addLine(to: CGPoint(x: w * 0.48, y: top + band * 0.02))
+        mountain.addLine(to: CGPoint(x: w * 0.66, y: top + band * 0.44))
+        mountain.addLine(to: CGPoint(x: w * 0.84, y: top + band * 0.18))
+        mountain.addLine(to: CGPoint(x: w, y: top + band * 0.46))
         mountain.addLine(to: CGPoint(x: w, y: h)); mountain.addLine(to: CGPoint(x: 0, y: h)); mountain.closeSubpath()
-        ctx.fill(mountain, with: .color(colors.far.opacity(0.9)))
+        ctx.fill(mountain, with: .color(colors.far.opacity(0.92)))
 
         // Near hills.
         var hills = Path()
-        hills.move(to: CGPoint(x: 0, y: top + band * 0.62))
-        hills.addQuadCurve(to: CGPoint(x: w * 0.5, y: top + band * 0.56),
-                           control: CGPoint(x: w * 0.25, y: top + band * 0.40))
-        hills.addQuadCurve(to: CGPoint(x: w, y: top + band * 0.54),
-                           control: CGPoint(x: w * 0.75, y: top + band * 0.72))
+        hills.move(to: CGPoint(x: 0, y: top + band * 0.66))
+        hills.addQuadCurve(to: CGPoint(x: w * 0.5, y: top + band * 0.60),
+                           control: CGPoint(x: w * 0.25, y: top + band * 0.46))
+        hills.addQuadCurve(to: CGPoint(x: w, y: top + band * 0.58),
+                           control: CGPoint(x: w * 0.75, y: top + band * 0.76))
         hills.addLine(to: CGPoint(x: w, y: h)); hills.addLine(to: CGPoint(x: 0, y: h)); hills.closeSubpath()
         ctx.fill(hills, with: .color(colors.near))
 
         // A river/ribbon that catches the sun's colour.
         var river = Path()
-        let ry = top + band * 0.78
+        let ry = top + band * 0.80
         river.move(to: CGPoint(x: 0, y: ry))
-        river.addQuadCurve(to: CGPoint(x: w * 0.5, y: ry + band * 0.06),
-                           control: CGPoint(x: w * 0.25, y: ry - band * 0.05))
+        river.addQuadCurve(to: CGPoint(x: w * 0.5, y: ry + band * 0.055),
+                           control: CGPoint(x: w * 0.25, y: ry - band * 0.045))
         river.addQuadCurve(to: CGPoint(x: w, y: ry + band * 0.02),
-                           control: CGPoint(x: w * 0.75, y: ry + band * 0.12))
-        river.addLine(to: CGPoint(x: w, y: ry + band * 0.16))
-        river.addQuadCurve(to: CGPoint(x: w * 0.5, y: ry + band * 0.20),
-                           control: CGPoint(x: w * 0.75, y: ry + band * 0.26))
-        river.addQuadCurve(to: CGPoint(x: 0, y: ry + band * 0.14),
-                           control: CGPoint(x: w * 0.25, y: ry + band * 0.10))
+                           control: CGPoint(x: w * 0.75, y: ry + band * 0.11))
+        river.addLine(to: CGPoint(x: w, y: ry + band * 0.15))
+        river.addQuadCurve(to: CGPoint(x: w * 0.5, y: ry + band * 0.19),
+                           control: CGPoint(x: w * 0.75, y: ry + band * 0.24))
+        river.addQuadCurve(to: CGPoint(x: 0, y: ry + band * 0.13),
+                           control: CGPoint(x: w * 0.25, y: ry + band * 0.09))
         river.closeSubpath()
         ctx.fill(river, with: .color(colors.water))
 
-        // A tree, with a ground shadow that leans away from the sun.
-        let tx = w * 0.80, groundY = top + band * 0.66
-        let foliageR = band * 0.20
+        // Trees, with ground shadows that lean away from the sun. A larger one on the right and a smaller
+        // one on the left add depth without cluttering the lower cards.
         let shadowDir: CGFloat = (0.5 - sunX)            // sun on the left → +, shadow falls right
-        let shadowLen = min(max(abs(shadowDir) * 2.4, 0.35), 1.4)
-        let shadowRect = CGRect(x: tx - foliageR * 1.3 + shadowDir * foliageR * 3.0,
-                                y: groundY + foliageR * 0.7,
-                                width: foliageR * 2.6 * shadowLen, height: foliageR * 0.7)
-        ctx.fill(Path(ellipseIn: shadowRect), with: .color(.black.opacity(0.16)))
+        func drawTree(tx: CGFloat, groundY: CGFloat, foliageR: CGFloat) {
+            let shadowLen = min(max(abs(shadowDir) * 2.4, 0.35), 1.4)
+            let shadowRect = CGRect(x: tx - foliageR * 1.3 + shadowDir * foliageR * 3.0,
+                                    y: groundY + foliageR * 0.7,
+                                    width: foliageR * 2.6 * shadowLen, height: foliageR * 0.7)
+            ctx.fill(Path(ellipseIn: shadowRect), with: .color(.black.opacity(0.16)))
 
-        let trunk = CGRect(x: tx - foliageR * 0.14, y: groundY - foliageR * 0.2,
-                           width: foliageR * 0.28, height: foliageR * 1.1)
-        ctx.fill(Path(roundedRect: trunk, cornerRadius: foliageR * 0.1), with: .color(colors.trunk))
-        for c in [(dx: 0.0, dy: -0.9, r: 1.0), (dx: -0.7, dy: -0.35, r: 0.7), (dx: 0.7, dy: -0.35, r: 0.7)] {
-            let rect = CGRect(x: tx + CGFloat(c.dx) * foliageR - foliageR * CGFloat(c.r),
-                              y: groundY + CGFloat(c.dy) * foliageR - foliageR * CGFloat(c.r),
-                              width: foliageR * 2 * CGFloat(c.r), height: foliageR * 2 * CGFloat(c.r))
-            ctx.fill(Path(ellipseIn: rect), with: .color(colors.tree))
+            let trunk = CGRect(x: tx - foliageR * 0.14, y: groundY - foliageR * 0.2,
+                               width: foliageR * 0.28, height: foliageR * 1.1)
+            ctx.fill(Path(roundedRect: trunk, cornerRadius: foliageR * 0.1), with: .color(colors.trunk))
+            for c in [(dx: 0.0, dy: -0.9, r: 1.0), (dx: -0.7, dy: -0.35, r: 0.7), (dx: 0.7, dy: -0.35, r: 0.7)] {
+                let rect = CGRect(x: tx + CGFloat(c.dx) * foliageR - foliageR * CGFloat(c.r),
+                                  y: groundY + CGFloat(c.dy) * foliageR - foliageR * CGFloat(c.r),
+                                  width: foliageR * 2 * CGFloat(c.r), height: foliageR * 2 * CGFloat(c.r))
+                ctx.fill(Path(ellipseIn: rect), with: .color(colors.tree))
+            }
         }
+        drawTree(tx: w * 0.80, groundY: top + band * 0.68, foliageR: band * 0.20)
+        drawTree(tx: w * 0.19, groundY: top + band * 0.74, foliageR: band * 0.13)
     }
 }

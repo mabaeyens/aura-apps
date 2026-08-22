@@ -122,6 +122,27 @@ public enum HeroBackground {
         return resolve(sky: category, time: time, family: family, available: available)
     }
 
+    // MARK: Wide base scenes (iPad / wide canvases)
+
+    /// The wide, **conditionless** base scene for a family and day/night — one image per family per
+    /// day/night, four in all (`wide_landscape_day`/`_night`, `wide_city_day`/`_night`). On a wide or
+    /// landscape canvas the portrait 8×6 grid can't reflow, so these stand in for it: `AuraSky` draws the
+    /// live sun/moon (the hour) and the cloud veil (the weather) on top, so four images cover the matrix.
+    public static func wideBaseName(_ family: Family, isNight: Bool) -> String {
+        let scene = family == .cityscape ? "city" : "landscape"
+        return "wide_\(scene)_\(isNight ? "night" : "day")"
+    }
+
+    /// The wide base **image** for a snapshot's day/night state, or `nil` (→ procedural sky) when the asset
+    /// hasn't shipped. Pure but for the `exists` probe, mirroring `heroImage(for:)`.
+    public static func wideBaseImage(for snapshot: WeatherSnapshot?, now: Date = Date(),
+                                     family: Family = .landscape, exists: (String) -> Bool) -> Image? {
+        guard let snapshot else { return nil }
+        let path = AuraSunPath(now: now, sunrise: snapshot.sunrise, sunset: snapshot.sunset)
+        let name = wideBaseName(family, isNight: path.isNight)
+        return exists(name) ? Image(name) : nil
+    }
+
     private static func cyclicDistance(_ a: Int, _ b: Int, _ n: Int) -> Int {
         let d = abs(a - b)
         return min(d, n - d)
