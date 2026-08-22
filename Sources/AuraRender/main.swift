@@ -58,6 +58,29 @@ dump("corner",      size: CGSize(width: 44,  height: 44)) { AuraAccessoryCorner(
 dump("hours",       size: CGSize(width: 170, height: 76)) { AuraRectHours(snapshot: snap) }
 dump("days",        size: CGSize(width: 170, height: 76)) { AuraRectDays(snapshot: snap) }
 
+// UV and rain circular complications across their bands, so the per-band glyph, the index/percentage
+// colour and the ring tint can all be eyeballed (and every SF Symbol name confirmed to resolve — a
+// bad name renders blank at runtime, not at compile time). Minimal snapshots: only the field each
+// card reads is set, everything else defaults.
+func uvSnap(_ v: Int) -> WeatherSnapshot {
+    WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                    tempMin: 18, tempMax: 34, humedadMax: 50,
+                    uvIndex: UVIndex(value: v),
+                    sunrise: nil, sunset: nil, updated: Date())
+}
+func rainSnap(_ p: Int) -> WeatherSnapshot {
+    WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                    tempMin: 18, tempMax: 34, humedadMax: 50,
+                    currentPrecipProb: p,
+                    sunrise: nil, sunset: nil, updated: Date())
+}
+for v in [1, 4, 7, 9, 11] {   // one per WHO band: bajo, moderado, alto, muy alto, extremo
+    dump("uv-\(v)", size: CGSize(width: 76, height: 76)) { AuraUVCircular(snapshot: uvSnap(v)) }
+}
+for p in [10, 45, 70, 95] {   // up the probability ramp: pálido → tempBlue → tempDeepBlue → intenso
+    dump("rain-\(p)", size: CGSize(width: 76, height: 76)) { AuraRainCircular(snapshot: rainSnap(p)) }
+}
+
 // Temperature ramp: one swatch per degree from -5 to 45, each labelled, so the smooth AEMET/TVE
 // progression can be eyeballed (no hard bands, 20° green→yellow hand-off, red ~30°).
 @MainActor
