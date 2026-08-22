@@ -9,5 +9,7 @@ struct AuraWidgetBundle: WidgetBundle {
         AuraTodayWidget()
         AuraRainWidget()
         AuraUVWidget()
+        AuraSunMoonWidget()
+        AuraHomeWidget()
     }
 }

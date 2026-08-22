@@ -8,6 +8,7 @@ struct AuraComplicationBundle: WidgetBundle {
     var body: some Widget {
         AuraConditionsComplication()
         AuraSunComplication()
+        AuraSunMoonComplication()
         AuraRainComplication()
         AuraUVComplication()
         AuraWindNeedleComplication()

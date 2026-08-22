@@ -72,6 +72,22 @@ public struct AuraAccessoryRectangular: View {
     }
 
     public var body: some View {
+        // iPadOS offers a far more generous rectangular Lock Screen slot than iPhone's narrow ~160pt
+        // one, so branch on the real width the widget is given: the wide layout fills the iPad's ~2×2
+        // space with a two-column read, while iPhone (and the Watch) keep the compact stack. The
+        // threshold sits well above any iPhone rectangular slot and below the iPad's, so it degrades
+        // gracefully — a smaller slot simply never takes the wide branch.
+        GeometryReader { geo in
+            if geo.size.width > 220 {
+                wide
+            } else {
+                compact
+            }
+        }
+    }
+
+    /// iPhone / Watch: the original compact stack.
+    private var compact: some View {
         // The Lock Screen renders accessory widgets in a desaturated "vibrant" mode, so colour is
         // largely dropped: hierarchy comes from weight and grayscale, not tint (Apple HIG). Semantic
         // font styles — not fixed point sizes — so the text scales with Dynamic Type and never
@@ -104,6 +120,51 @@ public struct AuraAccessoryRectangular: View {
                 }
             }
             .font(.caption2)
+            .foregroundStyle(.secondary)
+            .labelStyle(TightLabelStyle())
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    /// iPad: a richer two-column read that fills the generous rectangular slot — the condition and
+    /// temperature on the left, and today's range, the next sun event and an aviso dot stacked on the
+    /// right.
+    private var wide: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
+                        .font(.largeTitle)
+                    Text(AccessoryFormat.temp(snapshot.heroTemp))
+                        .font(.system(.largeTitle, design: .rounded)).fontWeight(.semibold)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
+                if let text = snapshot.currentSkyText {
+                    Text(text)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2).minimumScaleFactor(0.8)
+                }
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 4) {
+                HStack(spacing: 6) {
+                    Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
+                    Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
+                }
+                if let sun = AccessoryFormat.sun(snapshot, now: now) {
+                    Label(sun.text, systemImage: sun.icon)
+                }
+                if snapshot.windSpeed != nil {
+                    Label(AccessoryFormat.wind(snapshot), systemImage: "wind")
+                }
+                if snapshot.alert != nil {
+                    Label("Aviso", systemImage: "exclamationmark.triangle.fill")
+                }
+            }
+            .font(.callout)
             .foregroundStyle(.secondary)
             .labelStyle(TightLabelStyle())
             .lineLimit(1)
@@ -231,5 +292,22 @@ private enum AccessoryFormat {
         let t = temp(s.heroTemp)
         if let text = s.currentSkyText { return "\(t) \(text)" }
         return t
+    }
+
+    /// The next sun event — its time and a rise/set glyph — for the wide rectangular layout, or nil
+    /// when the sun times are unknown.
+    static func sun(_ s: WeatherSnapshot, now: Date) -> (text: String, icon: String)? {
+        switch s.nextSunEvent(now: now) {
+        case .sunrise(let d): return (hhmm(d), "sunrise.fill")
+        case .sunset(let d):  return (hhmm(d), "sunset.fill")
+        case nil:             return nil
+        }
+    }
+
+    static func hhmm(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 }
