@@ -98,10 +98,12 @@ public struct AuraRainCircular: View {
         } currentValueLabel: {
             Text(prob.map { "\($0)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
-                .foregroundStyle(.white)
+                // Deepen the blue with the probability (an Aura convention — no official POP palette
+                // exists). Shows on colour faces; the Lock Screen desaturates it, ring fill unchanged.
+                .foregroundStyle(Palette.precip(prob ?? 0))
         }
         .gaugeStyle(.accessoryCircular)
-        .tint(Palette.tempBlue)
+        .tint(Palette.precip(prob ?? 0))
     }
 }
 
@@ -121,15 +123,20 @@ public struct AuraUVCircular: View {
     private var uv: UVIndex? { snapshot.uvIndex }
 
     public var body: some View {
-        Gauge(value: Double(min(uv?.value ?? 0, 11)), in: 0...11) {
-            Image(systemName: "sun.max.fill")
+        let bandColor = Palette.uvIndex(uv?.value ?? 0)
+        return Gauge(value: Double(min(uv?.value ?? 0, 11)), in: 0...11) {
+            // Per-band protection glyph (sun → sunglasses → warning → umbrella), tinted to the band.
+            Image(systemName: uv?.glyph ?? "sun.max.fill")
+                .foregroundStyle(bandColor)
         } currentValueLabel: {
             Text(uv.map { "\($0.value)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
-                .foregroundStyle(.white)
+                // Colour the index to its WHO band. Reads on full-colour faces; the Lock Screen
+                // desaturates it while the ring fill keeps carrying the level.
+                .foregroundStyle(bandColor)
         }
         .gaugeStyle(.accessoryCircular)
-        .tint(Palette.uvIndex(uv?.value ?? 0))
+        .tint(bandColor)
     }
 
     /// The WHO band name for the curved bezel label — honest about the value being a daily maximum.

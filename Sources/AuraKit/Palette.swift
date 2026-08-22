@@ -108,6 +108,19 @@ public enum Palette {
         }
     }
 
+    /// Probability of precipitation (0…100 %) → blue. There is no official POP colour scale —
+    /// Beaufort is a wind-force scale and radar dBZ palettes encode intensity, not probability — so
+    /// this is an Aura convention: paler for a slim chance, deeper as it climbs, reusing the
+    /// temperature blues so the app stays one family. Read it as "more blue = more likely".
+    public static func precip(_ prob: Int) -> Color {
+        switch prob {
+        case ..<20:   return Color(red: 0.62, green: 0.84, blue: 1.0)   // muy baja — azul pálido
+        case 20..<50: return tempBlue                                   // baja/media
+        case 50..<80: return tempDeepBlue                               // alta
+        default:      return Color(red: 0.10, green: 0.20, blue: 0.62)  // muy alta — azul intenso
+        }
+    }
+
     /// The full cold→hot scale, for `Gauge` tints and range bars.
     public static let temperatureGradient = Gradient(colors: [
         tempDeepBlue, tempBlue, tempTeal, tempGreen, tempYellow, tempOrange, tempRed, tempPurple,

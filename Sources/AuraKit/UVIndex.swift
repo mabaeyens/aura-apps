@@ -29,6 +29,20 @@ public struct UVIndex: Codable, Sendable, Hashable {
         default:      return "Evita la exposición al sol"
         }
     }
+
+    /// An SF Symbol cueing the band's protection level, for the compact complication where the
+    /// one-line `advice` won't fit. SF Symbols carries no cap or sunscreen glyph, so this is the
+    /// closest honest escalation with symbols that exist on the watchOS 10 target: bare sun →
+    /// sunglasses → sun-with-warning → beach umbrella → umbrella.
+    public var glyph: String {
+        switch value {
+        case ..<3:    return "sun.max.fill"
+        case 3...5:   return "sunglasses.fill"
+        case 6...7:   return "sun.max.trianglebadge.exclamationmark"
+        case 8...10:  return "beach.umbrella.fill"
+        default:      return "umbrella.fill"
+        }
+    }
 }
 
 public extension UVIndex {
