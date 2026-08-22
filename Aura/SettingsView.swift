@@ -41,7 +41,7 @@ struct SettingsView: View {
                         if justSaved {
                             Text("Clave actualizada.").foregroundStyle(.green)
                         }
-                        Text("La clave de AEMET caduca a los 3 meses. Si la predicción deja de actualizarse, renuévala en opendata.aemet.es y pégala aquí.")
+                        Text("Si la predicción deja de actualizarse, pide otra clave gratis en opendata.aemet.es y pégala aquí.")
                     }
                 }
 

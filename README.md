@@ -84,7 +84,7 @@ The tests cover the pure logic (wind rose, solar times, the hero phrasing, the h
 
 ## Data & attribution
 
-Weather data: **Elaborado con datos de AEMET.** An AEMET OpenData API key is required (free, tied to an email, renewed every three months). Sun times are computed on-device.
+Weather data: **Elaborado con datos de AEMET.** An AEMET OpenData API key is required (free, tied to an email; if it ever stops working, request another the same way). Sun times are computed on-device.
 
 Air quality: the national **ICA feed from MITECO** (Ministerio para la Transición Ecológica), licensed **CC-BY 4.0** — so the in-app credit reads "Elaborado con datos de AEMET y MITECO" whenever the air-quality card is shown. The "Noticias" stream links out to public RSS feeds (RTVE, AEMET, Meteored, AEMET Blog); each headline is credited to its source.
 
