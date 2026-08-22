@@ -134,27 +134,43 @@ struct AuraAvisoEntryView: View {
 struct AuraHomeWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "AuraHomeWidget",
-                               intent: SelectLocationIntent.self,
-                               provider: AuraProvider()) { entry in
+                               intent: SelectHomeIntent.self,
+                               provider: AuraHomeProvider()) { entry in
             AuraHomeEntryView(entry: entry)
-                .containerBackground(for: .widget) {
-                    ZStack {
-                        // The sunless hero art (village silhouette etc.) if the matching asset ships,
-                        // with AuraSky drawing the live sun/moon and cloud veil over it; the procedural
-                        // sky fills in when there's no art for this sky+time.
-                        AuraSky(snapshot: entry.snapshot, now: entry.date,
-                                heroImage: HeroBackground.heroImage(for: entry.snapshot, now: entry.date,
-                                                                    exists: { UIImage(named: $0) != nil }))
-                        // A gentle top-and-bottom scrim so the white text keeps its contrast over a pale
-                        // noon sky without hiding the scene.
-                        LinearGradient(colors: [.black.opacity(0.22), .clear, .black.opacity(0.38)],
-                                       startPoint: .top, endPoint: .bottom)
-                    }
-                }
+                .containerBackground(for: .widget) { AuraHomeBackground(entry: entry) }
         }
         .configurationDisplayName("Aura")
         .description("El tiempo de tu ubicación en la pantalla de inicio.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
+    }
+}
+
+/// The Home Screen widget's background: the sunless wide base art behind the live sun/moon and cloud
+/// veil, with a gentle top-and-bottom scrim for text contrast. The base is downsampled to this family's
+/// display size (`WidgetHero`) so a screen full of Aura widgets stays within WidgetKit's memory budget;
+/// `heroCarriesCondition: false` lets AuraSky draw the weather veil and live light over the plain base.
+/// No base for this state → AuraSky's procedural sky.
+struct AuraHomeBackground: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraEntry
+
+    /// Only the extra-large iPad family takes the full-resolution base tier; everything else takes the
+    /// lighter `_w` variant, so the gallery's all-families-at-once render stays within budget.
+    private var full: Bool { family == .systemExtraLarge }
+
+    var body: some View {
+        ZStack {
+            AuraSky(snapshot: entry.snapshot, now: entry.date,
+                    heroImage: WidgetHero.base(for: entry.snapshot, now: entry.date,
+                                               scene: entry.scene, full: full),
+                    heroCarriesCondition: false,
+                    // Anchor the wide base to the ground: on the short, wide Home families a centre crop
+                    // shows mostly sky, so pin the bottom to keep the horizon and landscape in frame.
+                    heroAnchor: .bottom,
+                    compact: true)
+            LinearGradient(colors: [.black.opacity(0.22), .clear, .black.opacity(0.38)],
+                           startPoint: .top, endPoint: .bottom)
+        }
     }
 }
 

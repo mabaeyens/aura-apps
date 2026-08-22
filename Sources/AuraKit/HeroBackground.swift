@@ -133,6 +133,16 @@ public enum HeroBackground {
         return "wide_\(scene)_\(isNight ? "night" : "day")"
     }
 
+    /// The wide base **name** for a snapshot's day/night state (the string counterpart of
+    /// `wideBaseImage`), or `nil` for a missing snapshot. Lets the widget load the asset itself — and
+    /// downsample it to the widget's display size — instead of taking a full-resolution `Image`.
+    public static func wideBaseName(for snapshot: WeatherSnapshot?, now: Date = Date(),
+                                    family: Family = .landscape) -> String? {
+        guard let snapshot else { return nil }
+        let path = AuraSunPath(now: now, sunrise: snapshot.sunrise, sunset: snapshot.sunset)
+        return wideBaseName(family, isNight: path.isNight)
+    }
+
     /// The wide base **image** for a snapshot's day/night state, or `nil` (→ procedural sky) when the asset
     /// hasn't shipped. Pure but for the `exists` probe, mirroring `heroImage(for:)`.
     public static func wideBaseImage(for snapshot: WeatherSnapshot?, now: Date = Date(),

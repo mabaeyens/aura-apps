@@ -42,10 +42,24 @@ private extension View {
 }
 
 /// The current condition glyph + hero temperature + today's high/low, the block every size opens with.
+/// When `location` is set the condition line reads "Localidad · condición" (with a pin and, if active,
+/// an aviso pill) — the large card folds its place name in here to save a whole row.
 private struct HomeConditionBlock: View {
     let snapshot: WeatherSnapshot
     let now: Date
     var tempFont: Font = .system(size: 44, weight: .semibold, design: .rounded)
+    var location: String? = nil
+    var alert: WeatherAlert? = nil
+
+    /// The condition line's text — the place name folded in front of the sky word when `location` is set.
+    private var conditionLine: String? {
+        switch (location, snapshot.currentSkyText) {
+        case let (loc?, text?): return "\(loc) · \(text)"
+        case let (loc?, nil):   return loc
+        case let (nil, text?):  return text
+        case (nil, nil):        return nil
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -57,11 +71,21 @@ private struct HomeConditionBlock: View {
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .skyText()
             }
-            if let text = snapshot.currentSkyText {
-                Text(text)
+            if let conditionLine {
+                HStack(spacing: 6) {
+                    Label {
+                        Text(conditionLine).lineLimit(1).minimumScaleFactor(0.8)
+                    } icon: {
+                        if location != nil { Image(systemName: "location.fill") }
+                    }
+                    .labelStyle(HomeTightLabel())
                     .font(.subheadline)
-                    .lineLimit(1).minimumScaleFactor(0.8)
                     .skyText()
+                    if let alert {
+                        Spacer(minLength: 4)
+                        AvisoPill(level: alert.level)
+                    }
+                }
             }
             HStack(spacing: 8) {
                 Label(HomeFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
@@ -125,23 +149,82 @@ private struct HomeHourColumn: View {
     }
 }
 
-/// One day of the outlook row: weekday, daytime glyph, high over low.
-private struct HomeDayColumn: View {
-    let day: DaySnapshot
+/// The multi-day outlook drawn as **rows** — weekday, glyph, low, a temperature band, high — the way
+/// the app's own forecast list reads (and the way the widget mockups were approved). Each day's band is
+/// inset to where that day's low→high sits within the whole range on show, so warmer days reach further
+/// right, like Apple's own forecast.
+private struct HomeDayList: View {
+    let days: [DaySnapshot]
+
+    /// The coolest low and warmest high across the shown days — the scale every band is drawn against.
+    private var span: (min: Int, max: Int)? {
+        guard let lo = days.compactMap(\.min).min(),
+              let hi = days.compactMap(\.max).max(), hi > lo else { return nil }
+        return (lo, hi)
+    }
 
     var body: some View {
-        VStack(spacing: 3) {
-            Text(HomeFormat.weekday(day.date))
-                .font(.caption2).skyText()
-            ConditionGlyph(sky: day.sky, isNight: false)
-                .font(.body)
-                .frame(height: 20)
-            Text(HomeFormat.temp(day.max))
-                .font(.caption).fontWeight(.semibold).skyText()
-            Text(HomeFormat.temp(day.min))
-                .font(.caption2).foregroundStyle(.white.opacity(0.7))
+        VStack(spacing: 5) {
+            ForEach(days) { HomeDayRow(day: $0, span: span) }
         }
-        .frame(maxWidth: .infinity)
+    }
+}
+
+/// One outlook row: weekday, condition glyph, low, the temperature band, high.
+private struct HomeDayRow: View {
+    let day: DaySnapshot
+    let span: (min: Int, max: Int)?
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(HomeFormat.weekday(day.date))
+                .font(.caption).fontWeight(.semibold)
+                .frame(width: 34, alignment: .leading)
+                .skyText()
+            ConditionGlyph(sky: day.sky, isNight: false)
+                .font(.footnote)
+                .frame(width: 20)
+            Text(HomeFormat.temp(day.min))
+                .font(.caption).foregroundStyle(.white.opacity(0.75))
+                .frame(width: 30, alignment: .trailing)
+            TempBand(low: day.min, high: day.max, span: span)
+                .frame(height: 5)
+                .frame(maxWidth: .infinity)
+            Text(HomeFormat.temp(day.max))
+                .font(.caption).fontWeight(.semibold)
+                .frame(width: 30, alignment: .trailing)
+                .skyText()
+        }
+    }
+}
+
+/// A day's temperature band: a capsule inset to that day's low→high on the shared weekly scale, filled
+/// with that range's own colours from the same TVE/AEMET temperature scale the app's forecast card uses
+/// (blue → green → yellow → orange → red), over a faint track. Falls back to a plain track when the
+/// range can't be computed.
+private struct TempBand: View {
+    let low: Int?
+    let high: Int?
+    let span: (min: Int, max: Int)?
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.20))
+                if let span, span.max > span.min {
+                    let total = CGFloat(span.max - span.min)
+                    let lo = low ?? span.min, hi = high ?? span.max
+                    let start = CGFloat(lo - span.min) / total
+                    let end = CGFloat(hi - span.min) / total
+                    Capsule()
+                        .fill(LinearGradient(gradient: Palette.temperatureGradient(min: lo, max: hi),
+                                             startPoint: .leading, endPoint: .trailing))
+                        .frame(width: max(6, w * (end - start)))
+                        .offset(x: w * start)
+                }
+            }
+        }
     }
 }
 
@@ -301,9 +384,10 @@ public struct AuraHomeLarge: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HomeLocationRow(snapshot: snapshot)
-            HomeConditionBlock(snapshot: snapshot, now: now)
+        VStack(alignment: .leading, spacing: 8) {
+            // The place name rides the condition line here (not its own row) so the card breathes.
+            HomeConditionBlock(snapshot: snapshot, now: now,
+                               location: snapshot.localidad, alert: snapshot.alert)
             HomeMetricsRow(snapshot: snapshot)
 
             let hours = Array(snapshot.upcomingHours().prefix(5))
@@ -312,10 +396,12 @@ public struct AuraHomeLarge: View {
                 HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0) } }
             }
 
-            let days = Array(snapshot.days.prefix(5))
+            // Three day rows (not four): with the outlook drawn as full rows the large card also carries
+            // the hour strip and the sun footer, and a fourth row pushed the footer off the bottom edge.
+            let days = Array(snapshot.days.prefix(3))
             if !days.isEmpty {
                 Divider().overlay(.white.opacity(0.25))
-                HStack(spacing: 0) { ForEach(days) { HomeDayColumn(day: $0) } }
+                HomeDayList(days: days)
             }
 
             Spacer(minLength: 0)
@@ -366,7 +452,7 @@ public struct AuraHomeXL: View {
                         Divider().overlay(.white.opacity(0.25))
                     }
                     if !days.isEmpty {
-                        HStack(spacing: 0) { ForEach(days) { HomeDayColumn(day: $0) } }
+                        HomeDayList(days: days)
                     }
                     Spacer(minLength: 0)
                 }

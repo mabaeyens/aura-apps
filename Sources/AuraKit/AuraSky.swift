@@ -68,14 +68,22 @@ public struct AuraSky: View {
     /// the art almost exactly, so `.center` shows the whole scene; the near-square Watch would crop the
     /// landscape off the bottom, so it passes `.bottom` to keep the mountains, tree and river in frame.
     private let heroAnchor: Alignment
+    /// Tames the sun/moon glow for small, text-over-sky surfaces (the Home Screen widgets). At full size
+    /// the halo spans the long edge and blooms bright — right for the full-screen hero, where frosted
+    /// cards sit over it — but on a widget it bleaches the whole card white and the sky and scenery read
+    /// as a blank panel. When true the glow is pulled in to the short edge and its peak dimmed, so the
+    /// light stays a localised sun in a legible sky. The phone and Watch hero keep the default (false).
+    private let compact: Bool
 
     public init(snapshot: WeatherSnapshot?, now: Date = Date(), heroImage: Image? = nil,
-                heroCarriesCondition: Bool = true, heroAnchor: Alignment = .center) {
+                heroCarriesCondition: Bool = true, heroAnchor: Alignment = .center,
+                compact: Bool = false) {
         self.snapshot = snapshot
         self.now = now
         self.heroImage = heroImage
         self.heroCarriesCondition = heroCarriesCondition
         self.heroAnchor = heroAnchor
+        self.compact = compact
     }
 
     public var body: some View {
@@ -120,13 +128,17 @@ public struct AuraSky: View {
 
                 // 3 — the light: a warm (or cool, at night) glow centred exactly where the sun/moon is.
                 // Day glow eases off as the sun climbs, so the gold doesn't overpower the blue at noon
-                // (which read as a green cast); it stays strong low on the horizon at dawn/dusk.
-                RadialGradient(colors: [sun.opacity((path.isNight ? 0.55 : 0.92 - path.altitude * 0.30)
-                                                        * (1 - veil * 0.5)),
-                                        sun.opacity(0)],
+                // (which read as a green cast); it stays strong low on the horizon at dawn/dusk. On a
+                // `compact` surface (a widget) the halo is pulled in to the short edge and its peak dimmed,
+                // so it stays a localised sun instead of bleaching the whole small card to white.
+                let glowPeak = (path.isNight ? 0.55 : 0.92 - path.altitude * 0.30)
+                    * (1 - veil * 0.5) * (compact ? 0.62 : 1.0)
+                let glowRadius = compact ? min(size.width, size.height) * 1.1
+                                         : max(size.width, size.height) * 0.78
+                RadialGradient(colors: [sun.opacity(glowPeak), sun.opacity(0)],
                                center: path.point,
                                startRadius: 0,
-                               endRadius: max(size.width, size.height) * 0.78)
+                               endRadius: glowRadius)
 
                 // 3.5 — the light source itself: a defined sun (or moon) disc with a soft corona, sitting
                 // exactly where the glow is centred. This is "the signature" — the sun you can point at,
@@ -140,7 +152,11 @@ public struct AuraSky: View {
                 // screen as on a phone. Without the cap `min(width, height) * 0.075` scales with the
                 // canvas and the disc balloons on iPad; 32pt matches the largest phone, and the corona
                 // and blur below follow from `discR`, so the whole light source stays device-consistent.
-                let discR = min(min(size.width, size.height) * 0.075, 32)
+                // On a `compact` surface (a widget) the disc is smaller and capped harder, so it reads the
+                // same modest size whether the widget is a small iPhone tile or a large iPad one — without
+                // it the disc scales with the canvas and balloons on the big iPad families.
+                let discR = compact ? min(min(size.width, size.height) * 0.07, 20)
+                                    : min(min(size.width, size.height) * 0.075, 32)
                 let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
                 // The moon reads as reflected moonlight, not a second sun: markedly dimmer than the day
                 // disc and drawn with a soft base blur even on the clearest night, so its edge stays a

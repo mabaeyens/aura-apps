@@ -3,40 +3,63 @@ import AuraKit
 import SwiftUI
 import WidgetKit
 
-/// One timeline entry: the moment it represents and the snapshot to draw (nil before the app has
-/// cached anything).
+/// One timeline entry: the moment it represents, the snapshot to draw (nil before the app has cached
+/// anything), and — for the Home Screen widget — which background scene family to draw.
 struct AuraEntry: TimelineEntry {
     let date: Date
     let snapshot: WeatherSnapshot?
+    var scene: HeroBackground.Family = .landscape
+}
+
+/// The configured location's cached snapshot, falling back to the first cached location so a freshly
+/// added widget shows something before it's configured. Shared by both providers.
+private func resolveSnapshot(ine: String?, isPreview: Bool) -> WeatherSnapshot? {
+    if isPreview { return .preview }
+    if let ine, let snapshot = SharedCache.snapshot(forINE: ine) { return snapshot }
+    return SharedCache.read().first
+}
+
+/// The interval WidgetKit is nudged to re-read the cache over — the app is the real fetch hub.
+private func nextRefresh(after date: Date) -> Date {
+    Calendar.current.date(byAdding: .hour, value: 3, to: date) ?? date.addingTimeInterval(3 * 3600)
 }
 
 /// Reads the shared cache the app fills, for the location the widget is configured to show. The
 /// widget never calls AEMET; it just re-renders whatever the app last stored, and asks WidgetKit to
-/// refresh a few times a day.
+/// refresh a few times a day. Drives the Lock Screen glances.
 struct AuraProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> AuraEntry {
         AuraEntry(date: Date(), snapshot: .preview)
     }
 
     func snapshot(for configuration: SelectLocationIntent, in context: Context) async -> AuraEntry {
-        AuraEntry(date: Date(), snapshot: resolve(configuration, isPreview: context.isPreview))
+        AuraEntry(date: Date(), snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: context.isPreview))
     }
 
     func timeline(for configuration: SelectLocationIntent, in context: Context) async -> Timeline<AuraEntry> {
-        let entry = AuraEntry(date: Date(), snapshot: resolve(configuration, isPreview: false))
-        // The app is the real fetch hub; nudge WidgetKit to re-read the cache periodically.
-        let next = Calendar.current.date(byAdding: .hour, value: 3, to: entry.date) ?? entry.date.addingTimeInterval(3 * 3600)
-        return Timeline(entries: [entry], policy: .after(next))
+        let entry = AuraEntry(date: Date(), snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: false))
+        return Timeline(entries: [entry], policy: .after(nextRefresh(after: entry.date)))
+    }
+}
+
+/// The Home Screen widget's provider: same cache read as `AuraProvider`, plus the chosen background
+/// scene carried on the entry so the wide base art matches the user's Naturaleza/Ciudad pick.
+struct AuraHomeProvider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> AuraEntry {
+        AuraEntry(date: Date(), snapshot: .preview)
     }
 
-    /// The configured location's cached snapshot, falling back to the first cached location so a
-    /// freshly added widget shows something before it's configured.
-    private func resolve(_ configuration: SelectLocationIntent, isPreview: Bool) -> WeatherSnapshot? {
-        if isPreview { return .preview }
-        if let ine = configuration.location?.id, let snapshot = SharedCache.snapshot(forINE: ine) {
-            return snapshot
-        }
-        return SharedCache.read().first
+    func snapshot(for configuration: SelectHomeIntent, in context: Context) async -> AuraEntry {
+        AuraEntry(date: Date(),
+                  snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: context.isPreview),
+                  scene: configuration.scene.family)
+    }
+
+    func timeline(for configuration: SelectHomeIntent, in context: Context) async -> Timeline<AuraEntry> {
+        let entry = AuraEntry(date: Date(),
+                              snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: false),
+                              scene: configuration.scene.family)
+        return Timeline(entries: [entry], policy: .after(nextRefresh(after: entry.date)))
     }
 }
 
