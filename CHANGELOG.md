@@ -1,11 +1,6 @@
 # Changelog
 
-## v1.0.0 (build 4)
-
-- Lock Screen rectangular widget: the high/low/rain/humidity row no longer clips at the bottom edge — the layout now fits the slot.
-- Home Screen widget: the Escena setting now works — switching between Naturaleza and Ciudad actually changes the background art.
-
-## v1.0.0 (build 3)
+## v1.0.0
 
 First release of Aura — Spain's weather, from official AEMET open data.
 
