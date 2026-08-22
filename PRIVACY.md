@@ -10,9 +10,10 @@ nothing, and none of it reaches me.
 - No account. No sign-up. No tracking. No analytics. No ads.
 - No servers of mine. Aura talks only to Spain's official public data services — it never
   phones home to me, because there is no "Aura cloud".
-- Your location is used on your device to find your municipality, and is sent only to those
-  official services to fetch the forecast for where you are. It is never linked to your
-  identity, because there is no identity: Aura has no accounts.
+- Your location is matched to your municipality entirely on your device. Only that
+  municipality's public code — never your actual position — is sent to the official services
+  to fetch its forecast. It is never linked to your identity, because there is no identity:
+  Aura has no accounts.
 - It's open source, so you can check every word of this for yourself:
   <https://github.com/mabaeyens/aura-apps>
 
@@ -23,10 +24,12 @@ don't receive, store, or sell any of your data — I couldn't if I wanted to.
 
 ## Your location
 
-If you grant location access ("While Using the App"), Aura uses your location on your device
-to work out which Spanish municipality you're in, so it can show the right forecast. To fetch
-that forecast and the air-quality reading, your municipality — or the coordinates for it — is
-sent to the public Spanish services below. That request carries no name, account, or device
+If you grant location access ("While Using the App"), Aura takes a rough, kilometre-level fix
+and, on your device, matches it to the nearest Spanish municipality from a list bundled in the
+app — the same list you can pick from by hand. Only public identifiers then leave your device:
+that municipality's official code (its INE code) is sent to AEMET, and the code of the nearest
+air-quality station to MITECO, to fetch the forecast and the air reading. Your actual
+coordinates never leave your device, the request carries no name, account, or device
 identifier that ties it to you, and Aura keeps no history of where you've been.
 
 You can decline location access and Aura still works; you just choose the place yourself.

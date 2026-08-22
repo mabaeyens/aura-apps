@@ -122,19 +122,34 @@ no user-generated content, no gambling, no data-driven ads. Weather app, general
 
 ## 8. App Privacy — nutrition label
 
-Answer to "Do you collect data from this app?": **Yes**, one type only.
+**Recommended answer: "No, we do not collect data from this app."**
+
+Why this is accurate: Aura takes only a coarse (kilometre-level) location fix and resolves the
+nearest municipality **on the device**, against a list bundled in the app. Only public
+identifiers ever leave the device — the municipality's INE code (to AEMET) and the nearest
+air-quality station's code (to MITECO) — never a coordinate, and nothing tied to a user. There
+is no account, no analytics, no ads, no server of mine, and nothing is retained. Under Apple's
+definition of "collect" (data leaving the device in a way the developer or a partner can access
+beyond servicing the request in real time), no user location is collected: what's sent is a
+"which town" selector, identical to a place the user could pick by hand.
+
+**Conservative alternative** — if you'd rather leave no room for a reviewer to quibble, answer
+**Yes** with one type only:
 
 | Data type | Collected | Linked to identity | Used for tracking | Purpose |
 |---|---|---|---|---|
-| **Location — Precise** | Yes | **No** | **No** | App Functionality (fetch the local forecast) |
-| Everything else (contact, identifiers, usage, diagnostics, etc.) | **No** | — | — | — |
+| **Location — Coarse** | Yes | **No** | **No** | App Functionality (fetch the local forecast) |
+| Everything else (contact, identifiers, usage, diagnostics, purchases, etc.) | **No** | — | — | — |
 
 Notes for the questionnaire:
-- Location is sent to AEMET/MITECO (third-party official services) only to retrieve the
-  forecast; it is not linked to a user identity (there is no account) and is never used to
-  track across apps/sites.
+- **Never select Precise Location.** Precise coordinates never leave the device, so declaring
+  Precise would be inaccurate — the choice is between "No data collected" (recommended) and
+  "Coarse Location / App Functionality" (conservative).
+- A future tip jar would not change this: StoreKit handles the payment and nothing is logged to
+  a server of mine, so there is no "Purchases" data type to declare, and it is never Advertising.
 - No analytics, no crash SDK, no ads → nothing else to declare.
-- This matches PRIVACY.md. Keep the two in sync.
+- This matches PRIVACY.md (on-device resolution; only public town/station codes are sent). Keep
+  the two in sync.
 
 ---
 
