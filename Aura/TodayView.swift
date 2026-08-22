@@ -7,12 +7,16 @@ import UIKit
 /// hint simply stays put — an acceptable fallback since the reliable scroll-offset API isn't there.
 private struct FadeHintAtTop: ViewModifier {
     @Binding var atTop: Bool
+    /// The one place the app animates. Honour Reduce Motion: when it's on, toggle the hint instantly
+    /// instead of cross-fading, so the app carries no motion the setting doesn't already suppress.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.onScrollGeometryChange(for: Bool.self) { geo in
                 geo.contentOffset.y <= 2
             } action: { _, isTop in
-                withAnimation(.easeOut(duration: 0.25)) { atTop = isTop }
+                if reduceMotion { atTop = isTop }
+                else { withAnimation(.easeOut(duration: 0.25)) { atTop = isTop } }
             }
         } else {
             content

@@ -190,6 +190,10 @@ public struct AuraSky: View {
             }
         }
         .ignoresSafeArea()
+        // Decorative: the sky, landscape and sun/moon disc are pure atmosphere — every fact they
+        // encode (the hour's light, the weather) is also spoken by the frosted cards in front. Hide
+        // it from VoiceOver so the swipe order is the cards, not a large unlabelled image.
+        .accessibilityHidden(true)
     }
 
     // MARK: Condition → how much the light is veiled

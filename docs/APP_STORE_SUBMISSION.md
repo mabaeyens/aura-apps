@@ -161,15 +161,22 @@ Assessment for Aura (iOS), to confirm with a VoiceOver + Dynamic Type + Reduce M
 | Feature | Claim | Status |
 |---|---|---|
 | Dark Interface | Supported | ✅ theme-aware throughout |
-| Larger Text (Dynamic Type) | Supported | ⚠️ verify — cards use semantic fonts; check no clipping at XXL |
-| VoiceOver | Supported | ⚠️ verify — standard SwiftUI controls; add labels to the sun/moon arc + hero |
-| Sufficient Contrast | Supported | ⚠️ verify — check text over hero art at both themes |
-| Reduced Motion | Supported | ⚠️ verify/implement — honor `.accessibilityReduceMotion` for the sun/moon animation |
+| Larger Text (Dynamic Type) | **Do not declare in 1.0** | ✗ the card system uses fixed-point fonts (`.system(size:)`), tuned to hold a dense weather layout at phone/Watch parity; text does not scale with the Larger Text setting. Retrofitting is a design project, not a label tick — declare it only once the layout genuinely scales. |
+| VoiceOver | Supported | ✅ done — sun/moon arc cards and the wind card collapse to one spoken element carrying orto/ocaso and the readout; the hero reads as one flowing line; the decorative full-bleed sky is `accessibilityHidden`. Confirm on-device. |
+| Sufficient Contrast | Supported | ⚠️ verify — white text over the hero sits under a dark shadow halo for legibility; check at both themes and over the brightest (noon) sky. |
+| Reduced Motion | Supported | ✅ done — the app's only animation (the "MÁS" scroll-hint fade) is gated on `.accessibilityReduceMotion`; the sun/moon are drawn statically per render, so there is no continuous motion to suppress. |
 | Differentiate Without Color | — | N/A unless a state relies on colour alone |
 | Captions / Audio Descriptions | — | N/A (no audio/video) |
-| Voice Control | Supported | ⚠️ inherits from VoiceOver labelling |
+| Voice Control | Supported | ✅ inherits the VoiceOver labelling above. Confirm on-device. |
 
-Ship 1.0 declaring only what's confirmed; the label can be updated without a new binary.
+Ship 1.0 declaring only what's confirmed (VoiceOver, Reduced Motion, Voice Control, Dark Interface),
+after the on-device VoiceOver + contrast pass; leave Dynamic Type undeclared. The label can be updated
+without a new binary.
+
+**What this pass changed (code):** `AuraSky` marked `accessibilityHidden`; `AuraSunArcCard` /
+`AuraMoonArcCard` / `AuraWindCard` collapsed into single labelled VoiceOver elements with spoken
+value strings; `AuraHeroCard` combined into one element; `FadeHintAtTop` (TodayView) now honours
+Reduce Motion. No visual change — labels and motion-gating only.
 
 ---
 

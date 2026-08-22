@@ -200,6 +200,9 @@ public struct AuraHeroCard: View {
         // A soft dark halo behind the glyphs keeps white text legible over a bright noon sky, without
         // reintroducing a panel. Tunable; the sky's own scrim does the rest.
         .shadow(color: .black.opacity(0.35), radius: size == .phone ? 9 : 6, y: 1)
+        // Read the four lines (place · moment, temperature, headline, dataline) as one flowing
+        // announcement rather than four separate VoiceOver stops.
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -440,6 +443,18 @@ public struct AuraSunArcCard: View {
             }
         }
         .auraSectionTitle("Sol".uppercased(), size)
+        // The arc is a drawn path — silent to VoiceOver. Collapse the whole card into one element and
+        // speak the facts it encodes: orto, ocaso and the daylight-remaining readout.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sol")
+        .accessibilityValue(a11yValue)
+    }
+
+    /// Spoken summary for VoiceOver: sunrise, sunset and the centre readout, or the unavailable notice.
+    private var a11yValue: String {
+        guard let sr = sunrise, let ss = sunset else { return "Horario solar no disponible" }
+        let r = readout
+        return "Amanece a las \(hhmm(sr)), anochece a las \(hhmm(ss))." + (r.isEmpty ? "" : " \(r).")
     }
 
     // The arc itself: horizon line, the full day arc (faint), the travelled portion (warm), and the sun
@@ -635,6 +650,18 @@ public struct AuraMoonArcCard: View {
             }
         }
         .auraSectionTitle("Luna".uppercased(), size)
+        // Same as the sun card: the drawn night arc is silent, so speak the ocaso/orto that bound the
+        // night and the night-remaining readout as one collapsed element.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Luna")
+        .accessibilityValue(a11yValue)
+    }
+
+    /// Spoken summary for VoiceOver: the night's opening ocaso, its closing orto and the centre readout.
+    private var a11yValue: String {
+        guard let b = bounds else { return "Horario lunar no disponible" }
+        let r = readout
+        return "Anochece a las \(hhmm(b.ocaso)), amanece a las \(hhmm(b.orto))." + (r.isEmpty ? "" : " \(r).")
     }
 
     // Horizon, the full night arc (faint), the travelled portion (cool moonlight, night only), and the
@@ -787,6 +814,9 @@ public struct AuraWindCard: View {
         }
         .auraDetail(size) { AuraBeaufortSheet(snapshot: snapshot) }
         .auraSectionTitle("Viento".uppercased(), size)
+        // The rose is a decorative dial; the speed, direction and gusts beside it are real text. Read
+        // them as one element so VoiceOver speaks "12 km/h, del Sudoeste · 225°, Rachas 40 km/h".
+        .accessibilityElement(children: .combine)
     }
 
     /// "del Sudoeste · 225°", or "En calma" when there's no measurable direction. The full name reads
