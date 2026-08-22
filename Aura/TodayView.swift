@@ -51,9 +51,9 @@ struct TodayView: View {
     /// faded out the moment the user scrolls). Updated via `onScrollGeometryChange` on iOS 18+.
     @State private var atTop = true
 
-    /// The card column's max width on iPad/Mac (regular width). The cards and the crisp hero sky are both
-    /// capped to this and centred, so the portrait art sits at true proportions right behind the column
-    /// instead of being cropped across a full-width window.
+    /// The card column's max width on iPad/Mac (regular width). The cards are capped to this and centred
+    /// so they don't stretch across a wide window; the sky behind them is the full-bleed procedural
+    /// `AuraSky` (see `skyBackground`).
     private static let columnMaxWidth: CGFloat = 620
 
     /// AEMET updates municipal forecasts only a few times a day; don't refresh the same location
@@ -62,8 +62,10 @@ struct TodayView: View {
 
     /// The sunless hero art for the current sky+time, or `nil` to fall back to the procedural `AuraSky`.
     /// Probes only the shipped assets in the app bundle; `AuraSky` still draws the live sun/moon on top.
+    /// Uses `displayNow`/`displaySnapshot` so a DEBUG screenshot run's fake time and sky pick the matching
+    /// art, not the wall-clock's.
     private var heroImage: Image? {
-        HeroBackground.heroImage(for: snapshot,
+        HeroBackground.heroImage(for: displaySnapshot, now: displayNow,
                                  family: HeroBackground.Family(storage: heroFamily),
                                  exists: { UIImage(named: $0) != nil })
     }
@@ -72,6 +74,36 @@ struct TodayView: View {
     /// the family selector stays hidden (same gate as Settings).
     private var hasCityscapeArt: Bool {
         HeroBackground.assetNames(for: .cityscape).contains { UIImage(named: $0) != nil }
+    }
+
+    /// The wide, conditionless base scene for the current family + day/night, used on the regular-width
+    /// (iPad / Mac) canvas where the portrait phone rasters can't reflow. `AuraSky` draws the live sun/moon
+    /// and the cloud veil over it. Nil until the four `wide_*` assets ship → the procedural sky fills in.
+    private var wideBaseImage: Image? {
+        HeroBackground.wideBaseImage(for: displaySnapshot, now: displayNow,
+                                     family: HeroBackground.Family(storage: heroFamily),
+                                     exists: { UIImage(named: $0) != nil })
+    }
+
+    /// The instant Aura renders "now" from. Normally the load time, so the sky and every time-derived
+    /// label match the data on screen. In DEBUG a screenshot run can pin it to any moment via
+    /// `AURA_FAKE_DATE`, so the sun/moon position renders exactly as it would on-device at that instant.
+    private var displayNow: Date {
+        #if DEBUG
+        if let overridden = ScreenshotOverride.now { return overridden }
+        #endif
+        return loadedAt ?? Date()
+    }
+
+    /// The snapshot to render. In DEBUG a screenshot run can swap the current sky condition via
+    /// `AURA_FAKE_SKY` (an AEMET code), so a single clear day can produce every veil for the store shots.
+    private var displaySnapshot: WeatherSnapshot? {
+        #if DEBUG
+        if let base = snapshot, let sky = ScreenshotOverride.skyCode {
+            return base.overridingSky(sky)
+        }
+        #endif
+        return snapshot
     }
 
     var body: some View {
@@ -105,37 +137,32 @@ struct TodayView: View {
             case .forecast:  ForecastTextView()
             case .locations: LocationsView()
             case .settings:  SettingsView()
+            case .tip:       TipJarView()
             }
         }
         .task(id: store.selectedINE) { await load(force: false) }
     }
 
     /// The full-bleed sky behind everything.
-    /// - iPhone (compact): the sky bleeds edge to edge as before.
-    /// - iPad / Mac (regular): the hero art is portrait, so stretching it across a wide landscape window
-    ///   crops most of it away. Instead show a heavily blurred, dimmed copy full-bleed as an ambient
-    ///   backdrop, and the crisp sky capped to the card-column width and centred — so the art reads at
-    ///   its true portrait proportions right behind the cards, showing far more of what was drawn.
+    /// - iPhone (compact): the sunless 8×6 hero art (condition-baked) bleeds edge to edge behind the sun.
+    /// - iPad / Mac (regular): the portrait phone rasters can't reflow to a wide/landscape canvas without
+    ///   being cropped to ribbons, so use a wide, conditionless base scene (family × day/night) with the
+    ///   live sun/moon and the cloud veil drawn on top. Until those four `wide_*` assets ship, `wideBaseImage`
+    ///   is nil and the fully procedural `AuraSky` fills the canvas instead.
     @ViewBuilder private var skyBackground: some View {
         if hSizeClass == .regular {
-            ZStack {
-                AuraSky(snapshot: snapshot, heroImage: heroImage)
-                    .ignoresSafeArea()
-                    .blur(radius: 44)
-                    .overlay(Color.black.opacity(0.32).ignoresSafeArea())
-                AuraSky(snapshot: snapshot, heroImage: heroImage)
-                    .frame(maxWidth: Self.columnMaxWidth)
-                    .frame(maxWidth: .infinity)   // centre the capped sky column in the window
-                    .ignoresSafeArea(.container, edges: .vertical)
-            }
+            AuraSky(snapshot: displaySnapshot, now: displayNow,
+                    heroImage: wideBaseImage, heroCarriesCondition: false)
+                .ignoresSafeArea()
         } else {
-            AuraSky(snapshot: snapshot, heroImage: heroImage).ignoresSafeArea()
+            AuraSky(snapshot: displaySnapshot, now: displayNow, heroImage: heroImage)
+                .ignoresSafeArea()
         }
     }
 
     /// The sections that used to be tabs, now reachable from the hero menu. Presented as sheets (each
     /// brings its own navigation and title; swipe down to dismiss).
-    private enum MenuRoute: Int, Identifiable { case forecast, locations, settings; var id: Int { rawValue } }
+    private enum MenuRoute: Int, Identifiable { case forecast, locations, settings, tip; var id: Int { rawValue } }
     @State private var route: MenuRoute?
 
     /// A discreet frosted control in the hero's top-trailing corner — opposite the editorial text — that
@@ -155,6 +182,8 @@ struct TodayView: View {
             Button { route = .forecast }  label: { Label("Predicción", systemImage: "text.alignleft") }
             Button { route = .locations } label: { Label("Ubicaciones", systemImage: "mappin.and.ellipse") }
             Button { route = .settings }  label: { Label("Ajustes", systemImage: "gearshape") }
+            Divider()
+            Button { route = .tip }       label: { Label("Propina", systemImage: "cup.and.saucer") }
         } label: {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 17, weight: .semibold))
@@ -196,8 +225,8 @@ struct TodayView: View {
                 VStack(spacing: 14) {
                     if !store.apiKeyPresent { keyBanner }
 
-                    if let snapshot {
-                        AuraForecastStack(snapshot: snapshot, size: .phone, now: loadedAt ?? Date(),
+                    if let snap = displaySnapshot {
+                        AuraForecastStack(snapshot: snap, size: .phone, now: displayNow,
                                           radar: radar, news: news, heroFillHeight: geo.size.height)
                     } else if isLoading {
                         notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }

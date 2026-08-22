@@ -1,0 +1,70 @@
+{
+  "identifier" : "A17A9E6C-4A2B-4C1E-9C3D-AB0C0A17E0AC",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "6F1A0001-0000-0000-0000-00000000AAA1",
+      "localizations" : [
+        {
+          "description" : "Invita al desarrollador a una tónica.",
+          "displayName" : "Una tónica",
+          "locale" : "es_ES"
+        }
+      ],
+      "productID" : "com.mab.Aura.tip.small",
+      "referenceName" : "Tip Small (Una tónica)",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "6F1A0002-0000-0000-0000-00000000AAA2",
+      "localizations" : [
+        {
+          "description" : "Invita al desarrollador a dos tónicas.",
+          "displayName" : "Dos tónicas",
+          "locale" : "es_ES"
+        }
+      ],
+      "productID" : "com.mab.Aura.tip.medium",
+      "referenceName" : "Tip Medium (Dos tónicas)",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6F1A0003-0000-0000-0000-00000000AAA3",
+      "localizations" : [
+        {
+          "description" : "Invita al desarrollador a tres tónicas.",
+          "displayName" : "Tres tónicas",
+          "locale" : "es_ES"
+        }
+      ],
+      "productID" : "com.mab.Aura.tip.large",
+      "referenceName" : "Tip Large (Tres tónicas)",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "com.mab.Aura",
+    "_developerTeamID" : "",
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "es_ES",
+    "_storefront" : "ESP",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
