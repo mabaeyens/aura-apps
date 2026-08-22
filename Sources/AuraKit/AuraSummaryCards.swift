@@ -100,7 +100,18 @@ public struct AuraAvisoCircular: View {
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
         } else {
-            AuraAccessoryEmpty()
+            // Calm state: the warning sign struck through, in grey — the data is present, there's simply
+            // no active aviso. No text ("Sin avisos" clips in the circular slot), and NOT the
+            // snapshot-missing "Abre Aura" state. There's no stock slashed-triangle symbol, so overlay a
+            // diagonal line over the triangle.
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+                .overlay {
+                    Image(systemName: "line.diagonal")
+                        .font(.title)
+                        .foregroundStyle(.secondary)
+                }
         }
     }
 }
@@ -120,7 +131,13 @@ public struct AuraAvisoInline: View {
                 Image(systemName: "exclamationmark.triangle.fill")
             }
         } else {
-            AuraAccessoryEmpty()
+            // Calm state, not missing data — see AuraAvisoCircular. Struck-through warning sign, grey.
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(.secondary)
+                .overlay {
+                    Image(systemName: "line.diagonal")
+                        .foregroundStyle(.secondary)
+                }
         }
     }
 }
