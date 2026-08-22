@@ -10,30 +10,37 @@ set -euo pipefail
 # Simulator window (Cmd-S) or with:  scripts/pin.sh … --shot out.png
 #
 # Usage:
-#   scripts/pin.sh <device> <moment> <sky> [--shot PATH]
+#   scripts/pin.sh <device> <moment> <sky> [--city NAME] [--aviso LEVEL[:TEXT]] [--shot PATH]
 #
 #   <device>  iphone | ipad   (or any substring of a booted simulator's name)
 #   <moment>  a preset label (dawn|morning|noon|sunset|dusk|night) or a raw ISO instant
 #             like 2026-08-22T08:30:00. Presets use today's date at a representative hour.
 #   <sky>     a preset label (clear|few|cloudy|overcast|rain|storm|snow|fog) or a raw AEMET code.
+#   --city    show this city name on the hero, e.g. "Sevilla" or "Sevilla,Sevilla" (name,provincia).
+#             Relabels the hero only; the temperatures/forecast stay the loaded snapshot's.
+#   --aviso   inject a synthetic AEMET warning card. LEVEL is amarillo|naranja|rojo; optional :TEXT is
+#             the phenomenon shown, e.g. --aviso naranja:Tormentas. Pair with a matching sky.
 #
 # Examples:
 #   scripts/pin.sh ipad noon clear
-#   scripts/pin.sh iphone sunset rain
+#   scripts/pin.sh iphone sunset rain --city "Sevilla"
+#   scripts/pin.sh ipad noon storm --aviso naranja:Tormentas --shot ~/Desktop/aviso.png
 #   scripts/pin.sh ipad 2026-12-21T17:15:00 snow --shot ~/Desktop/winter.png
 
 BUNDLE_ID="com.mab.Aura"
 SETTLE="${SETTLE:-4}"
 TODAY="${PIN_DATE:-2026-08-22}"   # override with PIN_DATE=YYYY-MM-DD for a different day/season
 
-usage() { sed -n '3,25p' "$0"; exit 1; }
+usage() { sed -n '4,29p' "$0"; exit 1; }
 [ "$#" -ge 3 ] || usage
 
 DEVICE_ARG="$1"; MOMENT="$2"; SKY="$3"; shift 3
-SHOT=""
+SHOT=""; CITY=""; AVISO=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --shot) SHOT="${2:?--shot needs a path}"; shift 2 ;;
+    --shot)  SHOT="${2:?--shot needs a path}"; shift 2 ;;
+    --city)  CITY="${2:?--city needs a name}"; shift 2 ;;
+    --aviso) AVISO="${2:?--aviso needs a level}"; shift 2 ;;
     *) echo "unknown arg: $1" >&2; usage ;;
   esac
 done
@@ -86,11 +93,15 @@ ISO="$(moment_iso "$MOMENT")"
 CODE="$(sky_code "$SKY")"
 
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+# Only export the city/aviso overrides when given, so an unset one stays truly unset in the app.
 SIMCTL_CHILD_AURA_FAKE_DATE="$ISO" \
 SIMCTL_CHILD_AURA_FAKE_SKY="$CODE" \
+SIMCTL_CHILD_AURA_FAKE_CITY="$CITY" \
+SIMCTL_CHILD_AURA_FAKE_ALERT="$AVISO" \
   xcrun simctl launch "$UDID" "$BUNDLE_ID" >/dev/null
 
-printf '\033[1;36m▸ pinned\033[0m %s → %s / sky %s\n' "$DEVICE_ARG" "$ISO" "$CODE"
+printf '\033[1;36m▸ pinned\033[0m %s → %s / sky %s%s%s\n' "$DEVICE_ARG" "$ISO" "$CODE" \
+  "${CITY:+ / city $CITY}" "${AVISO:+ / aviso $AVISO}"
 
 if [ -n "$SHOT" ]; then
   sleep "$SETTLE"

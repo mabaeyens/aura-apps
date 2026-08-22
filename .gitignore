@@ -21,3 +21,13 @@ specs/
 
 # Obsidian workspace
 .obsidian/
+
+# Python bytecode
+__pycache__/
+
+# Hero-art generation workspace — hundreds of MB of regenerable renders; the shipped art already
+# lives in the asset catalogs (Aura/Assets + AuraWidgets/Assets).
+hero_asset_creation/
+
+# Generated screenshots — regenerable via scripts/, and the App Store copies live in App Store Connect.
+screenshots/

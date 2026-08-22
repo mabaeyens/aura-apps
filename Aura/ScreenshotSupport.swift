@@ -24,6 +24,27 @@ enum ScreenshotOverride {
     /// `33` nieve, `81` niebla. (Night vs day comes from `AURA_FAKE_DATE`, not the code.)
     static var skyCode: String? { value(for: "AURA_FAKE_SKY") }
 
+    /// `AURA_FAKE_CITY` — the city name to show on the hero, so a run can vary the location across shots
+    /// without switching the loaded snapshot. Either `"Sevilla"` or `"Sevilla,Sevilla"` (name,provincia);
+    /// the province only matters if you also want the province-derived text to match.
+    static var city: (name: String, provincia: String?)? {
+        guard let raw = value(for: "AURA_FAKE_CITY") else { return nil }
+        let parts = raw.split(separator: ",", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard let name = parts.first, !name.isEmpty else { return nil }
+        return (name, parts.count > 1 && !parts[1].isEmpty ? parts[1] : nil)
+    }
+
+    /// `AURA_FAKE_ALERT` — injects a synthetic AEMET aviso card. `"naranja"` or `"naranja:Tormentas"`
+    /// (level:phenomenon). Levels: `amarillo`, `naranja`, `rojo` (the card tints by level). The phenomenon
+    /// is the text the card shows; it defaults to a generic label when omitted.
+    static var alert: (level: String, phenomenon: String)? {
+        guard let raw = value(for: "AURA_FAKE_ALERT") else { return nil }
+        let parts = raw.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+        guard let level = parts.first, !level.isEmpty else { return nil }
+        let phenomenon = parts.count > 1 && !parts[1].isEmpty ? parts[1] : "Aviso meteorológico"
+        return (level, phenomenon)
+    }
+
     private static func value(for key: String) -> String? {
         guard let raw = ProcessInfo.processInfo.environment[key]?
                 .trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
@@ -57,6 +78,44 @@ extension WeatherSnapshot {
         dict["currentSky"] = code
         let base = code.hasSuffix("n") ? String(code.dropLast()) : code
         if let label = Self.screenshotSkyLabel[base] { dict["currentSkyText"] = label }
+        guard let patched = try? JSONSerialization.data(withJSONObject: dict),
+              let copy = try? JSONDecoder().decode(WeatherSnapshot.self, from: patched) else {
+            return self
+        }
+        return copy
+    }
+
+    /// A copy with the displayed city name (and optionally province) replaced, via the same Codable
+    /// round-trip. DEBUG/screenshot use only. This relabels the hero — it does not reload another city's
+    /// data, so the temperatures and forecast stay those of the loaded snapshot.
+    func overridingCity(_ name: String, provincia: String?) -> WeatherSnapshot {
+        guard let data = try? JSONEncoder().encode(self),
+              var dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return self
+        }
+        dict["localidad"] = name
+        if let provincia { dict["provincia"] = provincia }
+        guard let patched = try? JSONSerialization.data(withJSONObject: dict),
+              let copy = try? JSONDecoder().decode(WeatherSnapshot.self, from: patched) else {
+            return self
+        }
+        return copy
+    }
+
+    /// A copy carrying a synthetic AEMET aviso, so the warning card renders for a screenshot. The card
+    /// shows the phenomenon and tints by level; `onset`/`expires` are left open so it always reads as
+    /// active. DEBUG/screenshot use only.
+    func overridingAlert(level: String, phenomenon: String) -> WeatherSnapshot {
+        let alert = WeatherAlert(level: WeatherAlert.Level(rawValue: level.lowercased()) ?? .naranja,
+                                 event: phenomenon, phenomenon: phenomenon,
+                                 zona: "000000", areaDesc: nil, onset: nil, expires: nil)
+        guard let snapData = try? JSONEncoder().encode(self),
+              var dict = (try? JSONSerialization.jsonObject(with: snapData)) as? [String: Any],
+              let alertData = try? JSONEncoder().encode(alert),
+              let alertObj = try? JSONSerialization.jsonObject(with: alertData) else {
+            return self
+        }
+        dict["alert"] = alertObj
         guard let patched = try? JSONSerialization.data(withJSONObject: dict),
               let copy = try? JSONDecoder().decode(WeatherSnapshot.self, from: patched) else {
             return self
