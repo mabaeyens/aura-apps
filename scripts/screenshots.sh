@@ -28,8 +28,8 @@ SETTLE="${SETTLE:-5}"                            # seconds to let the app load +
 
 # Simulator device names (must appear in `xcrun simctl list devices available`).
 DEVICES=(
-  "iPhone 16 Pro Max"
-  "iPad Pro 13-inch (M4)"
+  "iPhone 17 Pro Max"
+  "Aura iPad Pro 13"
 )
 
 # label : local ISO instant. Pick a real clear-sky day for your location; the sun sits by true

@@ -39,11 +39,14 @@ struct TipJarView: View {
                 }
                 .scrollBounceBehavior(.basedOnSize)
 
-                if tipJar.purchaseState == .success {
-                    successOverlay
-                } else if tipJar.purchaseState == .pending {
-                    pendingOverlay
+                ZStack {
+                    if tipJar.purchaseState == .success {
+                        successOverlay
+                    } else if tipJar.purchaseState == .pending {
+                        pendingOverlay
+                    }
                 }
+                .animation(.easeInOut(duration: 0.25), value: tipJar.purchaseState)
             }
             .environment(\.colorScheme, .dark)     // light text over the sky, matching Hoy
             .navigationTitle("Propina")
