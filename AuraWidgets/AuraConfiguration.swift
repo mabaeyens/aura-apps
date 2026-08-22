@@ -74,6 +74,17 @@ struct SelectHomeIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Escena", default: .naturaleza)
     var scene: SceneStyle
+
+    // A configuration intent with more than one parameter needs an explicit summary for every
+    // parameter to bind reliably: without it the scene picker rendered but its selection never
+    // reached the timeline (the widget stayed on the default Naturaleza). Listing both parameters
+    // here binds them both.
+    static var parameterSummary: some ParameterSummary {
+        Summary {
+            \.$location
+            \.$scene
+        }
+    }
 }
 
 private extension LocationEntity {
