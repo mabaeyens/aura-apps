@@ -32,15 +32,17 @@ public struct UVIndex: Codable, Sendable, Hashable {
 
     /// An SF Symbol cueing the band's protection level, for the compact complication where the
     /// one-line `advice` won't fit. SF Symbols carries no cap or sunscreen glyph, so this is the
-    /// closest honest escalation with symbols that exist on the watchOS 10 target: bare sun →
-    /// sunglasses → sun-with-warning → beach umbrella → umbrella.
+    /// closest honest escalation with symbols that exist on the iOS 17 / watchOS 10 target: bare sun →
+    /// sunglasses → sun-with-warning → beach umbrella → figure-with-rising-thermometer. The last band
+    /// deliberately leaves the umbrella behind: at "extremadamente alto" the cue is a health risk to the
+    /// person, not just shade, and a second umbrella read too much like the "muy alto" one below it.
     public var glyph: String {
         switch value {
         case ..<3:    return "sun.max.fill"
         case 3...5:   return "sunglasses.fill"
         case 6...7:   return "sun.max.trianglebadge.exclamationmark"
         case 8...10:  return "beach.umbrella.fill"
-        default:      return "umbrella.fill"
+        default:      return "thermometer.variable.and.figure"
         }
     }
 }

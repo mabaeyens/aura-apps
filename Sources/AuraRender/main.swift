@@ -92,6 +92,9 @@ dump("aviso-inline",   size: CGSize(width: 180, height: 34)) { AuraAvisoInline(s
 // top-trailing aviso triangle. (The narrow "rectangular" render above now shows the enriched compact —
 // aviso-led sky line + rain/humidity figures.)
 dump("rectangular-ipad", size: CGSize(width: 330, height: 160)) { AuraAccessoryRectangular(snapshot: snap) }
+// The iPad Lock Screen's 2×2 cell is far squarer than the 1×2 strip above — check the wide 2-up read
+// doesn't run past the bottom of a near-square slot (the "2×2 text is cut" report).
+dump("rectangular-ipad2x2", size: CGSize(width: 250, height: 172)) { AuraAccessoryRectangular(snapshot: snap) }
 
 // NOTE: the Home Screen cards (AuraHomeSmall/Medium/Large/XL) are intentionally NOT rendered here —
 // ImageRenderer segfaults on them offline. They build green in the widget extension and are verified in

@@ -100,8 +100,8 @@ public struct AuraAccessoryRectangular: View {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
                     .font(.title2)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
-                    .font(.title).fontWeight(.semibold).fontDesign(.rounded)
-                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .font(.title2).fontWeight(.semibold).fontDesign(.rounded)
+                    .lineLimit(1).minimumScaleFactor(0.7)
             }
             // Row 2: the sky word, led by a warning triangle when an aviso is active so the severe
             // weather reads even in this tiny slot. Falls back to "Aviso" alone when the sky text is thin.
@@ -145,33 +145,29 @@ public struct AuraAccessoryRectangular: View {
     /// corner when a warning is active, so it reads as a mark without stealing a metric row.
     private var wide: some View {
         ZStack(alignment: .topTrailing) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                        .font(.largeTitle)
+                        .font(.title)
                     Text(AccessoryFormat.temp(snapshot.heroTemp))
-                        .font(.system(.largeTitle, design: .rounded)).fontWeight(.semibold)
+                        .font(.system(.title, design: .rounded)).fontWeight(.semibold)
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
                 Text(snapshot.localidad)
-                    .font(.headline)
+                    .font(.subheadline).fontWeight(.semibold)
                     .lineLimit(1).minimumScaleFactor(0.8)
-                if let text = snapshot.currentSkyText {
-                    Text(text)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                }
-                Spacer(minLength: 4)
+                    .padding(.bottom, 2)
                 // The day's figures, two to a row so they read as a compact grid. Each renders only when
-                // its datum is known; a missing one just leaves its place empty.
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 14) {
+                // its datum is known; a missing one just leaves its place empty. The condition word is
+                // dropped here (the glyph already carries it) — the near-square 2×2 slot has no room for
+                // it *and* all three figure rows without the last clipping off the bottom.
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 12) {
                         Label(AccessoryFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
                         Label(AccessoryFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
                     }
                     if snapshot.currentPrecipProb != nil || snapshot.currentHumidity != nil {
-                        HStack(spacing: 14) {
+                        HStack(spacing: 12) {
                             if let p = snapshot.currentPrecipProb {
                                 Label("\(p)%", systemImage: "umbrella.fill")
                             }
@@ -184,7 +180,7 @@ public struct AuraAccessoryRectangular: View {
                         Label(sun.text, systemImage: sun.icon)
                     }
                 }
-                .font(.callout)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
                 .labelStyle(TightLabelStyle())
                 .lineLimit(1)

@@ -21,6 +21,14 @@ public struct ConditionGlyph: View {
             Image(systemName: name)
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(Palette.nightMoon, .white)
+        } else if name == "snowflake" {
+            // The light-snow glyph is a single-layer symbol, so `.multicolor` renders it in the flat
+            // label colour — black on a light surface, where it vanishes into the card. Snow reads as
+            // white, so force it: white is legible over the overcast sky these conditions bring and over
+            // the light cards, where the label-coloured version was invisible.
+            Image(systemName: name)
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white)
         } else {
             Image(systemName: name).symbolRenderingMode(.multicolor)
         }
