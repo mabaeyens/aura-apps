@@ -194,6 +194,9 @@ private struct DownTriangle: Shape {
 private struct AuraScaleRow: View {
     let color: Color
     let badge: String
+    /// An optional SF Symbol shown beside the band name — used by the UV sheet so each row spells out the
+    /// glyph the UV complication shows for that band (its legend). Nil for the wind/air-quality sheets.
+    var glyph: String? = nil
     let name: String
     let detail: String
     let isCurrent: Bool
@@ -211,6 +214,12 @@ private struct AuraScaleRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
+                    if let glyph {
+                        Image(systemName: glyph)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 24)
+                    }
                     Text(name)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
@@ -521,6 +530,7 @@ public struct AuraUVSheet: View {
             ForEach(UVBands.bands, id: \.name) { band in
                 AuraScaleRow(color: Palette.uvIndex(band.mid),
                              badge: band.rangeText,
+                             glyph: UVIndex(value: band.mid).glyph,
                              name: band.name,
                              detail: band.advice,
                              isCurrent: band.contains(uvIndex.value),

@@ -976,10 +976,17 @@ public struct AuraUVCard: View {
                 .shadow(color: color.opacity(0.6), radius: 5)
 
                 VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
-                    Text(uvIndex.bandName)
-                        .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1).minimumScaleFactor(0.8)
+                    HStack(spacing: 6) {
+                        // The band's protection glyph — the same symbol the UV complication shows, so the
+                        // card teaches what that icon means (its legend lives in the tap-through sheet).
+                        Image(systemName: uvIndex.glyph)
+                            .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                            .foregroundStyle(color)
+                        Text(uvIndex.bandName)
+                            .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                    }
                     Text(uvIndex.advice)
                         .font(.system(size: size.smallSize - 1))
                         .foregroundStyle(.white.opacity(0.65))
