@@ -171,7 +171,9 @@ struct TodayView: View {
     @ViewBuilder private var skyBackground: some View {
         if hSizeClass == .regular {
             AuraSky(snapshot: displaySnapshot, now: displayNow,
-                    heroImage: wideBaseImage, heroCarriesCondition: false)
+                    heroImage: wideBaseImage, heroCarriesCondition: false,
+                    heroHorizon: HeroBackground.wideBaseHorizon(HeroBackground.Family(storage: heroFamily)),
+                    heroAspect: HeroBackground.wideBaseAspect)
                 .ignoresSafeArea()
         } else {
             AuraSky(snapshot: displaySnapshot, now: displayNow, heroImage: heroImage)

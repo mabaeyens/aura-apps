@@ -133,6 +133,19 @@ public enum HeroBackground {
         return "wide_\(scene)_\(isNight ? "night" : "day")"
     }
 
+    /// The intrinsic aspect ratio (width ÷ height) of the wide base art — all four ship at 1400×1050.
+    /// `AuraSky` needs it to map `wideBaseHorizon` through the `scaledToFill` crop to the live canvas.
+    public static let wideBaseAspect: CGFloat = 1400.0 / 1050.0
+
+    /// Where the land meets the sky in each wide base, as a fraction of the art's height — measured from
+    /// the shipped 1400×1050 art. The cityscape's rooftops-and-hills sit low (~0.84), so the dawn/dusk sun
+    /// already clears them; the landscape's rolling hills rise higher (~0.72), which is why the same low
+    /// sun used to land on the grass in front. `AuraSky` uses this to pin a low sun/moon just above the
+    /// ridge instead of over the scenery. Day and night share a family's composition, so one value each.
+    public static func wideBaseHorizon(_ family: Family) -> CGFloat {
+        family == .cityscape ? 0.84 : 0.72
+    }
+
     /// The wide base **name** for a snapshot's day/night state (the string counterpart of
     /// `wideBaseImage`), or `nil` for a missing snapshot. Lets the widget load the asset itself — and
     /// downsample it to the widget's display size — instead of taking a full-resolution `Image`.

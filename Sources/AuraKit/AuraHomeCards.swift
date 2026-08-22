@@ -98,36 +98,48 @@ private struct HomeConditionBlock: View {
     }
 }
 
-/// The location name, with an aviso pill when the province has an active warning.
+/// The location name, with an aviso pill when the province has an active warning. On the tight 2×2
+/// (`systemSmall`) tile, `compact` shrinks the place name a step and collapses the aviso to its bare
+/// sign — the full "Aviso" pill crowded the row and pushed the location off the tile entirely.
 private struct HomeLocationRow: View {
     let snapshot: WeatherSnapshot
+    var compact: Bool = false
 
     var body: some View {
         HStack(spacing: 6) {
             Label(snapshot.localidad, systemImage: "location.fill")
-                .font(.footnote).fontWeight(.semibold)
+                .font(compact ? .caption : .footnote).fontWeight(.semibold)
                 .labelStyle(HomeTightLabel())
-                .lineLimit(1)
+                .lineLimit(1).minimumScaleFactor(0.8)
                 .skyText()
             Spacer(minLength: 4)
             if let alert = snapshot.alert {
-                AvisoPill(level: alert.level)
+                AvisoPill(level: alert.level, iconOnly: compact)
             }
         }
     }
 }
 
-/// A small coloured pill flagging an active AEMET warning.
+/// A small coloured pill flagging an active AEMET warning. `iconOnly` drops the word and the capsule for
+/// the bare level-tinted sign, so the smallest tiles keep room for the place name beside it.
 private struct AvisoPill: View {
     let level: WeatherAlert.Level
+    var iconOnly: Bool = false
 
     var body: some View {
-        Label("Aviso", systemImage: "exclamationmark.triangle.fill")
-            .font(.caption2).fontWeight(.bold)
-            .labelStyle(HomeTightLabel())
-            .foregroundStyle(.white)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Palette.alert(level), in: Capsule())
+        if iconOnly {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.caption).fontWeight(.bold)
+                .foregroundStyle(Palette.alert(level))
+                .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+        } else {
+            Label("Aviso", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption2).fontWeight(.bold)
+                .labelStyle(HomeTightLabel())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Palette.alert(level), in: Capsule())
+        }
     }
 }
 
@@ -276,6 +288,32 @@ private struct HomeSunFooter: View {
     }
 }
 
+/// The next celestial event on one line — its glyph and precise time. It tracks the **sun** (sunrise or
+/// sunset, whichever is next), which after dark is the upcoming sunrise; moonrise/moonset would need
+/// lunar ephemeris the snapshot doesn't carry yet, so the moon isn't shown. Empty when sun times are
+/// unknown. Used on the XL card's hero column.
+private struct HomeNextEventLine: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    private var event: (date: Date, icon: String)? {
+        switch snapshot.nextSunEvent(now: now) {
+        case .sunrise(let d): return (d, "sunrise.fill")
+        case .sunset(let d):  return (d, "sunset.fill")
+        case nil:             return nil
+        }
+    }
+
+    var body: some View {
+        if let event {
+            Label(HomeFormat.hhmm(event.date), systemImage: event.icon)
+                .labelStyle(HomeTightLabel())
+                .font(.caption).fontWeight(.medium)
+                .skyText()
+        }
+    }
+}
+
 /// A compact row of the current secondary metrics — precip chance, humidity, wind (and UV on the
 /// larger cards). Each chip appears only when its datum is present, so a thin snapshot just shows fewer.
 private struct HomeMetricsRow: View {
@@ -335,7 +373,7 @@ public struct AuraHomeSmall: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HomeLocationRow(snapshot: snapshot)
+            HomeLocationRow(snapshot: snapshot, compact: true)
             Spacer(minLength: 0)
             HomeConditionBlock(snapshot: snapshot, now: now)
         }
@@ -439,17 +477,21 @@ public struct AuraHomeXL: View {
                         .lineLimit(2).minimumScaleFactor(0.85)
                         .skyText()
                     HomeMetricsRow(snapshot: snapshot, showUV: true)
+                    // The next sunrise/sunset — the "when does the light change" line the hero column lacked.
+                    HomeNextEventLine(snapshot: snapshot, now: now)
                 }
                 .frame(width: geo.size.width * 0.37, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 12) {
                     let hours = Array(snapshot.upcomingHours().prefix(7))
                     let days = Array(snapshot.days.prefix(4))
                     if !hours.isEmpty {
                         HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0) } }
                     }
                     if !hours.isEmpty && !days.isEmpty {
-                        Divider().overlay(.white.opacity(0.25))
+                        // Extra vertical air so the days stack reads as its own block, not crammed under
+                        // the hours strip (the "too tight" report).
+                        Divider().overlay(.white.opacity(0.25)).padding(.vertical, 6)
                     }
                     if !days.isEmpty {
                         HomeDayList(days: days)

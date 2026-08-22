@@ -15,4 +15,6 @@ First release of Aura — Spain's weather, from official AEMET open data.
   temperature, wind, UV, rain, humidity, sun, hours, days and avisos — across the circular,
   corner, rectangular and inline slots. The aviso complication shows a calm struck-out marker
   when there is no active warning, instead of an "open Aura" placeholder.
-- Lock Screen widgets. Runs on iPhone, iPad and Mac.
+- Home Screen and Lock Screen widgets, configurable by location and a Nature / City scene.
+- A brief first-run intro that explains the free AEMET key and where the widgets live, with a skip.
+- Runs on iPhone, iPad and Mac.

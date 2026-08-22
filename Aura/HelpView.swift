@@ -66,7 +66,7 @@ struct HelpView: View {
             conditionRow("24", night: false, "Lluvia")
             conditionRow("25", night: false, "Lluvia fuerte")
             conditionRow("33", night: false, "Nieve")
-            conditionRow("35", night: false, "Aguanieve o nieve escasa")
+            conditionRow("71", night: false, "Nieve escasa (aguanieve)")
             conditionRow("51", night: false, "Tormenta")
             conditionRow("53", night: false, "Tormenta con lluvia")
         } header: {

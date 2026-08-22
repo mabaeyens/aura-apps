@@ -167,6 +167,10 @@ struct AuraHomeBackground: View {
                     // Anchor the wide base to the ground: on the short, wide Home families a centre crop
                     // shows mostly sky, so pin the bottom to keep the horizon and landscape in frame.
                     heroAnchor: .bottom,
+                    // Pin a low dawn/dusk sun just above the art's ridge so it sits *behind* the scenery,
+                    // not as a ball in front of the mountains. Mapped through the .bottom crop per family.
+                    heroHorizon: HeroBackground.wideBaseHorizon(entry.scene),
+                    heroAspect: HeroBackground.wideBaseAspect,
                     compact: true)
             LinearGradient(colors: [.black.opacity(0.22), .clear, .black.opacity(0.38)],
                            startPoint: .top, endPoint: .bottom)

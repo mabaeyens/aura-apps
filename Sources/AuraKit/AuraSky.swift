@@ -68,6 +68,16 @@ public struct AuraSky: View {
     /// the art almost exactly, so `.center` shows the whole scene; the near-square Watch would crop the
     /// landscape off the bottom, so it passes `.bottom` to keep the mountains, tree and river in frame.
     private let heroAnchor: Alignment
+    /// Where the hero art's land meets its sky, as a fraction of the **art's own height** (0 top → 1
+    /// bottom). When set (with a `heroImage`), the live sun/moon can't drop below it: a low dawn/dusk sun
+    /// is pinned to rest just above the ridge instead of ballooning onto the scenery in front of it. The
+    /// art is `scaledToFill`-cropped to the view, so the fraction is mapped through the fill (see
+    /// `heroAspect`) to find where the ridge actually lands on *this* canvas — so one horizon value works
+    /// on every widget size and device orientation. Nil (or no hero) → no clamp, the disc rides free.
+    private let heroHorizon: CGFloat?
+    /// The hero art's intrinsic aspect ratio (width ÷ height), used only to map `heroHorizon` through the
+    /// `scaledToFill` crop. Ignored when `heroHorizon` is nil.
+    private let heroAspect: CGFloat
     /// Tames the sun/moon glow for small, text-over-sky surfaces (the Home Screen widgets). At full size
     /// the halo spans the long edge and blooms bright — right for the full-screen hero, where frosted
     /// cards sit over it — but on a widget it bleaches the whole card white and the sky and scenery read
@@ -77,12 +87,15 @@ public struct AuraSky: View {
 
     public init(snapshot: WeatherSnapshot?, now: Date = Date(), heroImage: Image? = nil,
                 heroCarriesCondition: Bool = true, heroAnchor: Alignment = .center,
+                heroHorizon: CGFloat? = nil, heroAspect: CGFloat = 1,
                 compact: Bool = false) {
         self.snapshot = snapshot
         self.now = now
         self.heroImage = heroImage
         self.heroCarriesCondition = heroCarriesCondition
         self.heroAnchor = heroAnchor
+        self.heroHorizon = heroHorizon
+        self.heroAspect = heroAspect
         self.compact = compact
     }
 
@@ -97,6 +110,21 @@ public struct AuraSky: View {
 
         GeometryReader { geo in
             let size = geo.size
+            // The disc radius, capped so the sun/moon reads at the same physical size on a large iPad
+            // screen as on a phone (without the cap `min(w,h) * 0.075` scales with the canvas and the disc
+            // balloons on iPad; 32pt matches the largest phone, 20pt the widgets), then shrunk toward the
+            // horizon: a rising/setting sun sitting on a ridge reads better small — balloon-sized at
+            // dawn/dusk it looks pasted in *front* of the scenery. Full at noon, ~0.62× at the horizon.
+            let lowSun = 0.62 + 0.38 * path.altitude
+            let discR = (compact ? min(min(size.width, size.height) * 0.07, 20)
+                                 : min(min(size.width, size.height) * 0.075, 32)) * lowSun
+            // Pin a low sun/moon to just above the art's ridge (see `heroHorizon`) so it never drops onto
+            // the scenery drawn in front of it. Mapped through the scaledToFill crop, so one art-space
+            // horizon lands right on every canvas size/orientation; the clamp only bites near the horizon
+            // (dawn/dusk), a high sun is already well above it. No hero image → the true path point.
+            let discPoint = Self.clampedLight(path.point, size: size, discR: discR,
+                                              horizon: heroImage == nil ? nil : heroHorizon,
+                                              aspect: heroAspect, anchor: heroAnchor)
             ZStack {
                 // 1 — the sky itself. Either the sunless hero image (which carries the sky colour and the
                 // landscape), or the procedural top-to-bottom gradient that tracks the hour.
@@ -136,7 +164,7 @@ public struct AuraSky: View {
                 let glowRadius = compact ? min(size.width, size.height) * 1.1
                                          : max(size.width, size.height) * 0.78
                 RadialGradient(colors: [sun.opacity(glowPeak), sun.opacity(0)],
-                               center: path.point,
+                               center: discPoint,
                                startRadius: 0,
                                endRadius: glowRadius)
 
@@ -148,15 +176,8 @@ public struct AuraSky: View {
                 // keeps it a pin-sharp point of light. Occlusion is alpha + radius + blur only; the disc
                 // never leaves the true solar position.
                 let occlusion = veil
-                // Cap the disc's radius so the sun/moon reads at the same physical size on a large iPad
-                // screen as on a phone. Without the cap `min(width, height) * 0.075` scales with the
-                // canvas and the disc balloons on iPad; 32pt matches the largest phone, and the corona
-                // and blur below follow from `discR`, so the whole light source stays device-consistent.
-                // On a `compact` surface (a widget) the disc is smaller and capped harder, so it reads the
-                // same modest size whether the widget is a small iPhone tile or a large iPad one — without
-                // it the disc scales with the canvas and balloons on the big iPad families.
-                let discR = compact ? min(min(size.width, size.height) * 0.07, 20)
-                                    : min(min(size.width, size.height) * 0.075, 32)
+                // `discR` is computed above (device-capped, then shrunk toward the horizon). The corona and
+                // blur below follow from it, so the whole light source stays device-consistent.
                 let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
                 // The moon reads as reflected moonlight, not a second sun: markedly dimmer than the day
                 // disc and drawn with a soft base blur even on the clearest night, so its edge stays a
@@ -168,7 +189,7 @@ public struct AuraSky: View {
                 // core and its corona are dropped entirely; only clear/few-clouds/cloudy keep a real ball.
                 if discAlpha > 0.02 && !hidesDisc {
                     let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
-                    let centre = CGPoint(x: path.point.x * size.width, y: path.point.y * size.height)
+                    let centre = CGPoint(x: discPoint.x * size.width, y: discPoint.y * size.height)
                     // Corona — a wide soft halo around the disc; fades and tightens as the disc is occluded.
                     // At night I let the halo do the work the hard core no longer does: a touch wider and
                     // held up in its own right, so the moon reads as a soft pool of light against the darker
@@ -214,6 +235,35 @@ public struct AuraSky: View {
         // encode (the hour's light, the weather) is also spoken by the frosted cards in front. Hide
         // it from VoiceOver so the swipe order is the cards, not a large unlabelled image.
         .accessibilityHidden(true)
+    }
+
+    // MARK: Pinning the light to the art's horizon
+
+    /// The light's on-screen position, pinned so its disc rests just above the hero art's ridge when a
+    /// `horizon` is given. `horizon` is a fraction of the **art's** height; because the art is
+    /// `scaledToFill`-cropped to `size`, it's first mapped through that crop (`visibleHorizon`) to find
+    /// where the ridge lands on this canvas, then the disc centre is clamped so the whole disc (radius
+    /// `discR`) sits above it. Returns the true point unchanged when there's no horizon, or when the sun
+    /// is already high enough — so the clamp only ever bites at dawn/dusk.
+    static func clampedLight(_ point: UnitPoint, size: CGSize, discR: CGFloat,
+                             horizon: CGFloat?, aspect: CGFloat, anchor: Alignment) -> UnitPoint {
+        guard let horizon, size.height > 0 else { return point }
+        let ridge = visibleHorizon(horizon, aspect: aspect, size: size, anchor: anchor)
+        let maxY = ridge - discR / size.height          // keep the disc's bottom edge above the ridge
+        return UnitPoint(x: point.x, y: min(point.y, maxY))
+    }
+
+    /// Maps a horizon fraction from art space to view space through `scaledToFill`. The art (aspect
+    /// `aspect` = w÷h) is scaled to cover `size`; its rendered height is `max(width/aspect, height)`, and
+    /// the overflow is cropped to the `anchor` (top-cropped for `.bottom`, split for `.center`). Returns
+    /// the fraction of the view's height at which the art's `hf` line appears.
+    private static func visibleHorizon(_ hf: CGFloat, aspect: CGFloat, size: CGSize,
+                                       anchor: Alignment) -> CGFloat {
+        guard aspect > 0, size.width > 0, size.height > 0 else { return hf }
+        let rendered = max(size.width / aspect, size.height)      // art's rendered height, in points
+        let overflow = rendered - size.height
+        let topCrop = anchor == .bottom ? overflow : overflow / 2
+        return (hf * rendered - topCrop) / size.height
     }
 
     // MARK: Condition → how much the light is veiled

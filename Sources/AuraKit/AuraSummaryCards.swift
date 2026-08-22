@@ -21,20 +21,31 @@ public struct AuraSummaryInline: View {
         self.now = now
     }
 
-    /// The non-nil facts joined by " · ": temperature, precip probability, humidity. Nil when the
-    /// snapshot carries none of them (the inline slot then falls back to the empty state).
-    private var line: String? {
-        var parts: [String] = []
-        if let t = snapshot.heroTemp { parts.append("\(t)°") }
-        if let p = snapshot.currentPrecipProb { parts.append("\(p)%") }
-        if let h = snapshot.currentHumidity { parts.append("\(h)%") }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    /// The non-nil facts, each **prefixed by its own symbol** so the two percentages (rain, humidity) can
+    /// never be mistaken for one another on a thin single line: 🌡 temp, ☂ rain, 💧 humidity. Built as a
+    /// `Text` (not a joined string) because inline complications render embedded SF Symbols. Nil when the
+    /// snapshot carries none of them, so the slot falls back to the empty state.
+    private var line: Text? {
+        let sp = "\u{2009}"           // thin space, symbol snug to its number
+        let gap = Text("  ")
+        var parts: [Text] = []
+        if let t = snapshot.heroTemp {
+            parts.append(Text(Image(systemName: "thermometer.medium")) + Text(sp + "\(t)°"))
+        }
+        if let p = snapshot.currentPrecipProb {
+            parts.append(Text(Image(systemName: "umbrella.fill")) + Text(sp + "\(p)%"))
+        }
+        if let h = snapshot.currentHumidity {
+            parts.append(Text(Image(systemName: "humidity.fill")) + Text(sp + "\(h)%"))
+        }
+        guard let first = parts.first else { return nil }
+        return parts.dropFirst().reduce(first) { $0 + gap + $1 }
     }
 
     public var body: some View {
         if let line {
             Label {
-                Text(line)
+                line
             } icon: {
                 Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky,
                                                      isNight: snapshot.isNight(at: now)))

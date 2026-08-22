@@ -94,7 +94,10 @@ public struct AuraRainCircular: View {
 
     public var body: some View {
         Gauge(value: Double(prob ?? 0), in: 0...100) {
-            Image(systemName: "drop.fill")
+            // White keeps the drop legible and clearly distinct from the ring, which already carries
+            // the probability in Palette.precip. Without it the label inherits the gauge tint, so the
+            // drop turns the same blue as the ring and reads as a smudge on it.
+            Image(systemName: "drop.fill").foregroundStyle(.white)
         } currentValueLabel: {
             Text(prob.map { "\($0)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
@@ -215,19 +218,30 @@ public struct AuraWindCorner: View {
     /// Whether a speed is known, so the bezel gauge can be drawn (else fall back to `cornerLabel`).
     public var hasValue: Bool { speed != nil }
 
-    /// The curved bezel gauge: wind speed on a 0–50 km/h arc (storm-force ceiling), strength-tinted.
+    /// The curved bezel gauge: the wind zoomed to the band that matters. The minimum is the floor of
+    /// the Beaufort level **below** the current one (the "previous" step), the maximum is the hour's
+    /// peak gust (**racha**), and the fill grades from the strength colour at that floor to the colour
+    /// at the gust — so the arc reads "where the wind sits between the step below and today's gust"
+    /// rather than against a flat 0–50 scale. Falls back to the current band's own ceiling when AEMET
+    /// reports no gust.
     @ViewBuilder public var cornerGauge: some View {
         if let v = speed {
-            Gauge(value: Double(min(v, 50)), in: 0...50) {
+            let force = Beaufort.force(forKmh: v)
+            let floor = Beaufort.scale[max(force - 1, 0)].lo
+            let gust = snapshot.windGust
+                ?? (Beaufort.scale[min(max(force, 0), Beaufort.scale.count - 1)].hi ?? v + 10)
+            let hi = max(gust, v)                       // racha is always ≥ the sustained speed
+            let lo = min(floor, hi - 1)                 // keep the range non-empty
+            Gauge(value: Double(v), in: Double(lo)...Double(hi)) {
                 EmptyView()
             } currentValueLabel: {
                 EmptyView()
             } minimumValueLabel: {
-                Text("0")
+                Text("\(lo)")
             } maximumValueLabel: {
-                Text("50")
+                Text("\(hi)")
             }
-            .tint(Palette.wind(v))
+            .tint(Gradient(colors: [Palette.wind(lo), Palette.wind(hi)]))
         }
     }
 

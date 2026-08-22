@@ -86,10 +86,11 @@ public struct AuraAccessoryRectangular: View {
         }
     }
 
-    /// The day's four figures as a single line, so `minimumScaleFactor` scales them together and the
-    /// last one never truncates off the narrow slot — as four separate labels, humidity was clipped off
-    /// the right edge instead of the row shrinking. Each icon sits snug against its value (a thin space),
-    /// with a wider gap between groups.
+    /// The day's figures as a single line, so `minimumScaleFactor` scales them together and the last one
+    /// never truncates off the narrow slot. Each icon sits snug against its value (a thin space), with a
+    /// wider gap between groups. Humidity is **dropped** from this iPhone Lock Screen row: three groups
+    /// (high · low · rain) leave enough room to render the line a step larger and stay legible — humidity
+    /// still has its own dedicated complication. The iPad `wide` layout keeps humidity in its grid.
     private var metricsLine: Text {
         let gap = Text("   ")
         let thin = "\u{2009}"
@@ -97,9 +98,6 @@ public struct AuraAccessoryRectangular: View {
             + gap + Text(Image(systemName: "arrow.down")) + Text(thin + AccessoryFormat.temp(snapshot.tempMin))
         if let p = snapshot.currentPrecipProb {
             line = line + gap + Text(Image(systemName: "umbrella.fill")) + Text(thin + "\(p)%")
-        }
-        if let h = snapshot.currentHumidity {
-            line = line + gap + Text(Image(systemName: "humidity.fill")) + Text(thin + "\(h)%")
         }
         return line
     }
@@ -133,7 +131,9 @@ public struct AuraAccessoryRectangular: View {
             // scales to fit (see `metricsLine`). Wind is dropped from this ~160pt-wide slot and keeps its
             // own dedicated complication instead.
             metricsLine
-                .font(.caption2)
+                // A step up from .caption2 now that humidity is gone and the row has room — the earlier
+                // size read as cramped/hard on the Lock Screen. Still scales down if a slot is extra tight.
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

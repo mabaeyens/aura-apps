@@ -19,8 +19,8 @@ public enum WeatherIcon {
         case "23", "43": return night ? "cloud.moon.rain.fill" : "cloud.sun.rain.fill"
         case "24", "44", "45": return "cloud.rain.fill"
         case "25", "26", "46": return "cloud.heavyrain.fill"
-        case "33", "34", "71", "72": return "cloud.snow.fill"
-        case "35", "36", "73", "74": return "snowflake"
+        case "33", "34", "35", "36": return "snowflake"        // nieve → the recognised freezing snowflake
+        case "71", "72", "73", "74": return "cloud.snow.fill"  // nieve escasa (light snow) → cloud with flakes
         case "51", "52", "61", "62": return night ? "cloud.moon.bolt.fill" : "cloud.sun.bolt.fill"
         case "53", "54", "63", "64": return "cloud.bolt.rain.fill"
         default: return night ? "cloud.moon.fill" : "cloud.sun.fill"
