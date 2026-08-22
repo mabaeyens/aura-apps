@@ -143,6 +143,98 @@ public struct AuraUVCircular: View {
     public var bandLabel: String? { uv?.bandName }
 }
 
+/// `.accessoryCorner` (Apple Watch): the day's max UV as the index number + band glyph in the corner,
+/// with a curved 0–11 gauge along the outer bezel, tinted to the WHO band. The complication applies
+/// `.widgetCurvesContent()` to the content and `.widgetLabel { cornerGauge }` for the arc.
+public struct AuraUVCorner: View {
+    let snapshot: WeatherSnapshot
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    private var uv: UVIndex? { snapshot.uvIndex }
+
+    public var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: uv?.glyph ?? "sun.max.fill")
+            Text(uv.map { "\($0.value)" } ?? "—")
+                .fontWeight(.bold).fontDesign(.rounded)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .font(.title3)
+        .foregroundStyle(Palette.uvIndex(uv?.value ?? 0))
+    }
+
+    /// Whether a UV value is known, so the bezel gauge can be drawn (else fall back to `cornerLabel`).
+    public var hasValue: Bool { uv != nil }
+
+    /// The curved bezel gauge: the index on the WHO 0–11 scale, band-tinted, with 0/11 at the ends. No
+    /// `gaugeStyle` — the `.widgetLabel` context arcs it along the corner bezel.
+    @ViewBuilder public var cornerGauge: some View {
+        if let v = uv?.value {
+            Gauge(value: Double(min(v, 11)), in: 0...11) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            } minimumValueLabel: {
+                Text("0")
+            } maximumValueLabel: {
+                Text("11")
+            }
+            .tint(Palette.uvIndex(v))
+        }
+    }
+
+    /// Fallback bezel label when UV is unknown.
+    public var cornerLabel: String { uv.map { "UV \($0.value)" } ?? "UV —" }
+}
+
+/// `.accessoryCorner` (Apple Watch): the wind speed and the direction it comes from in the corner, with
+/// a curved strength gauge (0–50 km/h, Windy-style strength ramp) along the outer bezel. Corner mate to
+/// the circular `AuraWindCircular`.
+public struct AuraWindCorner: View {
+    let snapshot: WeatherSnapshot
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    private var speed: Int? { snapshot.windSpeed }
+
+    public var body: some View {
+        // One string so it scales as a unit rather than truncating the speed to "…" in a tight corner;
+        // `.widgetCurvesContent()` gives it the full bezel arc on a real face.
+        Text(label)
+            .font(.title3).fontWeight(.bold).fontDesign(.rounded)
+            .lineLimit(1).minimumScaleFactor(0.6)
+            .foregroundStyle(Palette.wind(speed))
+    }
+
+    /// "25 SO" — speed with the direction it comes from, or the speed alone when direction is unknown.
+    private var label: String {
+        let s = speed.map { "\($0)" } ?? "—"
+        if let dir = snapshot.windDirection { return "\(s) \(dir.abbreviation)" }
+        return s
+    }
+
+    /// Whether a speed is known, so the bezel gauge can be drawn (else fall back to `cornerLabel`).
+    public var hasValue: Bool { speed != nil }
+
+    /// The curved bezel gauge: wind speed on a 0–50 km/h arc (storm-force ceiling), strength-tinted.
+    @ViewBuilder public var cornerGauge: some View {
+        if let v = speed {
+            Gauge(value: Double(min(v, 50)), in: 0...50) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            } minimumValueLabel: {
+                Text("0")
+            } maximumValueLabel: {
+                Text("50")
+            }
+            .tint(Palette.wind(v))
+        }
+    }
+
+    /// Fallback bezel label when the gauge is skipped — the speed with units.
+    public var cornerLabel: String { speed.map { "\($0) km/h" } ?? "—" }
+}
+
 private enum SunFormat {
     static func icon(_ event: WeatherSnapshot.SunEvent?) -> String {
         switch event {

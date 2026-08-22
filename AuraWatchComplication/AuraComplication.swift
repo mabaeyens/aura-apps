@@ -115,7 +115,8 @@ struct AuraSunView: View {
 
 // MARK: - Wind
 
-/// Wind speed + direction — a two-tone compass needle over a rose.
+/// Wind speed + direction — a two-tone compass needle over a rose (circular), or the speed + direction
+/// with a strength gauge curving the bezel (corner).
 struct AuraWindNeedleComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraWindNeedle", provider: AuraComplicationProvider()) { entry in
@@ -123,17 +124,28 @@ struct AuraWindNeedleComplication: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Viento")
-        .description("Velocidad y dirección del viento, con una aguja.")
-        .supportedFamilies([.accessoryCircular])
+        .description("Velocidad y dirección del viento.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
 
 struct AuraWindView: View {
+    @Environment(\.widgetFamily) private var family
     let entry: AuraComplicationEntry
 
     var body: some View {
         if let snapshot = entry.snapshot {
-            AuraWindCircular(snapshot: snapshot)
+            switch family {
+            case .accessoryCorner:
+                let corner = AuraWindCorner(snapshot: snapshot)
+                if corner.hasValue {
+                    corner.widgetCurvesContent().widgetLabel { corner.cornerGauge }
+                } else {
+                    corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+                }
+            default:
+                AuraWindCircular(snapshot: snapshot)
+            }
         } else {
             AuraAccessoryEmpty()
         }
@@ -172,22 +184,34 @@ struct AuraUVComplication: Widget {
         }
         .configurationDisplayName("UV máximo")
         .description("El índice UV máximo del día (cielo despejado).")
-        .supportedFamilies([.accessoryCircular])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
 
 struct AuraUVView: View {
+    @Environment(\.widgetFamily) private var family
     let entry: AuraComplicationEntry
 
     var body: some View {
         if let snapshot = entry.snapshot {
-            // The band name ("Muy alto"…) rides the curved bezel, keeping the ring honest that the
-            // number is a daily maximum rather than a live value.
-            if let band = AuraUVCircular(snapshot: snapshot).bandLabel {
-                AuraUVCircular(snapshot: snapshot)
-                    .widgetLabel(band)
-            } else {
-                AuraUVCircular(snapshot: snapshot)
+            switch family {
+            case .accessoryCorner:
+                // The index + glyph curve the corner; the 0–11 band-tinted arc rides the outer bezel.
+                let corner = AuraUVCorner(snapshot: snapshot)
+                if corner.hasValue {
+                    corner.widgetCurvesContent().widgetLabel { corner.cornerGauge }
+                } else {
+                    corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+                }
+            default:
+                // The band name ("Muy alto"…) rides the curved bezel, keeping the ring honest that the
+                // number is a daily maximum rather than a live value.
+                if let band = AuraUVCircular(snapshot: snapshot).bandLabel {
+                    AuraUVCircular(snapshot: snapshot)
+                        .widgetLabel(band)
+                } else {
+                    AuraUVCircular(snapshot: snapshot)
+                }
             }
         } else {
             AuraAccessoryEmpty()
@@ -233,6 +257,50 @@ struct AuraDaysComplication: Widget {
         }
         .configurationDisplayName("Próximos días")
         .description("La previsión de los próximos días.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+// MARK: - Now (rectangular)
+
+/// The current conditions as a wide card — condition + temperature + today's range and rain/humidity —
+/// for the Modular centre slot. Reuses the same `AuraAccessoryRectangular` the iPhone Lock Screen uses.
+struct AuraNowComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraNow", provider: AuraComplicationProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraAccessoryRectangular(snapshot: snapshot, now: entry.date)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Ahora")
+        .description("El tiempo actual: condición, temperatura y rango del día.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+// MARK: - Sun (rectangular)
+
+/// The day's sun as a wide card — a daylight-remaining readout, a warm progress bar, and orto/ocaso at
+/// the ends — for the Modular centre slot.
+struct AuraSunRectComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraSunRect", provider: AuraComplicationProvider()) { entry in
+            Group {
+                if let snapshot = entry.snapshot {
+                    AuraRectSun(snapshot: snapshot, now: entry.date)
+                } else {
+                    AuraAccessoryEmpty()
+                }
+            }
+            .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Sol del día")
+        .description("Amanecer, atardecer y las horas de luz que quedan.")
         .supportedFamilies([.accessoryRectangular])
     }
 }

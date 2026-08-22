@@ -7,7 +7,9 @@ import WidgetKit
 struct AuraComplicationBundle: WidgetBundle {
     var body: some Widget {
         AuraConditionsComplication()
+        AuraNowComplication()
         AuraSunComplication()
+        AuraSunRectComplication()
         AuraSunMoonComplication()
         AuraSummaryComplication()
         AuraHumidityComplication()

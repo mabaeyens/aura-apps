@@ -136,3 +136,93 @@ public struct AuraRectDays: View {
         return String(f.string(from: date).prefix(3)).capitalized
     }
 }
+
+// MARK: - Sun (rectangular)
+
+/// `.accessoryRectangular`: the day's sun as a wide card — a daylight-remaining readout, a warm bar with
+/// a marker where "now" sits between orto and ocaso, and the two times at the ends. The sun combo for the
+/// Modular / Modular Ultra centre slot; the same idiom as the app's `AuraSunArcCard`, flattened to a bar.
+public struct AuraRectSun: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        if let sr = snapshot.sunrise, let ss = snapshot.sunset, ss > sr {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(readout(sr: sr, ss: ss))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                // The daylight bar: a faint track, a warm fill up to "now", and a dot marking the sun's
+                // progress from orto (left) to ocaso (right).
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    let p = progress(sr: sr, ss: ss)
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.22)).frame(height: 4)
+                        Capsule()
+                            .fill(LinearGradient(colors: [Palette.tempOrange, Palette.tempYellow],
+                                                 startPoint: .leading, endPoint: .trailing))
+                            .frame(width: max(4, w * p), height: 4)
+                        Circle().fill(.white)
+                            .frame(width: 8, height: 8)
+                            .overlay(Circle().stroke(Palette.tempOrange, lineWidth: 1.5))
+                            .offset(x: min(max(0, w * p - 4), w - 8))
+                    }
+                    .frame(maxHeight: .infinity, alignment: .center)
+                }
+                .frame(height: 8)
+                HStack(spacing: 4) {
+                    Label(hhmm(sr), systemImage: "sunrise.fill")
+                    Spacer(minLength: 2)
+                    Label(hhmm(ss), systemImage: "sunset.fill")
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+
+    /// Fraction 0…1 through the daylight span; clamped, so before orto it's 0 and after ocaso it's 1.
+    private func progress(sr: Date, ss: Date) -> Double {
+        let total = ss.timeIntervalSince(sr)
+        guard total > 0 else { return 0 }
+        return min(max(0, now.timeIntervalSince(sr) / total), 1)
+    }
+
+    /// Daylight remaining while the sun is up, else the countdown to the next sunrise (this morning's
+    /// orto stands in for tomorrow's — sun times barely move day to day — so wrap a past time by 24h).
+    private func readout(sr: Date, ss: Date) -> String {
+        if now >= sr, now < ss, let left = Self.compact(from: now, to: ss) {
+            return "Quedan \(left) de luz"
+        }
+        if let until = Self.compact(from: now, to: sr, wrapDay: true) {
+            return "Amanece en \(until)"
+        }
+        return "Sol"
+    }
+
+    private func hhmm(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
+
+    /// Compact "2h51m" / "43m" between two times; wraps past midnight when asked, else nil for a past time.
+    private static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
+        var s = Int(to.timeIntervalSince(from))
+        if s < 0 { if wrapDay { s += 24 * 3600 } else { return nil } }
+        guard s > 0 else { return nil }
+        let h = s / 3600, m = (s % 3600) / 60
+        return h > 0 ? "\(h)h\(String(format: "%02d", m))m" : "\(m)m"
+    }
+}

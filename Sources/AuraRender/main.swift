@@ -55,6 +55,12 @@ dump("circular",    size: CGSize(width: 76,  height: 76)) { AuraAccessoryCircula
 dump("wind",        size: CGSize(width: 84,  height: 84)) { AuraWindCircular(snapshot: snap) }
 dump("sun",         size: CGSize(width: 60,  height: 60)) { AuraSunCircular(snapshot: snap) }
 dump("corner",      size: CGSize(width: 44,  height: 44)) { AuraAccessoryCorner(snapshot: snap) }
+// New per-metric complication faces filling out the WIDGETS.md catalog: UV + wind corner content
+// (the bezel arc is drawn by WidgetKit on a real face, so these show the corner *content* only), and
+// the rectangular sun combo for the Modular centre slot.
+dump("uv-corner",   size: CGSize(width: 44,  height: 44)) { AuraUVCorner(snapshot: snap) }
+dump("wind-corner", size: CGSize(width: 44,  height: 44)) { AuraWindCorner(snapshot: snap) }
+dump("sun-rect",    size: CGSize(width: 170, height: 76)) { AuraRectSun(snapshot: snap) }
 dump("hours",       size: CGSize(width: 170, height: 76)) { AuraRectHours(snapshot: snap) }
 dump("days",        size: CGSize(width: 170, height: 76)) { AuraRectDays(snapshot: snap) }
 
