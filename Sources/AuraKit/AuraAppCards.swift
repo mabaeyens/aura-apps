@@ -471,6 +471,16 @@ public struct AuraSunArcCard: View {
         return line
     }
 
+    /// Today's solar solve for this location — the source of civil twilight. Recomputed at display time
+    /// from the snapshot's coordinates; nil without them. Orto/ocaso still come from the snapshot itself
+    /// (what the rest of the app uses); only the twilight times are taken from here.
+    private var solar: SolarTimes? {
+        guard let lat = snapshot.latitude, let lon = snapshot.longitude else { return nil }
+        return SolarTimes(date: now, latitude: lat, longitude: lon)
+    }
+    private var civilDawn: Date? { solar?.civilDawn }
+    private var civilDusk: Date? { solar?.civilDusk }
+
     /// Daytime: now sits between orto and ocaso.
     private var isDay: Bool {
         guard let sr = sunrise, let ss = sunset else { return false }
@@ -533,6 +543,8 @@ public struct AuraSunArcCard: View {
     private var a11yValue: String {
         guard let sr = sunrise, let ss = sunset else { return "Horario solar no disponible" }
         var parts = ["Amanece a las \(hhmm(sr))", "anochece a las \(hhmm(ss))"]
+        if let dawn = civilDawn { parts.append("primera luz a las \(hhmm(dawn))") }
+        if let dusk = civilDusk { parts.append("última luz a las \(hhmm(dusk))") }
         if let noon = solarNoon { parts.append("mediodía solar a las \(hhmm(noon))") }
         if let len = Self.compact(from: sr, to: ss) { parts.append("\(len) de luz") }
         var value = parts.joined(separator: ", ") + "."
@@ -594,16 +606,21 @@ public struct AuraSunArcCard: View {
         .padding(.horizontal, glyphR)
     }
 
-    // Orto on the left, ocaso on the right, each with its icon and precise, location-based time.
+    // Orto on the left, ocaso on the right, each with its icon and precise, location-based time. On the
+    // phone each also carries its civil-twilight time just below — first light before orto, last light
+    // after ocaso — where it belongs beside the event it brackets.
     private var ends: some View {
         HStack(alignment: .top) {
-            end(icon: "sunrise.fill", label: "Orto", time: sunrise)
+            end(icon: "sunrise.fill", label: "Orto", time: sunrise,
+                civilLabel: "Primera luz", civilTime: civilDawn)
             Spacer()
-            end(icon: "sunset.fill", label: "Ocaso", time: sunset, trailing: true)
+            end(icon: "sunset.fill", label: "Ocaso", time: sunset, trailing: true,
+                civilLabel: "Última luz", civilTime: civilDusk)
         }
     }
 
-    private func end(icon: String, label: String, time: Date?, trailing: Bool = false) -> some View {
+    private func end(icon: String, label: String, time: Date?, trailing: Bool = false,
+                     civilLabel: String? = nil, civilTime: Date? = nil) -> some View {
         VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
@@ -616,6 +633,14 @@ public struct AuraSunArcCard: View {
             Text(label)
                 .font(.system(size: size.smallSize - 2))
                 .foregroundStyle(.white.opacity(0.6))
+            // Civil twilight (phone only): the "still bright enough to be out" edge of the day, in a small
+            // dim line under the label so it reads as a footnote to orto/ocaso, not a competing time.
+            if size == .phone, let civilLabel, let civilTime {
+                Text("\(civilLabel) \(hhmm(civilTime))")
+                    .font(.system(size: size.smallSize - 3))
+                    .foregroundStyle(.white.opacity(0.42))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
         }
     }
 

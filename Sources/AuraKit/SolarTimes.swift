@@ -11,6 +11,12 @@ public struct SolarTimes: Sendable {
     public let sunrise: Date?
     public let sunset: Date?
 
+    /// Civil twilight: the moments the sun's centre is 6° below the horizon — morning first light and
+    /// evening last light, the "bright enough to be out without lamps" window bracketing orto/ocaso.
+    /// nil when the sun never reaches −6° that day (a high-latitude summer with no true dark).
+    public let civilDawn: Date?
+    public let civilDusk: Date?
+
     /// - Parameters:
     ///   - date: any instant on the target day.
     ///   - latitude: degrees north, positive.
@@ -32,19 +38,29 @@ public struct SolarTimes: Sendable {
 
         let transit = 2_451_545.0 + meanSolarTime + 0.0053 * sin(m) - 0.0069 * sin(2 * lambda)
         let declination = asin(sin(lambda) * sin(23.4397 * rad))
-
         let phi = latitude * rad
-        let cosHourAngle = (sin(-0.833 * rad) - sin(phi) * sin(declination)) / (cos(phi) * cos(declination))
 
-        guard cosHourAngle >= -1, cosHourAngle <= 1 else {
-            self.sunrise = nil
-            self.sunset = nil
-            return
-        }
+        // Sunrise/sunset take the standard −0.833° (atmospheric refraction plus the sun's radius); civil
+        // twilight is the same solve at −6°. Both share the transit, declination and latitude above.
+        let (sr, ss) = Self.crossings(altitudeDeg: -0.833, transit: transit, phi: phi, declination: declination)
+        self.sunrise = sr
+        self.sunset = ss
+        let (dawn, dusk) = Self.crossings(altitudeDeg: -6, transit: transit, phi: phi, declination: declination)
+        self.civilDawn = dawn
+        self.civilDusk = dusk
+    }
 
+    /// The morning and evening instants the sun's centre passes `altitudeDeg`, or (nil, nil) when it never
+    /// reaches that altitude on the day (polar night/day, or twilight that doesn't complete at that
+    /// latitude and season). `transit` is the solar-noon Julian date; `phi`/`declination` in radians.
+    private static func crossings(altitudeDeg: Double, transit: Double, phi: Double,
+                                  declination: Double) -> (Date?, Date?) {
+        let rad = Double.pi / 180
+        let cosHourAngle = (sin(altitudeDeg * rad) - sin(phi) * sin(declination)) / (cos(phi) * cos(declination))
+        guard cosHourAngle >= -1, cosHourAngle <= 1 else { return (nil, nil) }
         let hourAngle = acos(cosHourAngle) / rad // degrees
-        self.sunrise = Self.date(fromJulian: transit - hourAngle / 360.0)
-        self.sunset = Self.date(fromJulian: transit + hourAngle / 360.0)
+        return (date(fromJulian: transit - hourAngle / 360.0),
+                date(fromJulian: transit + hourAngle / 360.0))
     }
 
     private static func date(fromJulian jd: Double) -> Date {

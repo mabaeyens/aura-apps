@@ -41,4 +41,26 @@ final class SolarTimesTests: XCTestCase {
         XCTAssertNil(s.sunrise)
         XCTAssertNil(s.sunset)
     }
+
+    // Civil twilight brackets orto/ocaso: first light before sunrise, last light after sunset, each
+    // roughly half an hour out at Madrid's latitude.
+    func testCivilTwilightBracketsSunrise() {
+        let s = SolarTimes(date: utcDay(2024, 3, 20), latitude: 40.4168, longitude: -3.7038)
+        let sunrise = try! XCTUnwrap(s.sunrise)
+        let sunset = try! XCTUnwrap(s.sunset)
+        let dawn = try! XCTUnwrap(s.civilDawn)
+        let dusk = try! XCTUnwrap(s.civilDusk)
+        XCTAssertLessThan(dawn, sunrise)          // first light comes before the sun clears the horizon
+        XCTAssertLessThan(sunset, dusk)           // last light lingers after it sets
+        // Civil twilight at 40°N runs ~25–40 min either side.
+        XCTAssertEqual(sunrise.timeIntervalSince(dawn) / 60, 32, accuracy: 12)
+        XCTAssertEqual(dusk.timeIntervalSince(sunset) / 60, 32, accuracy: 12)
+    }
+
+    // Deep polar night: the sun never reaches −6° either, so civil twilight is nil too.
+    func testCivilTwilightNilInPolarNight() {
+        let s = SolarTimes(date: utcDay(2024, 12, 21), latitude: 89, longitude: 0)
+        XCTAssertNil(s.civilDawn)
+        XCTAssertNil(s.civilDusk)
+    }
 }

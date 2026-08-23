@@ -8,7 +8,7 @@ First release of Aura: Spain's weather, from official AEMET open data.
 - A narrated daily forecast, drawn from AEMET's official text.
 - Hour-by-hour detail and a full seven-day outlook.
 - Air quality by pollutant, from the official network (MITECO / ICA).
-- Sun and moon: sunrise, sunset, solar noon and day length, and moonrise and moonset.
+- Sun and moon: sunrise and sunset with first and last light, solar noon and day length, and moonrise and moonset.
 - Official weather warnings (avisos) when they matter, and a calm all-clear when there are none.
 - A living background that follows the sun across the day, from dawn to dusk.
 - An Apple Watch app with the same cards as on iPhone, plus a full complication catalog
