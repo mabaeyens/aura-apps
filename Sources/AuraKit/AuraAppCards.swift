@@ -1203,9 +1203,16 @@ public struct AuraRadarCard: View {
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: max(size.cardCorner - 8, 6),
                                                 style: .continuous))
-                Text(subtitle)
-                    .font(.system(size: size.smallSize))
-                    .foregroundStyle(.white.opacity(0.65))
+                dbzLegend
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(subtitle)
+                        .font(.system(size: size.smallSize))
+                        .foregroundStyle(.white.opacity(0.65))
+                    Text(rangeLine)
+                        .font(.system(size: size.smallSize - 1))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
             }
         }
         .auraSectionTitle("Radar".uppercased(), size)
@@ -1216,6 +1223,46 @@ public struct AuraRadarCard: View {
         let mins = Int(now.timeIntervalSince(radar.time) / 60)
         let freshness = mins <= 0 ? "ahora" : "hace \(mins) min"
         return "Radar de \(radar.siteName) · \(freshness)"
+    }
+
+    /// The regional reflectivity frame is a fixed ~240 km-radius circle centred on the radar site — a
+    /// product constant, the same for every AEMET regional radar (see `RadarSite`).
+    private static let rangeKm = 240
+
+    /// Ties the dBZ legend to the image ("reflectividad") and gives "Radar de {sitio}" a real reach.
+    /// Short so it never truncates on a narrow phone; the subtitle above already names the radar site.
+    private var rangeLine: String {
+        "Reflectividad · alcance \(Self.rangeKm) km"
+    }
+
+    /// The dBZ intensity ramp AEMET burns into the frame, spelled out: green (light) → magenta (hail), with
+    /// plain-Spanish rain-intensity labels so the colours mean something without opening a manual.
+    private var dbzLegend: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(LinearGradient(colors: [Color(red: 0.25, green: 0.75, blue: 0.30),
+                                              Color(red: 0.95, green: 0.85, blue: 0.20),
+                                              Color(red: 0.95, green: 0.55, blue: 0.15),
+                                              Color(red: 0.85, green: 0.20, blue: 0.20),
+                                              Color(red: 0.80, green: 0.25, blue: 0.85)],
+                                     startPoint: .leading, endPoint: .trailing))
+                .frame(height: size == .phone ? 6 : 5)
+            HStack(spacing: 0) {
+                Text("Débil")
+                Spacer(minLength: 2)
+                Text("Moderada")
+                Spacer(minLength: 2)
+                Text("Fuerte")
+                Spacer(minLength: 2)
+                Text("Torrencial")
+            }
+            .font(.system(size: size.smallSize - 3, weight: .medium))
+            .foregroundStyle(.white.opacity(0.55))
+            .lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Escala de intensidad")
+        .accessibilityValue("De débil (verde) a torrencial o granizo (magenta)")
     }
 }
 

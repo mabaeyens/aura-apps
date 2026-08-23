@@ -256,10 +256,10 @@ func radarPreview() -> some View {
             .environment(\.colorScheme, .dark)
             .padding(16)
     }
-    .frame(width: 320, height: 320)
+    .frame(width: 320, height: 380)
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 }
-write(radarPreview(), name: "app-radar-card", size: CGSize(width: 320, height: 320))
+write(radarPreview(), name: "app-radar-card", size: CGSize(width: 320, height: 380))
 
 // The full sun arc card over a noon sky: the live-position arc, orto/ocaso ends, the daylight-remaining
 // readout, and the new solar-noon + day-length lines (with the day-over-day delta). Built from a real
