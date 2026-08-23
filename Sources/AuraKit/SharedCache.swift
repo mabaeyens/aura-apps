@@ -19,6 +19,14 @@ public enum SharedCache {
     /// Watch to default its shown location before the user overrides it).
     public static let activeINEKey = "AuraKit.activeINE"
 
+    /// The INE the app currently considers active (the location on screen). A widget the user hasn't
+    /// pinned to a specific place falls back to this, so an unconfigured glance follows the app instead
+    /// of an arbitrary favourite. Written by the app on each load/location switch; read by the widgets.
+    public static var activeINE: String? {
+        get { groupDefaults?.string(forKey: activeINEKey) }
+        set { groupDefaults?.set(newValue, forKey: activeINEKey) }
+    }
+
     private static var fileURL: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?

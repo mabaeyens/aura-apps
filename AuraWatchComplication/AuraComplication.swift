@@ -10,17 +10,26 @@ struct AuraComplicationEntry: TimelineEntry {
 
 /// Reads the Watch's own `SharedCache`, which `WatchSync` fills from snapshots the iPhone pushes.
 struct AuraComplicationProvider: TimelineProvider {
+    /// The location the complication draws: the phone's active place (mirrored into the Watch's shared
+    /// defaults by `WatchSync`), so a complication tracks the same location the app shows rather than an
+    /// arbitrary first cache entry — which was making the UV-now number disagree with the app's card.
+    /// Falls back to the first cached snapshot before the first sync.
+    private func activeSnapshot() -> WeatherSnapshot? {
+        if let active = SharedCache.activeINE, let s = SharedCache.snapshot(forINE: active) { return s }
+        return SharedCache.read().first
+    }
+
     func placeholder(in context: Context) -> AuraComplicationEntry {
         AuraComplicationEntry(date: Date(), snapshot: .preview)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (AuraComplicationEntry) -> Void) {
-        let snapshot = context.isPreview ? .preview : SharedCache.read().first
+        let snapshot = context.isPreview ? .preview : activeSnapshot()
         completion(AuraComplicationEntry(date: Date(), snapshot: snapshot))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<AuraComplicationEntry>) -> Void) {
-        let snapshot = SharedCache.read().first
+        let snapshot = activeSnapshot()
         let now = Date()
         let cal = Calendar.current
         // Hourly entries for the next 12 hours, all off the same snapshot: each redraws with its own

@@ -16,6 +16,10 @@ struct AuraEntry: TimelineEntry {
 private func resolveSnapshot(ine: String?, isPreview: Bool) -> WeatherSnapshot? {
     if isPreview { return .preview }
     if let ine, let snapshot = SharedCache.snapshot(forINE: ine) { return snapshot }
+    // Unpinned: follow the app's active location, not an arbitrary favourite, so a widget the user
+    // never configured tracks whatever the app is showing. Falls back to the first cache entry only
+    // when nothing is active yet (e.g. a widget added before the app's first load).
+    if let active = SharedCache.activeINE, let snapshot = SharedCache.snapshot(forINE: active) { return snapshot }
     return SharedCache.read().first
 }
 

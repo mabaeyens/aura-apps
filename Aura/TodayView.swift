@@ -1,6 +1,7 @@
 import AuraKit
 import SwiftUI
 import UIKit
+import WidgetKit
 
 /// Reports whether the attached scroll view sits at its very top, driving the "MÁS" hint's fade. Uses
 /// `onScrollGeometryChange` (iOS 18+, which the target devices run); on older systems it's a no-op and the
@@ -335,6 +336,10 @@ struct TodayView: View {
             // Mirror the on-screen location to the paired Watch (as its active), plus the whole favourites
             // menu and their snapshots, so the Watch can switch to any saved place on its own.
             WatchSync.shared.send(active: snap, favorites: store.favorites)
+            // Record the active location and nudge the widgets so an unpinned glance follows the app to
+            // this place (even when its data was already cached and the refresh reported no change).
+            SharedCache.activeINE = location.ine
+            WidgetCenter.shared.reloadAllTimelines()
             errorMessage = nil
             await loadRadar(for: location, force: force)
             news = await NewsService.latest(force: force)
