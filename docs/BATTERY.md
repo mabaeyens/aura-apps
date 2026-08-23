@@ -58,9 +58,14 @@ Cannot be done from code. Capture these on a real iPhone (and Watch):
 
 Expectation: near-zero background attribution beyond the occasional bounded top-up, and a small foreground cost dominated by the network burst and the screen itself.
 
+### Verified on device (iPhone 17 Pro Max, 2026-08-23)
+
+- [x] **Background handler runs end to end.** Forced with the LLDB `_simulateLaunchForTaskWithIdentifier` trigger: the handler woke, re-armed the next request ("Scheduled next background refresh"), ran the refresh, and finished cleanly. With the locations freshly cached it correctly took the keep-cache path ("cache up to date") instead of re-fetching, and the app kept running (task returned, no crash or expiration).
+- [x] **Widgets hold their memory budget under stress.** Repeatedly removing and re-adding the large Home Screen widgets while changing location and scenery rendered every widget with no placeholders and no "No se puede cargar". The extension was never jetsammed, so the pre-sized `WidgetHero` tiers keep a full Home Screen inside WidgetKit's per-process budget.
+
 ### Measured numbers
 
-To be filled in once captured on device:
+Energy still to capture with the app in real use:
 
 - [ ] Foreground idle energy (Energy gauge level):
 - [ ] Energy per foreground refresh:
