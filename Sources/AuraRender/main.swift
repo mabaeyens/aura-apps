@@ -261,6 +261,32 @@ func radarPreview() -> some View {
 }
 write(radarPreview(), name: "app-radar-card", size: CGSize(width: 320, height: 320))
 
+// The full sun arc card over a noon sky: the live-position arc, orto/ocaso ends, the daylight-remaining
+// readout, and the new solar-noon + day-length lines (with the day-over-day delta). Built from a real
+// SolarTimes solve for Madrid today + Madrid coords, so the delta ("N min que ayer") is truthful.
+@MainActor
+func sunCardPreview() -> some View {
+    let when = todayAt(13, 0)
+    let lat = 40.4168, lon = -3.7038
+    let sun = SolarTimes(date: when, latitude: lat, longitude: lon)
+    let snap = WeatherSnapshot(
+        ine: "28079", localidad: "Madrid", provincia: "Madrid",
+        tempMin: 18, tempMax: 34, humedadMax: 55,
+        sunrise: sun.sunrise, sunset: sun.sunset,
+        latitude: lat, longitude: lon,
+        updated: when)
+    return ZStack {
+        AuraSky(snapshot: .preview, now: when)
+        AuraSunArcCard(snapshot: snap, size: .phone, now: when)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 320, height: 300)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .fontDesign(.rounded)
+}
+write(sunCardPreview(), name: "app-sun-card", size: CGSize(width: 320, height: 300))
+
 // The full wind card over a noon sky: the detailed (phone) rose — denser 48-point ring, lightened
 // marks — with the speed, direction spelled out + numeric bearing, and the gust line.
 @MainActor

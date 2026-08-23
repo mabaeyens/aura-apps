@@ -436,6 +436,41 @@ public struct AuraSunArcCard: View {
     private var sunset: Date? { snapshot.sunset }
     private var hasTimes: Bool { sunrise != nil && sunset != nil }
 
+    /// Solar noon: the arc's apex, the midpoint between orto and ocaso.
+    private var solarNoon: Date? {
+        guard let sr = sunrise, let ss = sunset, ss > sr else { return nil }
+        return sr.addingTimeInterval(ss.timeIntervalSince(sr) / 2)
+    }
+
+    /// Today's daylight length, orto → ocaso.
+    private var dayLength: TimeInterval? {
+        guard let sr = sunrise, let ss = sunset, ss > sr else { return nil }
+        return ss.timeIntervalSince(sr)
+    }
+
+    /// Change in daylight length vs yesterday, whole minutes (+ lengthening, − shortening). Needs the
+    /// snapshot's coordinates for a second `SolarTimes` solve; nil without them or at a polar day/night.
+    private var dayLengthDeltaMinutes: Int? {
+        guard let today = dayLength, let lat = snapshot.latitude, let lon = snapshot.longitude,
+              let yday = Calendar.current.date(byAdding: .day, value: -1, to: now) else { return nil }
+        let y = SolarTimes(date: yday, latitude: lat, longitude: lon)
+        guard let ysr = y.sunrise, let yss = y.sunset, yss > ysr else { return nil }
+        return Int(((today - yss.timeIntervalSince(ysr)) / 60).rounded())
+    }
+
+    /// The daylight-length line: total daylight, plus the day-over-day delta on the phone (too wide for
+    /// the watch). `nil` when orto/ocaso are unavailable.
+    private var dayLengthLine: String? {
+        guard let sr = sunrise, let ss = sunset, let len = Self.compact(from: sr, to: ss) else { return nil }
+        var line = "\(len) de luz"
+        if size == .phone, let dm = dayLengthDeltaMinutes {
+            if dm > 0 { line += " · +\(dm) min que ayer" }
+            else if dm < 0 { line += " · \(dm) min que ayer" }
+            else { line += " · igual que ayer" }
+        }
+        return line
+    }
+
     /// Daytime: now sits between orto and ocaso.
     private var isDay: Bool {
         guard let sr = sunrise, let ss = sunset else { return false }
@@ -460,6 +495,23 @@ public struct AuraSunArcCard: View {
                         .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
                         .foregroundStyle(.white.opacity(0.82))
                         .frame(maxWidth: .infinity, alignment: .center)
+
+                    // Solar noon (the arc's apex) and how long today's daylight runs — both from the same
+                    // orto/ocaso, no new data. Noon is phone-only; the length line carries the
+                    // day-over-day delta there too. Dimmer than the readout so it reads as secondary.
+                    if size == .phone, let noon = solarNoon {
+                        Text("Mediodía solar \(hhmm(noon))")
+                            .font(.system(size: size.smallSize, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    if let line = dayLengthLine {
+                        Text(line)
+                            .font(.system(size: size.smallSize, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .lineLimit(1).minimumScaleFactor(0.75)
+                    }
                 }
             } else {
                 Text("Horario solar no disponible")
@@ -480,8 +532,13 @@ public struct AuraSunArcCard: View {
     /// Spoken summary for VoiceOver: sunrise, sunset and the centre readout, or the unavailable notice.
     private var a11yValue: String {
         guard let sr = sunrise, let ss = sunset else { return "Horario solar no disponible" }
+        var parts = ["Amanece a las \(hhmm(sr))", "anochece a las \(hhmm(ss))"]
+        if let noon = solarNoon { parts.append("mediodía solar a las \(hhmm(noon))") }
+        if let len = Self.compact(from: sr, to: ss) { parts.append("\(len) de luz") }
+        var value = parts.joined(separator: ", ") + "."
         let r = readout
-        return "Amanece a las \(hhmm(sr)), anochece a las \(hhmm(ss))." + (r.isEmpty ? "" : " \(r).")
+        if !r.isEmpty { value += " \(r)." }
+        return value
     }
 
     // The arc itself: horizon line, the full day arc (faint), the travelled portion (warm), and the sun
