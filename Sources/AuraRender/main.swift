@@ -211,6 +211,73 @@ let occSize = CGSize(width: 120 * 8 + 8 * 7 + 20, height: 260)
 write(occlusionMatrix(now: todayAt(13, 0)), name: "occlusion-noon", size: occSize)
 write(occlusionMatrix(now: todayAt(23, 0)), name: "occlusion-night", size: occSize)
 
+// ---- Moon phase disc, the eight principal phases ----
+// The bare PhasedMoonDisc across a full cycle, waxing (lit on the right) then waning (mirrored), so the
+// terminator geometry and the ashen earthshine body of a new moon can be judged directly.
+@MainActor
+func moonDiscSweep() -> some View {
+    let phases: [(name: String, illum: Double, waxing: Bool)] = [
+        ("Nueva", 0.00, true), ("Creciente", 0.25, true), ("C. creciente", 0.50, true),
+        ("G. creciente", 0.85, true), ("Llena", 1.00, true), ("G. menguante", 0.85, false),
+        ("C. menguante", 0.50, false), ("Menguante", 0.25, false),
+    ]
+    return HStack(spacing: 10) {
+        ForEach(phases, id: \.name) { p in
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(white: 0.06))
+                    PhasedMoonDisc(illumination: p.illum, waxing: p.waxing, radius: 26,
+                                   litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
+                }
+                .frame(width: 96, height: 96)
+                Text(p.name).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white)
+            }
+        }
+    }
+    .padding(12)
+    .background(Color(white: 0.12))
+}
+let moonSweepSize = CGSize(width: 96 * 8 + 10 * 7 + 24, height: 132)
+write(moonDiscSweep(), name: "moon-disc-sweep", size: moonSweepSize)
+
+// ---- Moon phase in context: AuraSky at night, clear, across the cycle ----
+// Each tile forces a `now` an exact phase-fraction past a known new moon, with sun times set so it reads
+// as night, so the moonglow scaling (new = dark sky, full = lit) and the phased disc show together.
+@MainActor
+func moonSkyTile(offset: Double) -> some View {
+    let synodic = AuraKit.MoonPhaseMath.synodicMonth * 86_400
+    let now = AuraKit.MoonPhaseMath.referenceNewMoon.addingTimeInterval((329 + offset) * synodic)
+    let s = WeatherSnapshot(ine: "0", localidad: "", provincia: "",
+                            tempMin: nil, tempMax: nil, humedadMax: nil,
+                            currentSky: "11",                                   // despejado: most stars
+                            sunrise: now.addingTimeInterval(-10 * 3600),        // both before `now` → night,
+                            sunset: now.addingTimeInterval(-2 * 3600),          // 2 h after dusk (moon mid-low)
+                            updated: now)
+    return AuraSky(snapshot: s, now: now)
+        .frame(width: 150, height: 260)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .environment(\.colorScheme, .dark)
+}
+@MainActor
+func moonSkySweep() -> some View {
+    let cols: [(name: String, offset: Double)] = [
+        ("Nueva", 0.0), ("Creciente", 0.125), ("C. creciente", 0.25),
+        ("Llena", 0.5), ("C. menguante", 0.75), ("Menguante", 0.875),
+    ]
+    return HStack(spacing: 8) {
+        ForEach(cols, id: \.name) { c in
+            VStack(spacing: 4) {
+                moonSkyTile(offset: c.offset)
+                Text(c.name).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white)
+            }
+        }
+    }
+    .padding(10)
+    .background(Color(white: 0.10))
+}
+let moonSkySize = CGSize(width: 150 * 6 + 8 * 5 + 20, height: 300)
+write(moonSkySweep(), name: "moon-sky-sweep", size: moonSkySize)
+
 // The hourly card on its own over a morning sky — the strip now distributes edge to edge (no scroll),
 // so ImageRenderer lays it out in full.
 @MainActor

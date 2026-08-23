@@ -107,6 +107,13 @@ public struct AuraSky: View {
         let base = Palette.skyBaseColors(at: now)
         let sun = Self.glowColor(isNight: path.isNight, altitude: path.altitude)
         let scene = Self.sceneColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
+        // Tonight's moon phase, so the night sky reflects how much of the moon is actually lit: a new
+        // moon barely glows and shows only its ashen earthshine disc, a full moon lights the sky and
+        // washes some stars out. Only meaningful at night; illumination pinned to 0 by day so the sun
+        // path is untouched.
+        let moonFraction = MoonPhaseMath.fraction(for: now)
+        let moonIllum = path.isNight ? MoonPhaseMath.illumination(fraction: moonFraction) : 0
+        let moonWaxing = MoonPhaseMath.waxing(fraction: moonFraction)
 
         GeometryReader { geo in
             let size = geo.size
@@ -159,7 +166,7 @@ public struct AuraSky: View {
                 // (which read as a green cast); it stays strong low on the horizon at dawn/dusk. On a
                 // `compact` surface (a widget) the halo is pulled in to the short edge and its peak dimmed,
                 // so it stays a localised sun instead of bleaching the whole small card to white.
-                let glowPeak = (path.isNight ? 0.55 : 0.92 - path.altitude * 0.30)
+                let glowPeak = (path.isNight ? 0.55 * moonIllum : 0.92 - path.altitude * 0.30)
                     * (1 - veil * 0.5) * (compact ? 0.62 : 1.0)
                 let glowRadius = compact ? min(size.width, size.height) * 1.1
                                          : max(size.width, size.height) * 0.78
@@ -183,7 +190,7 @@ public struct AuraSky: View {
                 // disc and drawn with a soft base blur even on the clearest night, so its edge stays a
                 // gentle pale coin rather than a hard, sun-bright point.
                 let discAlpha = (path.isNight ? 0.62 : 1.0) * (1 - occlusion * 0.85)
-                let discBlur = discR * ((path.isNight ? 0.14 : 0.05) + occlusion * 0.9)  // sharp when clear, swollen under cloud; softer for the moon
+                let discBlur = discR * ((path.isNight ? 0.08 : 0.05) + occlusion * 0.9)  // sharp when clear, swollen under cloud; a touch soft for the moon so the crescent still reads
                 // Overcast, rain, storm, snow and fog never resolve into a disc you can point at — at any
                 // hour, sun or moon. The warm glow (step 3) still bleeds through the deck, but the defined
                 // core and its corona are dropped entirely; only clear/few-clouds/cloudy keep a real ball.
@@ -196,28 +203,45 @@ public struct AuraSky: View {
                     // sky rather than a dim dot. Drawn `.normal` at night (screen would over-brighten the
                     // dark), `.screen` by day.
                     let coronaR = discR * (1 - occlusion * 0.2)
-                    let coronaAlpha = (path.isNight ? 0.60 : 0.55) * discAlpha
+                    // At night the halo scales with the moon's lit fraction: a new moon has essentially no
+                    // corona (it doesn't light the sky), a full moon a broad one.
+                    let coronaAlpha = (path.isNight ? 0.60 * moonIllum : 0.55) * discAlpha
                     let coronaSpread: CGFloat = path.isNight ? 3.4 : 3.2
-                    Circle()
-                        .fill(RadialGradient(colors: [disc.glow.opacity(coronaAlpha), disc.glow.opacity(0)],
-                                             center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * coronaSpread))
-                        .frame(width: coronaR * coronaSpread * 2, height: coronaR * coronaSpread * 2)
-                        .position(centre)
-                        .blendMode(path.isNight ? .normal : .screen)
-                    // The disc — bright core to warm rim, lit slightly off-centre for depth.
-                    Circle()
-                        .fill(RadialGradient(colors: [disc.core.opacity(discAlpha), disc.rim.opacity(discAlpha)],
-                                             center: UnitPoint(x: 0.42, y: 0.38),
-                                             startRadius: 0, endRadius: occludedR))
-                        .frame(width: occludedR * 2, height: occludedR * 2)
-                        .position(centre)
-                        .blur(radius: discBlur)
+                    if coronaAlpha > 0.01 {
+                        Circle()
+                            .fill(RadialGradient(colors: [disc.glow.opacity(coronaAlpha), disc.glow.opacity(0)],
+                                                 center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * coronaSpread))
+                            .frame(width: coronaR * coronaSpread * 2, height: coronaR * coronaSpread * 2)
+                            .position(centre)
+                            .blendMode(path.isNight ? .normal : .screen)
+                    }
+                    if path.isNight {
+                        // The moon — drawn at its real phase for tonight: an ashen earthshine body always
+                        // present (so a new moon is a faint disc, not nothing) with the lit limb painted on
+                        // top, waxing lit on the right. A faint cool white reads against the night sky.
+                        PhasedMoonDisc(illumination: moonIllum, waxing: moonWaxing, radius: occludedR,
+                                       litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
+                            .opacity(discAlpha)
+                            .blur(radius: discBlur)
+                            .position(centre)
+                    } else {
+                        // The sun — bright core to warm rim, lit slightly off-centre for depth.
+                        Circle()
+                            .fill(RadialGradient(colors: [disc.core.opacity(discAlpha), disc.rim.opacity(discAlpha)],
+                                                 center: UnitPoint(x: 0.42, y: 0.38),
+                                                 startRadius: 0, endRadius: occludedR))
+                            .frame(width: occludedR * 2, height: occludedR * 2)
+                            .position(centre)
+                            .blur(radius: discBlur)
+                    }
                 }
 
                 // 4 — stars, night only. Skipped over an image (the art carries its own).
                 if heroImage == nil, path.isNight {
+                    // Condition is the main driver — clear nights show the most stars, cloud hides them —
+                    // and a bright moon washes a few more out (new moon: none lost; full: about a third).
                     Canvas { ctx, sz in Self.drawStars(&ctx, size: sz) }
-                        .opacity(1 - veil * 0.8)
+                        .opacity((1 - veil * 0.8) * (1 - moonIllum * 0.35))
                 }
 
                 // 5 — the flat vector scenery along the horizon: mountain, hills, sun-lit river, a tree
