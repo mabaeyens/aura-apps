@@ -167,6 +167,41 @@ func todayAt(_ h: Int, _ m: Int) -> Date {
 // Mac window aspect from the screenshot (~1010×860 content), tall enough to show the top cards.
 write(appScreenWide(size: CGSize(width: 1010, height: 1500), now: todayAt(20, 40)),
       name: "app-ipad-wide", size: CGSize(width: 1010, height: 1500))
+
+// App Store Connect iPad 12.9" portrait screenshots (exactly 2048×2732, opaque, square corners) showing
+// the nature sky — the landscape look, not a cityscape — at two times of day for variety. Full-bleed:
+// the card column centred over the sun-tracking sky, no rounded clip. Rendered at scale 2 off a
+// 1024×1366 base to land on the exact pixel size ASC requires. Meant to replace two cityscape shots.
+@MainActor
+func appScreenASC(size: CGSize, now: Date) -> some View {
+    ZStack(alignment: .top) {
+        AuraSky(snapshot: .preview, now: now)
+        AuraForecastStack(snapshot: .preview, size: .phone, now: now, hoursScroll: false)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: 620)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 24)
+    }
+    .frame(width: size.width, height: size.height, alignment: .top)
+    .background(Color.black)   // opaque: ASC rejects any alpha in the corners
+    .environment(\.colorScheme, .dark)
+    .fontDesign(.rounded)
+}
+@MainActor
+func writeExact(_ view: some View, name: String, size: CGSize, scale: CGFloat) {
+    let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height))
+    renderer.scale = scale
+    guard let cg = renderer.cgImage else { print("✗ \(name): render failed"); return }
+    let rep = NSBitmapImageRep(cgImage: cg)
+    guard let data = rep.representation(using: .png, properties: [:]) else { return }
+    let path = "\(outDir)/\(name).png"
+    do { try data.write(to: URL(fileURLWithPath: path)); print("✓ \(path) (\(cg.width)×\(cg.height))") }
+    catch { print("✗ \(name): \(error)") }
+}
+for (label, when) in [("noon", todayAt(13, 30)), ("sunset", todayAt(20, 40))] {
+    writeExact(appScreenASC(size: CGSize(width: 1024, height: 1366), now: when),
+               name: "asc-ipad-nature-\(label)", size: CGSize(width: 1024, height: 1366), scale: 2)
+}
 for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
                       ("3sunset", todayAt(20, 40)), ("4night", todayAt(23, 30))] {
     let phone = CGSize(width: 300, height: 1880)   // tall enough to show the whole stack (device scrolls)
