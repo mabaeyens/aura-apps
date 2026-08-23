@@ -115,8 +115,7 @@ public struct AuraAccessoryRectangular: View {
             // the number. Sized one step down from .title2 so the card breathes, with a wider glyph↔temp
             // gap; an aviso triangle rides the trailing edge when a warning is active.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                    .font(.title3)
+                ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now), slot: 20)
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
                     .lineLimit(1).minimumScaleFactor(0.7)
@@ -149,8 +148,7 @@ public struct AuraAccessoryRectangular: View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                        .font(.title)
+                    ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now), slot: 28)
                     Text(AccessoryFormat.temp(snapshot.heroTemp))
                         .font(.system(.title, design: .rounded)).fontWeight(.semibold)
                         .lineLimit(1).minimumScaleFactor(0.8)
@@ -249,7 +247,7 @@ public struct AuraAccessoryCorner: View {
         // arcs like Carrot's; before that modifier it was stuck horizontal and small. The day's range
         // arcs along the outer bezel via `cornerGauge`.
         HStack(spacing: 2) {
-            ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
+            ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now), slot: 20)
             Text(AccessoryFormat.temp(snapshot.heroTemp))
                 .fontWeight(.bold).fontDesign(.rounded)
                 .lineLimit(1).minimumScaleFactor(0.6)  // scale, never clip to "…", if room is tight

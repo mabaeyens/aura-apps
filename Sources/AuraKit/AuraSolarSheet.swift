@@ -124,8 +124,8 @@ public struct AuraSolarSheet: View {
         guard let len = dayLength else { return "Horario solar no disponible" }
         var s = "\(durationText(len)) de luz"
         if let dm = dayLengthDeltaMinutes {
-            if dm > 0 { s += " · +\(dm) min que ayer" }
-            else if dm < 0 { s += " · \(dm) min que ayer" }
+            if dm > 0 { s += " · \(dm) min más que ayer" }
+            else if dm < 0 { s += " · \(-dm) min menos que ayer" }
             else { s += " · igual que ayer" }
         }
         return s

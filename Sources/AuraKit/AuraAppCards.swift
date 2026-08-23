@@ -40,9 +40,18 @@ private struct AuraCard<Content: View>: View {
             .padding(size.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             // A lighter frost than a full dark material: more of the sky reads through, so the cards
-            // sit on the scene instead of blacking it out.
-            .background(.ultraThinMaterial.opacity(0.7),
-                        in: RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous))
+            // sit on the scene instead of blacking it out. A bottom-weighted dark scrim rides *inside*
+            // the frost (clipped to the same rounded shape): the light frost alone let the bright lower
+            // sky bleed through and washed out the translucent temperature text — worst on the tall
+            // Próximos días card. The gradient lifts contrast where the hero is brightest while barely
+            // touching the top, so the frosted look holds and the corners stay clean.
+            .background {
+                let shape = RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
+                shape.fill(.ultraThinMaterial.opacity(0.7))
+                    .overlay(shape.fill(LinearGradient(
+                        colors: [.black.opacity(0.06), .black.opacity(0.24)],
+                        startPoint: .top, endPoint: .bottom)))
+            }
             .overlay(RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
                 .strokeBorder(.white.opacity(0.16), lineWidth: 0.5))
     }
@@ -249,34 +258,29 @@ public struct AuraHourlyCard: View {
     /// True when at least one hour carries a rain chance — otherwise the precip row is empty and dropped.
     private var showPrecip: Bool { hours.contains { ($0.precipProb ?? 0) > 0 } }
 
-    /// Fixed height for the stacked rows, so the width-reading `GeometryReader` has a definite box. When
-    /// there's no rain anywhere in the strip the precip row is dropped and the card shrinks to match, so
-    /// a dry day doesn't reserve an empty band.
-    private var contentHeight: CGFloat {
-        // The row stack (hour + icon + degree) is ~71pt tall on the Watch; give it a bit more than
-        // that so the temperature row breathes inside the card. The grid is centred in this box (see
-        // `body`), so the extra slack splits evenly top and bottom rather than pooling at the bottom.
-        let rows: CGFloat = size == .phone ? 100 : 80      // hour + icon + degree
-        let precipRow: CGFloat = size == .phone ? 34 : 20
-        return showPrecip ? rows + precipRow : rows
-    }
+    /// The width of one of the five visible columns, measured from the strip (see `body`). Zero until the
+    /// first layout pass, when the grid falls back to sizing its columns evenly on its own.
+    @State private var columnWidth: CGFloat = 0
 
     public var body: some View {
         AuraCard(size: size) {
             if scrolls {
                 // Five columns fit the card width; the strip scrolls horizontally to the rest of the day.
-                GeometryReader { geo in
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        // Centre the rows in the tall box so the slack in `contentHeight` sits equally
-                        // above and below, keeping the card's top and bottom padding symmetric.
-                        grid(columnWidth: geo.size.width / 5)
-                            .frame(height: contentHeight)
-                    }
+                // The grid sizes to its own rows — no fixed height — so a strip that's dry for the next
+                // few hours (an empty precip row on the visible columns) doesn't reserve a band of empty
+                // space at the card's bottom. Width is measured in the background so the reader imposes
+                // no height of its own.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    grid(columnWidth: columnWidth > 0 ? columnWidth : nil)
                 }
-                .frame(height: contentHeight)
+                .frame(maxWidth: .infinity)
+                .background(GeometryReader { geo in
+                    Color.clear
+                        .onAppear { columnWidth = geo.size.width / 5 }
+                        .onChange(of: geo.size.width) { newWidth in columnWidth = newWidth / 5 }
+                })
             } else {
                 grid(columnWidth: nil, cap: 5)   // offline preview: the first five, spread to fill
-                    .frame(height: contentHeight)
             }
         }
         .auraSectionTitle("Próximas horas".uppercased(), size)
@@ -464,8 +468,8 @@ public struct AuraSunArcCard: View {
         guard let sr = sunrise, let ss = sunset, let len = Self.compact(from: sr, to: ss) else { return nil }
         var line = "\(len) de luz"
         if size == .phone, let dm = dayLengthDeltaMinutes {
-            if dm > 0 { line += " · +\(dm) min que ayer" }
-            else if dm < 0 { line += " · \(dm) min que ayer" }
+            if dm > 0 { line += " · \(dm) min más que ayer" }
+            else if dm < 0 { line += " · \(-dm) min menos que ayer" }
             else { line += " · igual que ayer" }
         }
         return line
@@ -1162,7 +1166,7 @@ private struct UVHourStrip: View {
             // the daily max) and today's peak with its hour.
             HStack(spacing: 5) {
                 if let n = nowSlot, n.uv > 0 {
-                    Text("Ahora \(n.index)")
+                    Text("Ahora \(n.index) (\(UVIndex(value: n.index).bandName.lowercased()))")
                         .foregroundStyle(.white)
                     Text("·").foregroundStyle(.white.opacity(0.4))
                 }
@@ -1173,6 +1177,8 @@ private struct UVHourStrip: View {
                 Spacer(minLength: 0)
             }
             .font(.system(size: size.smallSize - (size == .phone ? 2 : 2), weight: .semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)   // the band word widens "Ahora N" — shrink before it truncates
             .lineLimit(1).minimumScaleFactor(0.7)
 
             // The actionable window from the same hourly series: when to actually protect yourself, i.e.

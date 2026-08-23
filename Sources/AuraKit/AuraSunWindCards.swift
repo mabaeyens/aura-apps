@@ -92,12 +92,16 @@ public struct AuraRainCircular: View {
     /// Precipitation probability for the current hour, %, or nil on a thin snapshot (no hourly feed).
     private var prob: Int? { snapshot.currentPrecipProb }
 
+    /// Snowing now → the precipitation falls as snow, so the same complication shows a snowflake instead
+    /// of the raindrop. Driven off the current sky category, the same source the app cards use.
+    private var isSnow: Bool { Palette.sky(forCode: snapshot.currentSky).category == .snow }
+
     public var body: some View {
         Gauge(value: Double(prob ?? 0), in: 0...100) {
-            // White keeps the drop legible and clearly distinct from the ring, which already carries
+            // White keeps the glyph legible and clearly distinct from the ring, which already carries
             // the probability in Palette.precip. Without it the label inherits the gauge tint, so the
-            // drop turns the same blue as the ring and reads as a smudge on it.
-            Image(systemName: "drop.fill").foregroundStyle(.white)
+            // glyph turns the same blue as the ring and reads as a smudge on it.
+            Image(systemName: isSnow ? "snowflake" : "drop.fill").foregroundStyle(.white)
         } currentValueLabel: {
             Text(prob.map { "\($0)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
@@ -143,6 +147,16 @@ enum UVNow {
     static func gradient(to top: Int) -> Gradient {
         Gradient(colors: stride(from: 0, through: max(top, 1), by: 1).map { Palette.uvIndex($0) })
     }
+
+    /// True when the current sky is overcast or wet enough that cloud is materially holding the UV index
+    /// below its clear-sky value. The trigger for the complication's cloud cue: it tells the wearer the
+    /// number is the cloudy reading, not the clear-sky potential.
+    static func cloudy(_ s: WeatherSnapshot) -> Bool {
+        switch Palette.sky(forCode: s.currentSky).category {
+        case .overcast, .rain, .storm, .snow, .fog: return true
+        default:                                     return false
+        }
+    }
 }
 
 /// `.accessoryCircular`: the **current** UV index as a ring fill from 0 to today's peak, with the band
@@ -163,10 +177,13 @@ public struct AuraUVCircular: View {
         let v = UVNow.value(snapshot, at: now)
         let top = UVNow.dayMax(snapshot, at: now)
         let bandColor = Palette.uvIndex(v ?? 0)
+        let cloudy = UVNow.cloudy(snapshot)
         return Gauge(value: Double(min(v ?? 0, top)), in: 0...Double(top)) {
-            // Per-band protection glyph (sun → sunglasses → warning → umbrella), tinted to the band.
-            Image(systemName: UVIndex(value: v ?? 0).glyph)
-                .foregroundStyle(bandColor)
+            // Overcast/wet: a hollow cloud replaces the protection glyph, signalling the index is the
+            // cloudy reading (cloud is holding it below the clear-sky value), not the clear-sky maximum.
+            // Otherwise the per-band protection glyph (sun → sunglasses → warning → umbrella).
+            Image(systemName: cloudy ? "cloud" : UVIndex(value: v ?? 0).glyph)
+                .foregroundStyle(cloudy ? .white : bandColor)
         } currentValueLabel: {
             Text(v.map { "\($0)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
@@ -194,8 +211,10 @@ public struct AuraUVCorner: View {
 
     public var body: some View {
         let v = UVNow.value(snapshot, at: now)
+        let cloudy = UVNow.cloudy(snapshot)
         return HStack(spacing: 2) {
-            Image(systemName: UVIndex(value: v ?? 0).glyph)
+            // Overcast/wet: a hollow cloud in place of the band glyph, marking this as the cloudy reading.
+            Image(systemName: cloudy ? "cloud" : UVIndex(value: v ?? 0).glyph)
             Text(v.map { "\($0)" } ?? "—")
                 .fontWeight(.bold).fontDesign(.rounded)
                 .lineLimit(1).minimumScaleFactor(0.7)
