@@ -505,16 +505,6 @@ for (label, when) in [("1morning", todayAt(8, 0)), ("2noon", todayAt(13, 30)),
     write(skyOnly(now: when), name: "sky-\(label)", size: CGSize(width: 300, height: 640))
 }
 
-// PROTOTYPE: phased moon (MoonPreview.swift). The eight principal phases, a crescent traversing the
-// arc, and tonight's actual moon — brightness of disc + glow tracks illumination.
-write(moonPhaseChart(), name: "moon-phases", size: CGSize(width: 1360, height: 220))
-write(moonTraverse(fraction: 0.15,
-                   positions: [.init(x: 0.5, y: 0.55), .init(x: 0.5, y: 0.42),
-                               .init(x: 0.5, y: 0.30), .init(x: 0.5, y: 0.42),
-                               .init(x: 0.5, y: 0.55)]),
-      name: "moon-traverse", size: CGSize(width: 820, height: 200))
-write(moonTonight(now: Date()), name: "moon-tonight", size: CGSize(width: 340, height: 360))
-
 // Sun-disc parity check: AuraSky at REAL device point sizes (phone portrait vs iPad landscape), same
 // clear noon. The disc radius is capped (see AuraSky), so the sun should read at the same physical size
 // on both rather than ballooning on the larger iPad canvas.
