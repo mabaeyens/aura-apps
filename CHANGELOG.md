@@ -2,7 +2,7 @@
 
 ## v1.0.0
 
-First release of Aura — Spain's weather, from official AEMET open data.
+First release of Aura: Spain's weather, from official AEMET open data.
 
 - Per-municipality forecast: sky, temperature, wind, UV index, chance of rain and humidity.
 - A narrated daily forecast, drawn from AEMET's official text.
@@ -11,8 +11,8 @@ First release of Aura — Spain's weather, from official AEMET open data.
 - Sun and moon: sunrise, sunset, and moonrise and moonset.
 - Official weather warnings (avisos) when they matter, and a calm all-clear when there are none.
 - A living background that follows the sun across the day, from dawn to dusk.
-- An Apple Watch app with the same cards as on iPhone, plus a full complication catalog —
-  temperature, wind, UV, rain, humidity, sun, hours, days and avisos — across the circular,
+- An Apple Watch app with the same cards as on iPhone, plus a full complication catalog
+  (temperature, wind, UV, rain, humidity, sun, hours, days and avisos) across the circular,
   corner, rectangular and inline slots. The aviso complication shows a calm struck-out marker
   when there is no active warning, instead of an "open Aura" placeholder.
 - Home Screen and Lock Screen widgets, configurable by location and a Nature / City scene.

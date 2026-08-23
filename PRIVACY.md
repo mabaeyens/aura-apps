@@ -1,4 +1,4 @@
-# Privacy Policy — Aura
+# Aura Privacy Policy
 
 _Last updated: 2026-08-22_
 
@@ -8,10 +8,10 @@ nothing, and none of it reaches me.
 ## The short version
 
 - No account. No sign-up. No tracking. No analytics. No ads.
-- No servers of mine. Aura talks only to Spain's official public data services — it never
+- No servers of mine. Aura talks only to Spain's official public data services. It never
   phones home to me, because there is no "Aura cloud".
 - Your location is matched to your municipality entirely on your device. Only that
-  municipality's public code — never your actual position — is sent to the official services
+  municipality's public code (never your actual position) is sent to the official services
   to fetch its forecast. It is never linked to your identity, because there is no identity:
   Aura has no accounts.
 - It's open source, so you can check every word of this for yourself:
@@ -20,13 +20,13 @@ nothing, and none of it reaches me.
 ## What data Aura collects
 
 None that comes to me. Aura has no backend of mine, no analytics SDK, and no advertising. I
-don't receive, store, or sell any of your data — I couldn't if I wanted to.
+don't receive, store, or sell any of your data. I couldn't if I wanted to.
 
 ## Your location
 
 If you grant location access ("While Using the App"), Aura takes a rough, kilometre-level fix
 and, on your device, matches it to the nearest Spanish municipality from a list bundled in the
-app — the same list you can pick from by hand. Only public identifiers then leave your device:
+app, the same list you can pick from by hand. Only public identifiers then leave your device:
 that municipality's official code (its INE code) is sent to AEMET, and the code of the nearest
 air-quality station to MITECO, to fetch the forecast and the air reading. Your actual
 coordinates never leave your device, the request carries no name, account, or device
@@ -36,9 +36,9 @@ You can decline location access and Aura still works; you just choose the place 
 
 ## The services Aura talks to
 
-- **AEMET OpenData** — the Spanish State Meteorological Agency (Agencia Estatal de
+- **AEMET OpenData**, the Spanish State Meteorological Agency (Agencia Estatal de
   Meteorología), for forecasts, warnings, and UV. <https://opendata.aemet.es>
-- **MITECO** — the Ministry for the Ecological Transition, for air-quality (ICA) readings.
+- **MITECO**, the Ministry for the Ecological Transition, for air-quality (ICA) readings.
   <https://www.miteco.gob.es>
 
 Your use of the data those agencies provide is governed by their own terms. Aura sends them
@@ -48,7 +48,7 @@ only what's needed to answer "what's the weather where I am" and reads the answe
 
 Cached forecasts, your chosen background theme, and last-used settings live on your device.
 If iCloud is available they may sync across your own devices under your Apple ID, and nowhere
-else — never to me.
+else, never to me.
 
 ## Children's privacy
 
