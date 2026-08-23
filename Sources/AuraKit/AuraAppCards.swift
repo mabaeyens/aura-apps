@@ -689,54 +689,55 @@ public struct AuraSunArcCard: View {
 
 // MARK: - Moon arc
 
-/// The night twin of `AuraSunArcCard`. The moon rides from ocaso (left / east) to the next orto
-/// (right / west) along the same shallow curve, sitting at its live position for the hour — mirroring the
-/// dimmer moon `AuraSky` now draws after dark. Ocaso and orto anchor the two ends; the centre reads the
-/// night still to come, or by day the countdown to the next ocaso while the moon rests at the horizon.
+/// The night twin of `AuraSunArcCard` — but tracing the moon's *own* path, not the sun's. The moon rides
+/// from its real salida (moonrise, left / east) to its real puesta (moonset, right / west) along the same
+/// shallow curve, sitting at its live position for the hour and wearing tonight's true phase — the very
+/// disc `AuraSky` draws after dark. Salida and puesta anchor the two ends; the centre counts down to the
+/// next of them. When the moon is below the horizon it rests at the eastern edge, waiting to rise.
 ///
-/// The moon's path is the night span (ocaso → next orto) — the very arc `AuraSunPath` follows after dark.
-/// Like the sun card it re-anchors from `snapshot.sunrise/sunset` and the passed `now` at display time,
-/// so an overnight-cached snapshot stays honest.
+/// The path is the moon's own appearance (salida → puesta from `LunarTimes`), not the night span: the moon
+/// often rises before the sun sets or sets before dawn, so this no longer borrows the sun's ocaso/orto.
+/// Solved once from the location's coordinates and the passed `now`, so an overnight-cached snapshot stays
+/// honest. Falls back to "unavailable" when coordinates are absent (snapshots cached before they carried them).
 public struct AuraMoonArcCard: View {
     let snapshot: WeatherSnapshot
     let size: AuraSize
     let now: Date
+    // The moon's real appearance and phase for this place and hour, solved once in init: the LunarTimes
+    // scan is ~650 position evaluations, too heavy to repeat across the several body-side accesses below.
+    private let moonrise: Date?
+    private let moonset: Date?
+    private let illumination: Double
+    private let waxing: Bool
+
     public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date()) {
         self.snapshot = snapshot; self.size = size; self.now = now
-    }
-
-    /// The current night's real boundaries — the ocaso that opened it and the orto that closes it —
-    /// computed from the location's coordinates so the neighbouring day's 2–3 min sun-time drift is
-    /// honoured: today's sunset is *not* last night's, nor tomorrow's. Falls back to the snapshot's own
-    /// today times when coordinates are absent (snapshots cached before they were carried).
-    private struct NightBounds { let ocaso: Date; let orto: Date }
-    private var bounds: NightBounds? {
         if let lat = snapshot.latitude, let lon = snapshot.longitude {
-            let today = SolarTimes(date: now, latitude: lat, longitude: lon)
-            if let ss = today.sunset, let sr = today.sunrise {
-                let day: TimeInterval = 24 * 3600
-                if now >= ss {   // first half of the night: tonight's ocaso → tomorrow's orto
-                    let orto = SolarTimes(date: now.addingTimeInterval(day), latitude: lat, longitude: lon).sunrise
-                    return NightBounds(ocaso: ss, orto: orto ?? sr)
-                }
-                if now < sr {    // small hours: last night's ocaso → this morning's orto
-                    let ocaso = SolarTimes(date: now.addingTimeInterval(-day), latitude: lat, longitude: lon).sunset
-                    return NightBounds(ocaso: ocaso ?? ss, orto: sr)
-                }
-                return NightBounds(ocaso: ss, orto: sr)   // daytime edge (the card is night-gated)
-            }
+            let times = LunarTimes(date: now, latitude: lat, longitude: lon)
+            self.moonrise = times.moonrise
+            self.moonset = times.moonset
+        } else {
+            self.moonrise = nil; self.moonset = nil
         }
-        if let ss = snapshot.sunset, let sr = snapshot.sunrise { return NightBounds(ocaso: ss, orto: sr) }
-        return nil
+        let pos = LunarPosition(date: now)
+        self.illumination = pos.illumination
+        self.waxing = pos.waxing
     }
 
-    private var hasTimes: Bool { bounds != nil }
+    private var hasTimes: Bool { moonrise != nil && moonset != nil }
     private func clamp(_ v: CGFloat) -> CGFloat { min(max(v, 0), 1) }
 
-    /// 0 at ocaso → 1 at orto, clamped to the night span.
+    /// Is the moon above the horizon right now? `LunarTimes` reports a past salida and a future puesta only
+    /// while the moon is up; when it is down both times sit in the future (the next appearance).
+    private var isUp: Bool {
+        guard let r = moonrise, let s = moonset else { return false }
+        return r <= now && s > now
+    }
+
+    /// 0 at salida → 1 at puesta while the moon is up; rests at 0 (the eastern horizon) when it is down.
     private var fraction: CGFloat {
-        guard let b = bounds, b.orto > b.ocaso else { return 0.5 }
-        return clamp(CGFloat(now.timeIntervalSince(b.ocaso) / b.orto.timeIntervalSince(b.ocaso)))
+        guard isUp, let r = moonrise, let s = moonset, s > r else { return 0 }
+        return clamp(CGFloat(now.timeIntervalSince(r) / s.timeIntervalSince(r)))
     }
 
     public var body: some View {
@@ -760,22 +761,23 @@ public struct AuraMoonArcCard: View {
         }
         .auraDetail(size) { AuraMoonSheet(snapshot: snapshot, now: now) }
         .auraSectionTitle("Luna".uppercased(), size)
-        // Same as the sun card: the drawn night arc is silent, so speak the ocaso/orto that bound the
-        // night and the night-remaining readout as one collapsed element.
+        // Same as the sun card: the drawn arc is silent, so speak the salida/puesta that bound the moon's
+        // appearance and the countdown readout as one collapsed element.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Luna")
         .accessibilityValue(a11yValue)
     }
 
-    /// Spoken summary for VoiceOver: the night's opening ocaso, its closing orto and the centre readout.
+    /// Spoken summary for VoiceOver: the moon's salida, its puesta and the centre readout.
     private var a11yValue: String {
-        guard let b = bounds else { return "Horario lunar no disponible" }
-        let r = readout
-        return "Anochece a las \(hhmm(b.ocaso)), amanece a las \(hhmm(b.orto))." + (r.isEmpty ? "" : " \(r).")
+        guard let r = moonrise, let s = moonset else { return "Horario lunar no disponible" }
+        let line = readout
+        return "Sale a las \(hhmm(r)), se pone a las \(hhmm(s))." + (line.isEmpty ? "" : " \(line).")
     }
 
-    // Horizon, the full night arc (faint), the travelled portion (cool moonlight, night only), and the
-    // moon glyph at its live position. By day the arc dims and the moon rests at the ocaso horizon.
+    // Horizon, the full appearance arc (faint), the travelled portion (cool moonlight, up only), and the
+    // moon glyph — wearing tonight's true phase — at its live position. When the moon is below the horizon
+    // the arc dims and the disc rests at the eastern (salida) end.
     private var arc: some View {
         let arcHeight: CGFloat = size == .phone ? 96 : 58
         let glyphR: CGFloat = size == .phone ? 12 : 7.5
@@ -799,22 +801,21 @@ public struct AuraMoonArcCard: View {
                     .stroke(.white.opacity(0.24),
                             style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
 
-                // The travelled portion, ocaso → now, in cool moonlight.
+                // The travelled portion, salida → now, in cool moonlight (drawn only while the moon is up).
                 Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: f)
                     .stroke(
                         LinearGradient(colors: [Palette.tempBlue, Color(white: 0.95)],
                                        startPoint: .leading, endPoint: .trailing),
                         style: StrokeStyle(lineWidth: 3, lineCap: .round))
 
-                // The moon: a soft cool glow under a pale disc — dimmer and cooler than the sun.
-                let core = Color(white: 0.92)
+                // The moon: a soft cool glow — dimming toward a new moon — under tonight's real phase disc.
                 let glow = Color(red: 0.66, green: 0.72, blue: 0.92)
-                Circle().fill(glow.opacity(0.45))
+                Circle().fill(glow.opacity(0.45 * max(illumination, 0.22)))
                     .frame(width: glyphR * 2.8, height: glyphR * 2.8)
                     .blur(radius: size == .phone ? 7 : 4)
                     .position(moon)
-                Circle().fill(core)
-                    .frame(width: glyphR * 2, height: glyphR * 2)
+                PhasedMoonDisc(illumination: illumination, waxing: waxing, radius: glyphR,
+                               litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
                     .position(moon)
             }
         }
@@ -823,12 +824,12 @@ public struct AuraMoonArcCard: View {
         .padding(.horizontal, glyphR)
     }
 
-    // Ocaso on the left (night begins), orto on the right (night ends) — each the real bounding event.
+    // Salida on the left (moonrise, east), puesta on the right (moonset, west) — the moon's own events.
     private var ends: some View {
         HStack(alignment: .top) {
-            end(icon: "sunset.fill", label: "Ocaso", time: bounds?.ocaso)
+            end(icon: "arrow.up", label: "Salida", time: moonrise)
             Spacer()
-            end(icon: "sunrise.fill", label: "Orto", time: bounds?.orto, trailing: true)
+            end(icon: "arrow.down", label: "Puesta", time: moonset, trailing: true)
         }
     }
 
@@ -848,10 +849,13 @@ public struct AuraMoonArcCard: View {
         }
     }
 
-    /// Centre line: the night still to come, orto (this night's end) minus now.
+    /// Centre line: the countdown to the moon's next event — its puesta while it is up, otherwise its salida.
     private var readout: String {
-        if let b = bounds, let until = Self.compact(from: now, to: b.orto) {
-            return "Quedan \(until) de noche"
+        if isUp, let s = moonset, let until = Self.compact(from: now, to: s) {
+            return "Se pone en \(until)"
+        }
+        if !isUp, let r = moonrise, let until = Self.compact(from: now, to: r) {
+            return "Sale en \(until)"
         }
         return ""
     }

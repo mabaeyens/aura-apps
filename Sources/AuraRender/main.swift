@@ -491,6 +491,23 @@ write(sheetPreview(AuraMoonSheet(snapshot: moonSnap, now: utcDate(2026, 8, 23, 2
                    size: CGSize(width: 380, height: 720)),
       name: "sheet-moon", size: CGSize(width: 380, height: 720))
 
+// The moon-arc card tracing the real salida → puesta path, in both states. On 2026-08-23 the Madrid moon
+// rises ~16:34 UTC and sets ~01:27 UTC, so 22:00 UTC catches it up (partway along the arc, waxing gibbous),
+// and 06:00 UTC the next morning catches it down (already set, resting at the eastern horizon, "Sale en …").
+func moonArcPreview(_ when: Date) -> some View {
+    ZStack {
+        AuraSky(snapshot: moonSnap, now: when)
+        AuraMoonArcCard(snapshot: moonSnap, size: .phone, now: when)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 320, height: 300)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .fontDesign(.rounded)
+}
+write(moonArcPreview(utcDate(2026, 8, 23, 22, 0)), name: "moon-arc-up", size: CGSize(width: 320, height: 300))
+write(moonArcPreview(utcDate(2026, 8, 24, 6, 0)), name: "moon-arc-down", size: CGSize(width: 320, height: 300))
+
 // The sky ALONE (no cards) at the four times of day, so the sun/moon disc and its travel east→west can
 // be judged without the frosted stack covering it. Phone aspect.
 @MainActor
