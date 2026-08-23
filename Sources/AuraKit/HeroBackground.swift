@@ -155,14 +155,16 @@ public enum HeroBackground {
     /// does for the wide bases, so one horizon fraction lands right on the phone screen and the wrist alike.
     public static let heroAspect: CGFloat = 9.0 / 19.5
 
-    /// Where the highest scenery meets the sky in each **portrait** hero (the 48-asset grid), as a fraction
-    /// of the art's height — the mountain **peak** in the landscape grid (~0.55) and the tallest rooftop/
-    /// tower in the cityscape (~0.62). `AuraSky` pins a low dawn/dusk sun just above this so it rides the
-    /// calm sky rather than the scenery in front of it — the fix for the "ball in front" the Watch and the
-    /// phone portrait showed when no horizon was passed at all. All 48 assets in a family share the same
-    /// framing (the hero contract), so one value per family covers every condition and hour.
+    /// Where a low dawn/dusk sun should rest against the **portrait** hero (the 48-asset grid), as a
+    /// fraction of the art's height. This is the **skyline at the frame edges** (~0.68 landscape, ~0.70
+    /// cityscape), not the central peak: the sun only sits low near sunrise (far left) and sunset (far
+    /// right), where the scenery slopes down and away from the peak, so it can nestle onto that low
+    /// horizon and read as *setting*. Pinning to the central peak instead (the old 0.52) left the sun
+    /// floating high over the low edge terrain — "where's the sun going". A mid-day sun is at the peak's
+    /// x but already high above any clamp, so the peak is never overlapped. One value per family.
+    /// (Cityscape keeps its prior 0.60 until its art actually ships and can be checked the same way.)
     public static func heroHorizon(_ family: Family) -> CGFloat {
-        family == .cityscape ? 0.60 : 0.52
+        family == .cityscape ? 0.60 : 0.68
     }
 
     /// The wide base **name** for a snapshot's day/night state (the string counterpart of
