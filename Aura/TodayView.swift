@@ -176,7 +176,13 @@ struct TodayView: View {
                     heroAspect: HeroBackground.wideBaseAspect)
                 .ignoresSafeArea()
         } else {
-            AuraSky(snapshot: displaySnapshot, now: displayNow, heroImage: heroImage)
+            // `.bottom` anchor + `heroHorizon` pin a low dawn/dusk sun just above the portrait art's
+            // skyline (mountain peak / tallest rooftop) so it sits in the calm sky, not on the scenery —
+            // the same fix the Watch and the wide iPad canvas already get.
+            AuraSky(snapshot: displaySnapshot, now: displayNow, heroImage: heroImage,
+                    heroAnchor: .bottom,
+                    heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
+                    heroAspect: HeroBackground.heroAspect)
                 .ignoresSafeArea()
         }
     }

@@ -112,82 +112,121 @@ public struct AuraRainCircular: View {
 
 // MARK: - UV index
 
-/// `.accessoryCircular`: the day's maximum UV index as a ring fill on the WHO 0…11 scale, with a sun
-/// glyph and the index number in the centre. AEMET publishes a clear-sky *daily maximum*, not an
-/// hourly value, so this is honestly the day's peak — the complication's description and the curved
-/// `bandLabel` (e.g. "Muy alto") say so rather than implying "now". The band colour comes through on
-/// full-colour faces; the ring fill carries the level when colour is dropped.
+/// The live "UV ahora" reading behind the UV complication. It prefers the **current hour** from the CAMS
+/// hourly curve (`uvHourly`) — the real, cloud-attenuated index right now — and falls back to AEMET's
+/// clear-sky **daily maximum** when the hourly product hasn't loaded (an older snapshot, or a Watch that
+/// synced before the hourly fetch). The gauge scale runs 0…today's peak, so the fill reads "how far into
+/// today's worst UV are we right now", and the fill grades along the WHO colour scale as it climbs.
+enum UVNow {
+    /// The UV index to show now — the current hour, else the daily max.
+    static func value(_ s: WeatherSnapshot, at now: Date) -> Int? {
+        if let slot = s.uvHourly?.current(at: now) { return slot.index }
+        return s.uvIndex?.value
+    }
+
+    /// Whether the value is a live hourly reading (vs the daily-max fallback) — lets a label say "ahora".
+    static func isLive(_ s: WeatherSnapshot, at now: Date) -> Bool {
+        s.uvHourly?.current(at: now) != nil
+    }
+
+    /// The top of the gauge: today's peak UV, from the hourly curve or the daily max, never below the
+    /// current value (so a mid-morning reading still leaves headroom) and at least 1 (non-empty range).
+    static func dayMax(_ s: WeatherSnapshot, at now: Date) -> Int {
+        max(s.uvHourly?.todayMax(reference: now)?.index ?? 0,
+            s.uvIndex?.value ?? 0,
+            value(s, at: now) ?? 0,
+            1)
+    }
+
+    /// A gradient that grades along the WHO scale from 0 to today's peak — green → yellow → orange → red
+    /// as the arc climbs, so the fill itself is colour-coded to where the index sits, not a flat tint.
+    static func gradient(to top: Int) -> Gradient {
+        Gradient(colors: stride(from: 0, through: max(top, 1), by: 1).map { Palette.uvIndex($0) })
+    }
+}
+
+/// `.accessoryCircular`: the **current** UV index as a ring fill from 0 to today's peak, with the band
+/// glyph and the live index number in the centre. The ring grades along the WHO colour scale as it fills
+/// and the number is tinted to its own band, so both the height and the colour read the level; the Lock
+/// Screen desaturates the colour while the fill keeps carrying it. Falls back to AEMET's clear-sky daily
+/// maximum (still on a 0…max ring) when the hourly curve hasn't loaded.
 public struct AuraUVCircular: View {
     let snapshot: WeatherSnapshot
+    let now: Date
 
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
-
-    /// The day's clear-sky maximum UV index, or nil when the UV product hasn't loaded.
-    private var uv: UVIndex? { snapshot.uvIndex }
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
 
     public var body: some View {
-        let bandColor = Palette.uvIndex(uv?.value ?? 0)
-        return Gauge(value: Double(min(uv?.value ?? 0, 11)), in: 0...11) {
+        let v = UVNow.value(snapshot, at: now)
+        let top = UVNow.dayMax(snapshot, at: now)
+        let bandColor = Palette.uvIndex(v ?? 0)
+        return Gauge(value: Double(min(v ?? 0, top)), in: 0...Double(top)) {
             // Per-band protection glyph (sun → sunglasses → warning → umbrella), tinted to the band.
-            Image(systemName: uv?.glyph ?? "sun.max.fill")
+            Image(systemName: UVIndex(value: v ?? 0).glyph)
                 .foregroundStyle(bandColor)
         } currentValueLabel: {
-            Text(uv.map { "\($0.value)" } ?? "—")
+            Text(v.map { "\($0)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
-                // Colour the index to its WHO band. Reads on full-colour faces; the Lock Screen
-                // desaturates it while the ring fill keeps carrying the level.
                 .foregroundStyle(bandColor)
         }
         .gaugeStyle(.accessoryCircular)
-        .tint(bandColor)
+        .tint(UVNow.gradient(to: top))
     }
 
-    /// The WHO band name for the curved bezel label — honest about the value being a daily maximum.
-    public var bandLabel: String? { uv?.bandName }
+    /// The WHO band name of the current reading, for the curved bezel label.
+    public var bandLabel: String? { UVNow.value(snapshot, at: now).map { UVIndex(value: $0).bandName } }
 }
 
-/// `.accessoryCorner` (Apple Watch): the day's max UV as the index number + band glyph in the corner,
-/// with a curved 0–11 gauge along the outer bezel, tinted to the WHO band. The complication applies
-/// `.widgetCurvesContent()` to the content and `.widgetLabel { cornerGauge }` for the arc.
+/// `.accessoryCorner` (Apple Watch): the **current** UV as the index number + band glyph in the corner,
+/// with a curved gauge (0…today's peak) along the outer bezel, grading along the WHO colour scale. The
+/// complication applies `.widgetCurvesContent()` to the content and `.widgetLabel { cornerGauge }` for
+/// the arc. Falls back to AEMET's daily maximum when the hourly curve hasn't loaded.
 public struct AuraUVCorner: View {
     let snapshot: WeatherSnapshot
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
-
-    private var uv: UVIndex? { snapshot.uvIndex }
+    let now: Date
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
 
     public var body: some View {
-        HStack(spacing: 2) {
-            Image(systemName: uv?.glyph ?? "sun.max.fill")
-            Text(uv.map { "\($0.value)" } ?? "—")
+        let v = UVNow.value(snapshot, at: now)
+        return HStack(spacing: 2) {
+            Image(systemName: UVIndex(value: v ?? 0).glyph)
+            Text(v.map { "\($0)" } ?? "—")
                 .fontWeight(.bold).fontDesign(.rounded)
                 .lineLimit(1).minimumScaleFactor(0.7)
         }
         .font(.title3)
-        .foregroundStyle(Palette.uvIndex(uv?.value ?? 0))
+        .foregroundStyle(Palette.uvIndex(v ?? 0))
     }
 
     /// Whether a UV value is known, so the bezel gauge can be drawn (else fall back to `cornerLabel`).
-    public var hasValue: Bool { uv != nil }
+    public var hasValue: Bool { UVNow.value(snapshot, at: now) != nil }
 
-    /// The curved bezel gauge: the index on the WHO 0–11 scale, band-tinted, with 0/11 at the ends. No
-    /// `gaugeStyle` — the `.widgetLabel` context arcs it along the corner bezel.
+    /// The curved bezel gauge: the current index on a 0…today's-peak scale, the fill grading along the WHO
+    /// colours, with 0 and the peak at the ends. No `gaugeStyle` — the `.widgetLabel` context arcs it.
     @ViewBuilder public var cornerGauge: some View {
-        if let v = uv?.value {
-            Gauge(value: Double(min(v, 11)), in: 0...11) {
+        if let v = UVNow.value(snapshot, at: now) {
+            let top = UVNow.dayMax(snapshot, at: now)
+            Gauge(value: Double(min(v, top)), in: 0...Double(top)) {
                 EmptyView()
             } currentValueLabel: {
                 EmptyView()
             } minimumValueLabel: {
                 Text("0")
             } maximumValueLabel: {
-                Text("11")
+                Text("\(top)")
             }
-            .tint(Palette.uvIndex(v))
+            .tint(UVNow.gradient(to: top))
         }
     }
 
     /// Fallback bezel label when UV is unknown.
-    public var cornerLabel: String { uv.map { "UV \($0.value)" } ?? "UV —" }
+    public var cornerLabel: String { UVNow.value(snapshot, at: now).map { "UV \($0)" } ?? "UV —" }
 }
 
 /// `.accessoryCorner` (Apple Watch): the wind speed and the direction it comes from in the corner, with

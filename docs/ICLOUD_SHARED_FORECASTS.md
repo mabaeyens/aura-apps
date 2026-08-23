@@ -2,7 +2,7 @@
 
 ## Why I'm writing this
 
-I run Aura on three devices — iPhone, iPad, and Apple Watch — and each one that
+I run Aura on four devices — iPhone, iPad and Mac, and Apple Watch — and each one that
 can reach the network fetches from AEMET on its own schedule. That means up to
 three independent bursts of requests against my AEMET key for the *same*
 forecast, for the *same* saved locations. AEMET rate-limits per key, so this is

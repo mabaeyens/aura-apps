@@ -146,16 +146,18 @@ private struct AvisoPill: View {
 /// One hour of the compact strip: hour, day/night glyph, temperature.
 private struct HomeHourColumn: View {
     let hour: HourSlot
+    /// Bigger type and glyph for the iPad XL card, where the caption sizes read small against the estate.
+    var large: Bool = false
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: large ? 5 : 3) {
             Text("\(hour.hour)")
-                .font(.caption2).skyText()
+                .font(large ? .subheadline : .caption2).skyText()
             ConditionGlyph(sky: hour.sky, isNight: (hour.sky ?? "").hasSuffix("n"))
-                .font(.body)
-                .frame(height: 20)
+                .font(large ? .title3 : .body)
+                .frame(height: large ? 26 : 20)
             Text(HomeFormat.temp(hour.temp))
-                .font(.caption).fontWeight(.semibold).skyText()
+                .font(large ? .body : .caption).fontWeight(.semibold).skyText()
         }
         .frame(maxWidth: .infinity)
     }
@@ -167,6 +169,11 @@ private struct HomeHourColumn: View {
 /// right, like Apple's own forecast.
 private struct HomeDayList: View {
     let days: [DaySnapshot]
+    /// Spread the rows to fill the available height (even vertical gaps) instead of stacking them tight at
+    /// the top — used on the XL card's right column, which has the room to breathe.
+    var fill: Bool = false
+    /// Bigger type and a taller band, for the iPad XL card where the small caption sizes read cramped.
+    var large: Bool = false
 
     /// The coolest low and warmest high across the shown days — the scale every band is drawn against.
     private var span: (min: Int, max: Int)? {
@@ -176,8 +183,18 @@ private struct HomeDayList: View {
     }
 
     var body: some View {
-        VStack(spacing: 5) {
-            ForEach(days) { HomeDayRow(day: $0, span: span) }
+        if fill {
+            VStack(spacing: 0) {
+                ForEach(Array(days.enumerated()), id: \.element.id) { idx, day in
+                    HomeDayRow(day: day, span: span, large: large)
+                    if idx < days.count - 1 { Spacer(minLength: 6) }
+                }
+            }
+            .frame(maxHeight: .infinity)
+        } else {
+            VStack(spacing: 5) {
+                ForEach(days) { HomeDayRow(day: $0, span: span, large: large) }
+            }
         }
     }
 }
@@ -186,25 +203,26 @@ private struct HomeDayList: View {
 private struct HomeDayRow: View {
     let day: DaySnapshot
     let span: (min: Int, max: Int)?
+    var large: Bool = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: large ? 12 : 8) {
             Text(HomeFormat.weekday(day.date))
-                .font(.caption).fontWeight(.semibold)
-                .frame(width: 34, alignment: .leading)
+                .font(large ? .subheadline : .caption).fontWeight(.semibold)
+                .frame(width: large ? 44 : 34, alignment: .leading)
                 .skyText()
             ConditionGlyph(sky: day.sky, isNight: false)
-                .font(.footnote)
-                .frame(width: 20)
+                .font(large ? .body : .footnote)
+                .frame(width: large ? 24 : 20)
             Text(HomeFormat.temp(day.min))
-                .font(.caption).foregroundStyle(.white.opacity(0.75))
-                .frame(width: 30, alignment: .trailing)
+                .font(large ? .subheadline : .caption).foregroundStyle(.white.opacity(0.75))
+                .frame(width: large ? 38 : 30, alignment: .trailing)
             TempBand(low: day.min, high: day.max, span: span)
-                .frame(height: 5)
+                .frame(height: large ? 7 : 5)
                 .frame(maxWidth: .infinity)
             Text(HomeFormat.temp(day.max))
-                .font(.caption).fontWeight(.semibold)
-                .frame(width: 30, alignment: .trailing)
+                .font(large ? .subheadline : .caption).fontWeight(.semibold)
+                .frame(width: large ? 38 : 30, alignment: .trailing)
                 .skyText()
         }
     }
@@ -482,21 +500,18 @@ public struct AuraHomeXL: View {
                 }
                 .frame(width: geo.size.width * 0.37, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 14) {
                     let hours = Array(snapshot.upcomingHours().prefix(7))
                     let days = Array(snapshot.days.prefix(4))
+                    // Hours ride the top in their own larger strip; the days fill the rest of the column,
+                    // spread to reach the bottom edge instead of clustering under the hours with dead space
+                    // below — the XL has estate to spare on the right (the "use the room" report).
                     if !hours.isEmpty {
-                        HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0) } }
-                    }
-                    if !hours.isEmpty && !days.isEmpty {
-                        // Extra vertical air so the days stack reads as its own block, not crammed under
-                        // the hours strip (the "too tight" report).
-                        Divider().overlay(.white.opacity(0.25)).padding(.vertical, 6)
+                        HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0, large: true) } }
                     }
                     if !days.isEmpty {
-                        HomeDayList(days: days)
+                        HomeDayList(days: days, fill: true, large: true)
                     }
-                    Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }

@@ -23,8 +23,11 @@ struct WatchRootView: View {
     var body: some View {
         ZStack {
             // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
-            // crop the mountains, tree and river off the bottom of the tall art).
-            AuraSky(snapshot: snapshot, heroImage: heroImage, heroAnchor: .bottom).ignoresSafeArea()
+            // crop the mountains, tree and river off the bottom of the tall art). `heroHorizon` pins a low
+            // dawn/dusk sun above the art's skyline so it rides the sky, not the scenery in front of it.
+            AuraSky(snapshot: snapshot, heroImage: heroImage, heroAnchor: .bottom,
+                    heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
+                    heroAspect: HeroBackground.heroAspect).ignoresSafeArea()
             if let snapshot {
                 // Hero fills the wrist screen — clean sky + landscape, system clock in its top-right
                 // corner — and the cards sit below the fold, revealed on scroll (`heroFillHeight`). The

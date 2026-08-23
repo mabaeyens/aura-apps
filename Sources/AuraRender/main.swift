@@ -439,3 +439,69 @@ func uvCardPreview() -> some View {
     .fontDesign(.rounded)
 }
 write(uvCardPreview(), name: "app-uv-card", size: CGSize(width: 340, height: 232))
+
+// ---- UV complication "ahora": current-hour reading on a 0…today's-peak ring ----
+// The preview snapshot carries a realistic CAMS bell (peak index 8 around 14h). Rendered at three hours
+// so the ring's partial fill and its WHO-graded colour track the live index — 3 (morning, moderate) →
+// 8 (peak, muy alto) → 4 (afternoon) — instead of a flat daily-max ring.
+for (label, h) in [("morning", 9), ("peak", 13), ("afternoon", 17)] {
+    let when = todayAt(h, 0)
+    dump("uvnow-\(label)", size: CGSize(width: 76, height: 76)) {
+        AuraUVCircular(snapshot: .preview, now: when)
+    }
+    dump("uvnow-corner-\(label)", size: CGSize(width: 44, height: 44)) {
+        AuraUVCorner(snapshot: .preview, now: when)
+    }
+}
+
+// ---- Sun sitting BEHIND the scenery (heroHorizon), across the hero surfaces ----
+// Loads the real shipped art off disk (the SwiftPM bundle doesn't carry the app's asset catalog) and
+// draws the live AuraSky sun over it at a low dusk sun, so the pin above each art's skyline can be judged
+// the way it renders on device. Wide bases (iPad/widget) are conditionless; portrait heroes are the
+// condition-baked dusk art.
+let repoRoot = FileManager.default.currentDirectoryPath
+@MainActor
+func diskImage(_ rel: String) -> Image? {
+    guard let ns = NSImage(contentsOfFile: "\(repoRoot)/\(rel)") else { return nil }
+    return Image(nsImage: ns)
+}
+// A clear-sky snapshot whose sun is low (render time 20:40, sunset 21:11) so the horizon clamp bites.
+let lowSunSnap = WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                                 tempMin: 18, tempMax: 30, humedadMax: 50, currentSky: "11",
+                                 sunrise: todayAt(7, 12), sunset: todayAt(21, 11), updated: Date())
+let duskNow = todayAt(20, 40)
+@MainActor
+func heroTile(_ image: Image?, horizon: CGFloat, aspect: CGFloat, carriesCondition: Bool,
+              size: CGSize) -> some View {
+    ZStack {
+        AuraSky(snapshot: lowSunSnap, now: duskNow, heroImage: image,
+                heroCarriesCondition: carriesCondition, heroAnchor: .bottom,
+                heroHorizon: horizon, heroAspect: aspect)
+    }
+    .frame(width: size.width, height: size.height)
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .environment(\.colorScheme, .dark)
+}
+// Wide bases — the widget/iPad canvas (2:1-ish). Landscape now pins above the mountain PEAK (0.50), the
+// city keeps its low skyline (0.84).
+write(heroTile(diskImage("hero_asset_creation/output/wide_landscape_day.png"),
+               horizon: HeroBackground.wideBaseHorizon(.landscape), aspect: HeroBackground.wideBaseAspect,
+               carriesCondition: false, size: CGSize(width: 380, height: 190)),
+      name: "hero-wide-landscape", size: CGSize(width: 380, height: 190))
+write(heroTile(diskImage("hero_asset_creation/output/wide_city_day.png"),
+               horizon: HeroBackground.wideBaseHorizon(.cityscape), aspect: HeroBackground.wideBaseAspect,
+               carriesCondition: false, size: CGSize(width: 380, height: 190)),
+      name: "hero-wide-city", size: CGSize(width: 380, height: 190))
+// Portrait heroes — the phone screen and the wrist. Landscape pins above the peak (0.52), city above the
+// tallest tower (0.60). Rendered at both a phone aspect and the near-square wrist (the worst crop).
+for (fam, rel, horizon) in [("landscape", "Aura/Assets.xcassets/clear_dusk.imageset/clear_dusk.png",
+                             HeroBackground.heroHorizon(.landscape)),
+                            ("city", "Aura/Assets.xcassets/city_clear_dusk.imageset/city_clear_dusk.png",
+                             HeroBackground.heroHorizon(.cityscape))] {
+    write(heroTile(diskImage(rel), horizon: horizon, aspect: HeroBackground.heroAspect,
+                   carriesCondition: true, size: CGSize(width: 230, height: 470)),
+          name: "hero-phone-\(fam)", size: CGSize(width: 230, height: 470))
+    write(heroTile(diskImage(rel), horizon: horizon, aspect: HeroBackground.heroAspect,
+                   carriesCondition: true, size: CGSize(width: 200, height: 232)),
+          name: "hero-watch-\(fam)", size: CGSize(width: 200, height: 232))
+}

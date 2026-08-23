@@ -20,10 +20,18 @@ struct AuraComplicationProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<AuraComplicationEntry>) -> Void) {
-        let entry = AuraComplicationEntry(date: Date(), snapshot: SharedCache.read().first)
-        let next = Calendar.current.date(byAdding: .hour, value: 2, to: entry.date)
-            ?? entry.date.addingTimeInterval(2 * 3600)
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        let snapshot = SharedCache.read().first
+        let now = Date()
+        let cal = Calendar.current
+        // Hourly entries for the next 12 hours, all off the same snapshot: each redraws with its own
+        // `date` as "now", so the time-sensitive faces — UV-now, the sun countdown — track the hour
+        // without waiting on the next iPhone sync. WidgetKit refreshes the whole set after the window.
+        let entries = (0..<12).map { h -> AuraComplicationEntry in
+            let d = cal.date(byAdding: .hour, value: h, to: now) ?? now.addingTimeInterval(Double(h) * 3600)
+            return AuraComplicationEntry(date: d, snapshot: snapshot)
+        }
+        let next = cal.date(byAdding: .hour, value: 12, to: now) ?? now.addingTimeInterval(12 * 3600)
+        completion(Timeline(entries: entries, policy: .after(next)))
     }
 }
 
@@ -175,15 +183,16 @@ struct AuraRainComplication: Widget {
 
 // MARK: - UV index
 
-/// The day's maximum UV index — a ring fill with a sun and the index number, plus the band on the bezel.
+/// The current UV index — a ring fill from 0 to today's peak with a sun, the live index number, and the
+/// band name on the bezel. Grades along the WHO colour scale; falls back to the daily max off the hourly.
 struct AuraUVComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraUV", provider: AuraComplicationProvider()) { entry in
             AuraUVView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("UV máximo")
-        .description("El índice UV máximo del día (cielo despejado).")
+        .configurationDisplayName("UV ahora")
+        .description("El índice UV de la hora, sobre el máximo del día.")
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -196,21 +205,20 @@ struct AuraUVView: View {
         if let snapshot = entry.snapshot {
             switch family {
             case .accessoryCorner:
-                // The index + glyph curve the corner; the 0–11 band-tinted arc rides the outer bezel.
-                let corner = AuraUVCorner(snapshot: snapshot)
+                // The index + glyph curve the corner; the 0…peak graded arc rides the outer bezel.
+                let corner = AuraUVCorner(snapshot: snapshot, now: entry.date)
                 if corner.hasValue {
                     corner.widgetCurvesContent().widgetLabel { corner.cornerGauge }
                 } else {
                     corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
                 }
             default:
-                // The band name ("Muy alto"…) rides the curved bezel, keeping the ring honest that the
-                // number is a daily maximum rather than a live value.
-                if let band = AuraUVCircular(snapshot: snapshot).bandLabel {
-                    AuraUVCircular(snapshot: snapshot)
+                // The band name ("Muy alto"…) of the current reading rides the curved bezel.
+                if let band = AuraUVCircular(snapshot: snapshot, now: entry.date).bandLabel {
+                    AuraUVCircular(snapshot: snapshot, now: entry.date)
                         .widgetLabel(band)
                 } else {
-                    AuraUVCircular(snapshot: snapshot)
+                    AuraUVCircular(snapshot: snapshot, now: entry.date)
                 }
             }
         } else {

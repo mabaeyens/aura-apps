@@ -102,7 +102,7 @@ struct AuraRainWidget: Widget {
     }
 }
 
-/// Aura's Lock Screen UV glance — the day's maximum UV index as a ring. Circular only.
+/// Aura's Lock Screen UV glance — the current UV index as a 0…peak ring. Circular only.
 struct AuraUVWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "AuraUVWidget",
@@ -110,15 +110,15 @@ struct AuraUVWidget: Widget {
                                provider: AuraProvider()) { entry in
             Group {
                 if let snapshot = entry.snapshot {
-                    AuraUVCircular(snapshot: snapshot)
+                    AuraUVCircular(snapshot: snapshot, now: entry.date)
                 } else {
                     AuraAccessoryEmpty()
                 }
             }
             .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("UV máximo")
-        .description("El índice UV máximo del día (cielo despejado).")
+        .configurationDisplayName("UV ahora")
+        .description("El índice UV de la hora, sobre el máximo del día.")
         .supportedFamilies([.accessoryCircular])
     }
 }
