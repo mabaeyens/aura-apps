@@ -1080,15 +1080,23 @@ public struct AuraUVCard: View {
         return AuraCard(size: size) {
             VStack(alignment: .leading, spacing: size == .phone ? 12 : 7) {
                 HStack(spacing: size.stackSpacing) {
-                    ZStack {
-                        Circle().fill(color)
-                        Text("\(uvIndex.value)")
-                            .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
-                                          weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
+                    // The swatch is AEMET's clear-sky daily maximum, not the current UV — labelled so on the
+                    // card face, so a big "5" on a rainy afternoon reads as "today's peak", not "right now".
+                    // The honest current value lives in the hourly strip below ("Ahora N") when CAMS data is present.
+                    VStack(spacing: size == .phone ? 3 : 1) {
+                        ZStack {
+                            Circle().fill(color)
+                            Text("\(uvIndex.value)")
+                                .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
+                                              weight: .heavy, design: .rounded))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: swatch, height: swatch)
+                        .shadow(color: color.opacity(0.6), radius: 5)
+                        Text("Máx. hoy")
+                            .font(.system(size: size.smallSize - (size == .phone ? 2 : 3), weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.6))
                     }
-                    .frame(width: swatch, height: swatch)
-                    .shadow(color: color.opacity(0.6), radius: 5)
 
                     VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
                         HStack(spacing: 6) {
