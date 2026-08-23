@@ -12,6 +12,10 @@ struct SettingsView: View {
     /// `HeroBackground.Family(storage:)`; the switch below only appears once cityscape art ships.
     @AppStorage("heroFamily") private var heroFamily = HeroBackground.Family.landscape.rawValue
 
+    /// How much Aura may notify: none, avisos only, or avisos plus new forecasts. Shared with the
+    /// background-refresh path and the onboarding step via `NotificationLevel.storageKey`.
+    @AppStorage(NotificationLevel.storageKey) private var notifyLevel: NotificationLevel = .off
+
     /// Whether any `city_*` art is actually in the bundle. Until it is, there's nothing to switch to, so
     /// the picker stays hidden and the app is landscape-only (procedural sky underneath either way).
     private var hasCityscapeArt: Bool {
@@ -61,6 +65,23 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker("Notificaciones", selection: $notifyLevel) {
+                        ForEach(NotificationLevel.allCases) { level in
+                            Text(level.label).tag(level)
+                        }
+                    }
+                    .onChange(of: notifyLevel) { _, newValue in
+                        if newValue != .off { NotificationManager.requestAuthorization() }
+                    }
+                } header: {
+                    Text("Notificaciones")
+                } footer: {
+                    Text("Los avisos notifican solo en nivel naranja o rojo de tu ubicación activa. "
+                        + "Las predicciones avisan cuando AEMET actualiza el boletín. Necesita permiso "
+                        + "de notificaciones y el repaso en segundo plano activado en Ajustes del sistema.")
+                }
+
+                Section {
                     NavigationLink {
                         AboutView()
                     } label: {
@@ -76,8 +97,8 @@ struct SettingsView: View {
     }
 
     private var appVersion: String {
-        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
-        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         return "\(v) (\(b))"
     }
 

@@ -98,11 +98,21 @@
 			);
 			target = AE00000000000000000000D1 /* AuraWidgetsExtension */;
 		};
+		AE00000000000000000000AA /* Exceptions for "Aura" folder in "Aura" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AE00000000000000000000A5 /* Aura */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AE00000000000000000000A9 /* Aura */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AE00000000000000000000AA /* Exceptions for "Aura" folder in "Aura" target */,
+			);
 			path = Aura;
 			sourceTree = "<group>";
 		};
@@ -512,6 +522,7 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Aura usa tu ubicación para mostrar el tiempo de tu municipio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = Aura/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -551,6 +562,7 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Aura usa tu ubicación para mostrar el tiempo de tu municipio.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = Aura/Info.plist;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

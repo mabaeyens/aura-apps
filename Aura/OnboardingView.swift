@@ -12,6 +12,10 @@ struct OnboardingView: View {
     @State private var page = 0
     @Environment(\.openURL) private var openURL
 
+    /// The notification preference picked on the notifications page. Editable later in Ajustes; shared
+    /// with the background-refresh path via `NotificationLevel.storageKey`.
+    @AppStorage(NotificationLevel.storageKey) private var notifyLevel: NotificationLevel = .off
+
     /// AEMET's self-service page — the same one Ajustes and Ayuda point at.
     private let apiKeyURL = URL(string: "https://opendata.aemet.es/centrodedescargas/altaUsuario")!
 
@@ -21,6 +25,7 @@ struct OnboardingView: View {
         let title: String
         let body: String
         var showsKeyButton = false
+        var showsNotifyChoice = false
     }
 
     private let pages: [Page] = [
@@ -37,6 +42,11 @@ struct OnboardingView: View {
              title: "En toda la pantalla",
              body: "Widgets para la pantalla de inicio y la de bloqueo, y complicaciones para el Apple "
                  + "Watch: el tiempo de un vistazo, sin abrir la app."),
+        Page(icon: "bell.badge.fill",
+             title: "¿Te aviso?",
+             body: "Puedo notificarte los avisos naranja y rojo de tu ubicación, y si quieres también "
+                 + "cuando AEMET actualice la predicción. Cámbialo cuando quieras en Ajustes.",
+             showsNotifyChoice: true),
         Page(icon: "hand.thumbsup.fill",
              title: "Todo listo",
              body: "Añade tu ubicación y Aura hará el resto. Puedes volver a leer esto en Ayuda cuando "
@@ -112,6 +122,31 @@ struct OnboardingView: View {
                         .background(.ultraThinMaterial, in: Capsule())
                         .foregroundStyle(.white)
                 }
+            }
+
+            if item.showsNotifyChoice {
+                VStack(spacing: 10) {
+                    ForEach(NotificationLevel.allCases) { level in
+                        Button {
+                            notifyLevel = level
+                            if level != .off { NotificationManager.requestAuthorization() }
+                        } label: {
+                            HStack {
+                                Text(level.label)
+                                Spacer()
+                                if notifyLevel == level {
+                                    Image(systemName: "checkmark").font(.callout.weight(.bold))
+                                }
+                            }
+                            .font(.callout.weight(.semibold))
+                            .padding(.horizontal, 18).padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .foregroundStyle(.white)
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
             }
             Spacer()
 

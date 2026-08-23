@@ -1,4 +1,5 @@
 import AuraKit
+import BackgroundTasks
 import Foundation
 import WidgetKit
 
@@ -27,6 +28,29 @@ enum AEMETService {
     @discardableResult
     static func refreshAllForWidgets(_ locations: [Location], force: Bool = false) async -> String? {
         await refreshGate.run { await performRefresh(locations, force: force) }
+    }
+
+    // MARK: - Background refresh
+
+    /// The BGAppRefreshTask identifier. Must match `BGTaskSchedulerPermittedIdentifiers` in Info.plist
+    /// and the `.backgroundTask(.appRefresh(...))` handler in `AuraApp`.
+    static let backgroundRefreshIdentifier = "com.mab.Aura.refresh"
+
+    /// Refresh from the favourites mirrored to the App Group, for callers with no view/store (the
+    /// background task). Same coalesced fetch path as the foreground; shows new data when there is any,
+    /// otherwise leaves the cached snapshots untouched.
+    static func refreshFromSharedLocations() async -> String? {
+        await refreshAllForWidgets(SharedLocations.read())
+    }
+
+    /// Ask iOS to wake Aura in the background about half an hour from now to top up the cache. iOS
+    /// decides the real timing from the system Background App Refresh setting and usage patterns, so
+    /// this is a request, not a guarantee. A failed submit (simulator, or the setting off) is fine to
+    /// ignore: the app still refreshes on foreground.
+    static func scheduleBackgroundRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: backgroundRefreshIdentifier)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
+        try? BGTaskScheduler.shared.submit(request)
     }
 
     private static func performRefresh(_ locations: [Location], force: Bool) async -> String? {
@@ -110,12 +134,19 @@ enum AEMETService {
                 .flatMap { alertsByArea[$0] }?
                 .topActive(forProvince: location.provinciaCode)
             let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
-            SharedCache.upsert(WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                    observed: observed, alert: alert,
-                                                    airQuality: airQuality, uvIndex: uvIndex,
-                                                    uvHourly: uvHourly,
-                                                    bulletin: bulletin,
-                                                    timeZone: location.timeZone))
+            let snapshot = WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
+                                                observed: observed, alert: alert,
+                                                airQuality: airQuality, uvIndex: uvIndex,
+                                                uvHourly: uvHourly,
+                                                bulletin: bulletin,
+                                                timeZone: location.timeZone)
+            // Only the active location notifies. Compare against the still-cached snapshot (read before
+            // the upsert below) so a genuinely new aviso or an updated forecast fires exactly once.
+            if location.ine == primary?.ine {
+                NotificationManager.evaluatePrimary(old: SharedCache.snapshot(forINE: location.ine),
+                                                    new: snapshot)
+            }
+            SharedCache.upsert(snapshot)
             didUpdate = true
         }
 
