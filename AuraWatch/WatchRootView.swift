@@ -1,6 +1,7 @@
 import AuraKit
 import SwiftUI
 import UIKit
+import WidgetKit
 
 /// The Watch app's screen: a synced location, rendered from the **same** `AuraForecastStack` and
 /// `AuraSky` the iPhone uses — identical cards in identical order over the same sun-tracking sky, only
@@ -15,8 +16,10 @@ struct WatchRootView: View {
     /// 48-asset grid the sky probes, falling back to the procedural `AuraSky` when the art isn't present.
     @AppStorage("heroFamily") private var heroFamily = HeroBackground.Family.landscape.rawValue
 
-    /// The user's forced location, or "" to follow the phone's active one. Persisted on the watch.
-    @AppStorage("watch.selectedINE") private var selectedINE = ""
+    /// The user's forced location, or "" to follow the phone's active one. Persisted on the watch in the
+    /// **App Group** (not the app's private defaults) so the complication resolves the same place — see
+    /// `SharedCache.watchSelectedINE`.
+    @AppStorage(SharedCache.watchSelectedINEKey, store: SharedCache.groupDefaults) private var selectedINE = ""
 
     @State private var snapshot: WeatherSnapshot?
     @State private var showingPicker = false
@@ -98,7 +101,12 @@ struct WatchRootView: View {
         }
         .fontDesign(.rounded)   // one typeface across phone and watch (see RootView)
         .onAppear { snapshot = resolvedSnapshot() }
-        .onChange(of: selectedINE) { snapshot = resolvedSnapshot() }
+        .onChange(of: selectedINE) {
+            snapshot = resolvedSnapshot()
+            // The pick lives in the App Group; nudge the complication so it re-resolves to the same place
+            // instead of keeping the previously shown location.
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         .onReceive(NotificationCenter.default.publisher(for: WatchSync.snapshotDidUpdate)) { _ in
             snapshot = resolvedSnapshot()
         }

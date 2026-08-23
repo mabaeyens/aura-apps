@@ -27,6 +27,16 @@ public enum SharedCache {
         set { groupDefaults?.set(newValue, forKey: activeINEKey) }
     }
 
+    /// The location the **Watch** user forced with the wrist picker (empty/nil = follow the phone's
+    /// active one). Kept in the App Group so the Watch's complication resolves the *same* place the Watch
+    /// app shows — a plain `@AppStorage` lives in the app's own defaults, which the complication process
+    /// can't see, so a forced pick left the complication tracking a different, stale location.
+    public static let watchSelectedINEKey = "watch.selectedINE"
+    public static var watchSelectedINE: String? {
+        get { groupDefaults?.string(forKey: watchSelectedINEKey) }
+        set { groupDefaults?.set(newValue, forKey: watchSelectedINEKey) }
+    }
+
     private static var fileURL: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?

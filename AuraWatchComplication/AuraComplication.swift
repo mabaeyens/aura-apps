@@ -10,13 +10,18 @@ struct AuraComplicationEntry: TimelineEntry {
 
 /// Reads the Watch's own `SharedCache`, which `WatchSync` fills from snapshots the iPhone pushes.
 struct AuraComplicationProvider: TimelineProvider {
-    /// The location the complication draws: the phone's active place (mirrored into the Watch's shared
-    /// defaults by `WatchSync`), so a complication tracks the same location the app shows rather than an
-    /// arbitrary first cache entry — which was making the UV-now number disagree with the app's card.
-    /// Falls back to the first cached snapshot before the first sync.
+    /// The location the complication draws, resolved in the **same order** as `WatchRootView` so the
+    /// complication and the Watch app never disagree: the wrist's own forced pick first, then the phone's
+    /// active place (mirrored into the Watch's shared defaults by `WatchSync`), then the first cached
+    /// snapshot before the first sync. Reading the forced pick straight from the App Group is what fixes
+    /// the complication tracking a different, stale location than the app after a wrist location switch.
     private func activeSnapshot() -> WeatherSnapshot? {
-        if let active = SharedCache.activeINE, let s = SharedCache.snapshot(forINE: active) { return s }
-        return SharedCache.read().first
+        let all = SharedCache.read()
+        if let sel = SharedCache.watchSelectedINE, !sel.isEmpty,
+           let s = all.first(where: { $0.ine == sel }) { return s }
+        if let active = SharedCache.activeINE,
+           let s = all.first(where: { $0.ine == active }) { return s }
+        return all.first
     }
 
     func placeholder(in context: Context) -> AuraComplicationEntry {
