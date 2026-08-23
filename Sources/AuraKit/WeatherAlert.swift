@@ -36,6 +36,33 @@ public struct WeatherAlert: Codable, Sendable, Hashable, Identifiable {
         level.rank >= Level.amarillo.rank && (expires.map { $0 >= now } ?? true)
     }
 
+    /// A one or two word Spanish summary of the warning for a glance: "Calor", "Tormentas", "Nieve".
+    /// AEMET's own phrasing ("Temperatura máxima", "Fenómenos costeros") is longer than the compact
+    /// hint beside "MÁS" wants, so it is mapped to a plain word. Weather phenomena are checked before
+    /// the temperature cases so a "rachas máximas de viento" reads as "Viento", not "Calor". Unknown
+    /// phenomena fall back to their first word, or a generic "Aviso".
+    public var shortLabel: String {
+        let text = ((phenomenon ?? "") + " " + event).lowercased()
+        func has(_ needles: String...) -> Bool { needles.contains { text.contains($0) } }
+        switch true {
+        case has("costero", "costera"):            return "Costa"
+        case has("tormenta"):                      return "Tormentas"
+        case has("nevada", "nieve"):               return "Nieve"
+        case has("lluvia", "precipitaci", "aguacero"): return "Lluvia"
+        case has("viento", "racha"):               return "Viento"
+        case has("niebla"):                        return "Niebla"
+        case has("polvo", "calima"):               return "Calima"
+        case has("alud"):                          return "Aludes"
+        case has("incend"):                        return "Incendios"
+        case has("oleaje", "marejada", "temporal marítimo"): return "Oleaje"
+        case has("máxim", "altas temp", "calor"):  return "Calor"
+        case has("mínim", "bajas temp", "helada", "frío", "frio"): return "Frío"
+        default:
+            if let first = phenomenon?.split(separator: " ").first { return first.capitalized }
+            return "Aviso"
+        }
+    }
+
     public init(level: Level, event: String, phenomenon: String?, zona: String,
                 areaDesc: String?, onset: Date?, expires: Date?) {
         self.level = level

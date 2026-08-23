@@ -34,7 +34,7 @@ public struct UVHourSlot: Codable, Sendable, Hashable, Identifiable {
 /// per client IP). Aura calls it directly from each device, so every install has its own budget and
 /// makes only a few calls a day — the cap is never in reach. The CAMS data itself is CC BY 4.0, so if
 /// Aura ever monetises, move to Open-Meteo's customer endpoint (`customer-api.open-meteo.com` + key)
-/// or self-host the open-source server against CAMS. Full findings: `docs/local/UVI_OBSERVED.md`.
+/// or self-host the open-source server against CAMS. Full findings: `notes/UVI_OBSERVED.md`.
 public enum OpenMeteoUV {
     /// The free Air Quality endpoint for a point: two days of hourly `uv_index` (+ clear-sky), with
     /// times as UTC epochs (`unixtime`) and day-bucketing in the location's own zone (`timezone=auto`).

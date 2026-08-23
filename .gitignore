@@ -15,8 +15,8 @@ DerivedData/
 # Local specs (per Projects convention: specs/ is local-only)
 specs/
 
-# Local-only docs: internal notes and submission material kept off GitHub but on disk
-docs/local/
+# Local-only notes: internal notes and submission material kept off GitHub but on disk
+notes/
 
 # Secrets — the AEMET key never enters the repo
 .env

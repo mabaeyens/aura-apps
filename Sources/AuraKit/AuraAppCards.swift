@@ -207,6 +207,19 @@ public struct AuraHeroCard: View {
                 .foregroundStyle(.white.opacity(0.9))
                 .lineLimit(size == .phone ? 3 : 4).minimumScaleFactor(0.85)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // An active aviso reads as its sign plus a one-word summary ("Calor", "Tormentas"), right
+            // under the dataline, tinted with the warning level's colour. The full text lives in the
+            // tappable aviso card below the fold; here it is a glance.
+            if let alert = snapshot.alert {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text(alert.shortLabel)
+                }
+                .font(.system(size: size.bodySize, weight: .semibold))
+                .foregroundStyle(Palette.alert(alert.level))
+                .padding(.top, size == .phone ? 2 : 1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, size.cardPadding)
@@ -1214,14 +1227,50 @@ public struct AuraAlertCard: View {
     let size: AuraSize
     public init(alert: WeatherAlert, size: AuraSize) { self.alert = alert; self.size = size }
 
+    /// Tapped open, the card reveals the aviso's full text. Collapsed by default so the card stays a
+    /// one-line glance until the user asks for more.
+    @State private var expanded = false
+
     public var body: some View {
-        HStack(spacing: size == .phone ? 9 : 6) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: size.iconSize))
-            Text(alert.phenomenon ?? alert.event)
-                .font(.system(size: size.bodySize - 1, weight: .semibold))
-                .frame(maxWidth: .infinity, alignment: .leading)
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+        } label: {
+            VStack(alignment: .leading, spacing: size == .phone ? 8 : 6) {
+                HStack(spacing: size == .phone ? 9 : 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: size.iconSize))
+                    Text(alert.phenomenon ?? alert.event)
+                        .font(.system(size: size.bodySize - 1, weight: .semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: size.bodySize - 3, weight: .semibold))
+                        .opacity(0.85)
+                }
+                if expanded {
+                    // The warning's full text: AEMET's own event title, the affected zone, and the window
+                    // it is valid for. That is everything the aviso itself carries.
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(alert.event)
+                            .font(.system(size: size.bodySize - 2))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if let zone = alert.areaDesc, !zone.isEmpty {
+                            Text(zone)
+                                .font(.system(size: size.bodySize - 3, weight: .medium))
+                                .opacity(0.9)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        if let validity = validityText {
+                            Text(validity)
+                                .font(.system(size: size.bodySize - 3, weight: .medium))
+                                .opacity(0.9)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .transition(.opacity)
+                }
+            }
         }
+        .buttonStyle(.plain)
         .foregroundStyle(.white)
         .padding(size.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1229,6 +1278,20 @@ public struct AuraAlertCard: View {
                     in: RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
             .strokeBorder(Palette.alert(alert.level).opacity(0.7), lineWidth: 0.5))
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(expanded ? "Toca para contraer" : "Toca para ver el aviso completo")
+    }
+
+    /// The aviso's validity window in plain Spanish, no dashes: "De {inicio} a {fin}", "Hasta {fin}",
+    /// "Desde {inicio}", or nil when AEMET gave no times.
+    private var validityText: String? {
+        let f: (Date) -> String = { $0.formatted(.dateTime.weekday(.abbreviated).hour().minute()) }
+        switch (alert.onset, alert.expires) {
+        case let (start?, end?): return "De \(f(start)) a \(f(end))"
+        case let (nil, end?):    return "Hasta \(f(end))"
+        case let (start?, nil):  return "Desde \(f(start))"
+        default:                 return nil
+        }
     }
 }
 
