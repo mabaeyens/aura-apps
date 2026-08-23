@@ -4,7 +4,7 @@
 
 First release of Aura: Spain's weather, from official AEMET open data.
 
-- Per-municipality forecast: sky, temperature, wind, UV index, chance of rain and humidity.
+- Per-municipality forecast: sky, temperature, wind, UV index (with the day's sun-protection window), chance of rain and humidity.
 - A narrated daily forecast, drawn from AEMET's official text.
 - Hour-by-hour detail and a full seven-day outlook.
 - Air quality by pollutant, from the official network (MITECO / ICA).

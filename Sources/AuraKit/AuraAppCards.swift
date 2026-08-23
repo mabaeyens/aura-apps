@@ -1049,6 +1049,15 @@ private struct UVHourStrip: View {
 
     private var peak: UVHourSlot? { today.max { $0.uv < $1.uv } }
 
+    /// The span of today where the UV index reaches 3, the WHO threshold at which protection is advised
+    /// (the start of the "Moderado" band). Start is the first such hour; end is the hour after the last,
+    /// so it reads as "protected until". `nil` when UV never reaches 3 today (nothing to advise).
+    private var protectionWindow: (start: Int, end: Int)? {
+        let above = today.filter { $0.index >= 3 }
+        guard let first = above.first, let last = above.last else { return nil }
+        return (hour(first.date), hour(last.date) + 1)
+    }
+
     var body: some View {
         let barsH: CGFloat = size == .phone ? 34 : 22
         let scale = max(peak?.uv ?? 1, 1)
@@ -1069,6 +1078,15 @@ private struct UVHourStrip: View {
             }
             .font(.system(size: size.smallSize - (size == .phone ? 2 : 2), weight: .semibold))
             .lineLimit(1).minimumScaleFactor(0.7)
+
+            // The actionable window from the same hourly series: when to actually protect yourself, i.e.
+            // the stretch where the index sits at or above the WHO threshold of 3.
+            if let w = protectionWindow {
+                Text("Protégete de \(w.start)h a \(w.end)h")
+                    .font(.system(size: size.smallSize - (size == .phone ? 2 : 2), weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
 
             HStack(alignment: .bottom, spacing: size == .phone ? 3 : 2) {
                 ForEach(today) { slot in
