@@ -323,12 +323,7 @@ private enum SunFormat {
         }
     }
 
-    static func hhmm(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
-    }
+    static func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
 
     /// Compact time-until, e.g. "2h51" or "43m". The snapshot only carries *today's* sun times, so
     /// after dark the "next sunrise" date is actually this morning's (already past); sun times barely

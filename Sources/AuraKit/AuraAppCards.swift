@@ -295,7 +295,7 @@ public struct AuraHourlyCard: View {
         Grid(horizontalSpacing: 0, verticalSpacing: size == .phone ? 12 : 6) {
             GridRow {
                 ForEach(items) { h in
-                    Text("\(h.hour)h")
+                    Text(AuraTime.hourLabel(hour: h.hour))
                         .font(.system(size: size.smallSize, weight: .medium))
                         .foregroundStyle(.white.opacity(0.75))
                         .colWidth(columnWidth)
@@ -662,10 +662,7 @@ public struct AuraSunArcCard: View {
         return ""
     }
 
-    private func hhmm(_ date: Date) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"
-        return f.string(from: date)
-    }
+    private func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
 
     /// A quadratic-looking arc sampled as a polyline: y follows sin(π·t) so it's flat at both horizons
     /// and highest at solar noon, matching `AuraSunPath`'s own altitude curve.
@@ -865,10 +862,7 @@ public struct AuraMoonArcCard: View {
         return ""
     }
 
-    private func hhmm(_ date: Date) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"
-        return f.string(from: date)
-    }
+    private func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
 
     /// Same sin(π·t) polyline as the sun arc, so the moon's curve matches the sun's exactly.
     private static func arcPath(w: CGFloat, baseline: CGFloat, rise: CGFloat,

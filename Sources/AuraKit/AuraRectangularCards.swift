@@ -94,10 +94,7 @@ public struct AuraRectHours: View {
     }
 
     private static func hhmm(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return AuraTime.hhmm(date)
     }
 }
 
@@ -211,10 +208,7 @@ public struct AuraRectSun: View {
     }
 
     private func hhmm(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return AuraTime.hhmm(date)
     }
 
     /// Compact "2h51m" / "43m" between two times; wraps past midnight when asked, else nil for a past time.

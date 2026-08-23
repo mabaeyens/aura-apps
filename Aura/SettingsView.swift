@@ -1,5 +1,6 @@
 import AuraKit
 import SwiftUI
+import WidgetKit
 
 /// "Ajustes" — enter the AEMET API key (stored in the Keychain) and show attribution.
 struct SettingsView: View {
@@ -7,6 +8,10 @@ struct SettingsView: View {
 
     @State private var keyInput = ""
     @State private var justSaved = false
+
+    /// Clock format, shared with the widgets and the Watch through the App Group so every surface reads
+    /// the same value (see `AuraTime`). True = 24-hour, false = 12-hour AM/PM. Defaults to 24-hour.
+    @AppStorage(AuraTime.use24hKey, store: SharedCache.groupDefaults) private var use24h = true
 
     /// The chosen hero background family, persisted across launches. Read elsewhere via
     /// `HeroBackground.Family(storage:)`; the switch below only appears once cityscape art ships.
@@ -62,6 +67,21 @@ struct SettingsView: View {
                     } footer: {
                         Text("Elige el paisaje que acompaña al cielo. El sol y la luna se dibujan siempre en su posición real, sea cual sea el fondo.")
                     }
+                }
+
+                Section {
+                    Picker("Formato de hora", selection: $use24h) {
+                        Text("24 h").tag(true)
+                        Text("12 h").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: use24h) { _, _ in
+                        WidgetCenter.shared.reloadAllTimelines()
+                    }
+                } header: {
+                    Text("Formato de hora")
+                } footer: {
+                    Text("Elige entre 24 horas (14:30) y 12 horas con AM/PM (2:30 PM). Se aplica en toda la app, los widgets y el reloj.")
                 }
 
                 Section {

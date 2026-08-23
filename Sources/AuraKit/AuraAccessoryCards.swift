@@ -329,9 +329,6 @@ private enum AccessoryFormat {
     }
 
     static func hhmm(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return AuraTime.hhmm(date)
     }
 }

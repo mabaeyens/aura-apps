@@ -22,6 +22,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     private let snapshotsKey = "snapshots"    // all favourites' snapshots, so the Watch can switch instantly
     private let locationsKey = "locations"    // the favourites menu (names/coords) for the Watch's picker
     private let activeKey = "activeINE"        // which favourite the phone considers active
+    private let clockKey = "use24h"            // the phone's 24/12-hour choice, mirrored onto the Watch
 
     private override init() { super.init() }
 
@@ -43,6 +44,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
               let data = try? Self.encoder.encode(snapshot) else { return }
         var context: [String: Any] = [payloadKey: data]
         context[activeKey] = snapshot.ine
+        context[clockKey] = AuraTime.use24h
         try? session.updateApplicationContext(context)
     }
 
@@ -65,6 +67,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         if seen.insert(active.ine).inserted { snaps.append(active) }
 
         var context: [String: Any] = [activeKey: active.ine]
+        context[clockKey] = AuraTime.use24h
         if let d = try? Self.encoder.encode(active) { context[payloadKey] = d }      // legacy fallback
         if let d = try? Self.encoder.encode(snaps) { context[snapshotsKey] = d }
         if let d = try? Self.encoder.encode(favorites) { context[locationsKey] = d }
@@ -88,6 +91,12 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         // Remember which location the phone considers active, so the Watch can default to it.
         if let active = context[activeKey] as? String {
             SharedCache.groupDefaults?.set(active, forKey: SharedCache.activeINEKey)
+        }
+
+        // Mirror the phone's 24/12-hour clock choice so the Watch and its complication format times the
+        // same way. App Group defaults are device-local, so this flag has to ride the sync like the rest.
+        if let use24h = context[clockKey] as? Bool {
+            SharedCache.groupDefaults?.set(use24h, forKey: AuraTime.use24hKey)
         }
 
         // New protocol: a batch of every favourite's snapshot plus the favourites menu. Write them all so

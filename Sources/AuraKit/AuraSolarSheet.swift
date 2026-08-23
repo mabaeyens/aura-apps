@@ -159,8 +159,7 @@ public struct AuraSolarSheet: View {
 
     private func timeText(_ date: Date?) -> String {
         guard let date else { return "—" }
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return AuraTime.hhmm(date)
     }
 
     /// Compact "13 h 24 min" / "43 min", matching the Sol card's own daylight-length line.

@@ -9,12 +9,7 @@ import SwiftUI
 private enum HomeFormat {
     static func temp(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—°" }
 
-    static func hhmm(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
-    }
+    static func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
 
     /// Short capitalised weekday, e.g. "Lun".
     static func weekday(_ date: Date) -> String {

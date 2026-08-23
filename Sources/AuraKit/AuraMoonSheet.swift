@@ -120,8 +120,7 @@ public struct AuraMoonSheet: View {
 
     private func timeText(_ date: Date?) -> String {
         guard let date else { return "—" }
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return AuraTime.hhmm(date)
     }
 
     /// "28 ago · en 5 días" — the date plus a relative-day tail (hoy / mañana / en N días).
