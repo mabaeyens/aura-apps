@@ -1,6 +1,7 @@
 import AuraKit
 import BackgroundTasks
 import Foundation
+import os
 import WidgetKit
 
 /// Bridges the app to `AEMETClient`: builds a client from the stored key, runs the one shared refresh
@@ -36,11 +37,22 @@ enum AEMETService {
     /// and the `.backgroundTask(.appRefresh(...))` handler in `AuraApp`.
     static let backgroundRefreshIdentifier = "com.mab.Aura.refresh"
 
+    /// Trace the background top-up so it can be watched on device with
+    /// `log stream --predicate 'subsystem == "com.mab.Aura"'` (or Console.app) while measuring battery.
+    private static let bgLog = Logger(subsystem: "com.mab.Aura", category: "background")
+
     /// Refresh from the favourites mirrored to the App Group, for callers with no view/store (the
     /// background task). Same coalesced fetch path as the foreground; shows new data when there is any,
     /// otherwise leaves the cached snapshots untouched.
     static func refreshFromSharedLocations() async -> String? {
-        await refreshAllForWidgets(SharedLocations.read())
+        bgLog.log("Background refresh started")
+        let result = await refreshAllForWidgets(SharedLocations.read())
+        if let result {
+            bgLog.error("Background refresh finished with error: \(result, privacy: .public)")
+        } else {
+            bgLog.log("Background refresh finished, cache up to date")
+        }
+        return result
     }
 
     /// Ask iOS to wake Aura in the background about half an hour from now to top up the cache. iOS
@@ -50,7 +62,12 @@ enum AEMETService {
     static func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: backgroundRefreshIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
-        try? BGTaskScheduler.shared.submit(request)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+            bgLog.log("Scheduled next background refresh, earliest in ~30 min")
+        } catch {
+            bgLog.error("Could not schedule background refresh: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private static func performRefresh(_ locations: [Location], force: Bool) async -> String? {
