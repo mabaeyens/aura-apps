@@ -476,6 +476,20 @@ write(sheetPreview(AuraAirQualitySheet(airQuality: partialAQ, now: aqNow, scroll
 write(sheetPreview(AuraUVSheet(uvIndex: UVIndex(value: 8), scrolls: false),
                    size: CGSize(width: 380, height: 660)),
       name: "sheet-uv", size: CGSize(width: 380, height: 660))
+// Moon detail sheet: Madrid coordinates and a fixed waxing-gibbous evening (2026-08-23 22:00 UTC, moon up)
+// so phase, true illumination and both moonrise/moonset populate — the .preview snapshot carries no coords.
+func utcDate(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int) -> Date {
+    var c = DateComponents(); c.year = y; c.month = mo; c.day = d; c.hour = h; c.minute = mi
+    c.timeZone = TimeZone(identifier: "UTC")
+    return Calendar(identifier: .gregorian).date(from: c) ?? Date()
+}
+let moonSnap = WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                               tempMin: nil, tempMax: nil, humedadMax: nil,
+                               currentSky: "11", sunrise: nil, sunset: nil,
+                               latitude: 40.4168, longitude: -3.7038, updated: utcDate(2026, 8, 23, 22, 0))
+write(sheetPreview(AuraMoonSheet(snapshot: moonSnap, now: utcDate(2026, 8, 23, 22, 0), scrolls: false),
+                   size: CGSize(width: 380, height: 720)),
+      name: "sheet-moon", size: CGSize(width: 380, height: 720))
 
 // The sky ALONE (no cards) at the four times of day, so the sun/moon disc and its travel east→west can
 // be judged without the frosted stack covering it. Phone aspect.

@@ -50,6 +50,14 @@ public enum MoonPhaseMath {
         return principalPhases[idx].name
     }
 
+    /// The Spanish phase name from a true illuminated fraction and waxing flag — the path the moon sheet
+    /// uses so the name agrees with the real "% iluminada" it shows (the fraction is reconstructed from
+    /// the illumination, then named by the same eight-bucket rule).
+    public static func phaseName(illumination k: Double, waxing: Bool) -> String {
+        let half = acos(1 - 2 * min(max(k, 0), 1)) / (2 * .pi)   // 0 (new) … 0.5 (full)
+        return phaseName(fraction: waxing ? half : 1 - half)
+    }
+
     /// The next new moon at or after `date` (the mean-synodic estimate; ~a day's accuracy).
     public static func nextNewMoon(from date: Date) -> Date {
         let p = fraction(for: date)

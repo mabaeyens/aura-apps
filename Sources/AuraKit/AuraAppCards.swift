@@ -758,6 +758,7 @@ public struct AuraMoonArcCard: View {
                     .padding(.vertical, size == .phone ? 10 : 6)
             }
         }
+        .auraDetail(size) { AuraMoonSheet(snapshot: snapshot, now: now) }
         .auraSectionTitle("Luna".uppercased(), size)
         // Same as the sun card: the drawn night arc is silent, so speak the ocaso/orto that bound the
         // night and the night-remaining readout as one collapsed element.
