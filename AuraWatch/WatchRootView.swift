@@ -66,33 +66,34 @@ struct WatchRootView: View {
                 // height — the hero then fills the whole wrist screen and the cards stay below the fold.
                 GeometryReader { geo in
                     ScrollView {
-                        AuraForecastStack(snapshot: snapshot, size: .watch, now: snapshot.updated,
-                                          heroFillHeight: geo.size.height)
-                            .padding(.horizontal, 4)
-                            .padding(.top, 40)   // clear the system clock and the rounded top corners
-                            .padding(.bottom, 6)
+                        VStack(spacing: 8) {
+                            AuraForecastStack(snapshot: snapshot, size: .watch, now: snapshot.updated,
+                                              heroFillHeight: geo.size.height)
+                            // The location switcher lives at the foot of the scroll, below the last card
+                            // (UVI) — not pinned in the top safe area, where the taps were swallowed next
+                            // to the system clock. A frosted pill, shown only with more than one place.
+                            if locationChoices.count > 1 {
+                                Button { showingPicker = true } label: {
+                                    Label(snapshot.localidad, systemImage: "mappin.and.ellipse")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .lineLimit(1)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(.ultraThinMaterial, in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.top, 40)   // clear the system clock and the rounded top corners
+                        .padding(.bottom, 6)
                     }
                 }
                 .ignoresSafeArea(.container, edges: .top)
             } else {
                 ContentUnavailableView("Abre Aura en el iPhone", systemImage: "iphone")
                     .environment(\.colorScheme, .dark)
-            }
-        }
-        // The location switcher: shown only when there's more than one place to choose. Top-leading, clear
-        // of the system clock (top-right). A subtle frosted pin so it reads on any sky.
-        .overlay(alignment: .topLeading) {
-            if locationChoices.count > 1 {
-                Button { showingPicker = true } label: {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(7)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 6)
-                .padding(.top, 2)
             }
         }
         .fontDesign(.rounded)   // one typeface across phone and watch (see RootView)

@@ -531,6 +531,7 @@ public struct AuraSunArcCard: View {
                     .padding(.vertical, size == .phone ? 10 : 6)
             }
         }
+        .auraDetail(size) { AuraSolarSheet(snapshot: snapshot, now: now) }
         .auraSectionTitle("Sol".uppercased(), size)
         // The arc is a drawn path — silent to VoiceOver. Collapse the whole card into one element and
         // speak the facts it encodes: orto, ocaso and the daylight-remaining readout.
