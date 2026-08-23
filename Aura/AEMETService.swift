@@ -169,9 +169,10 @@ enum AEMETService {
 
         if didUpdate {
             WidgetCenter.shared.reloadAllTimelines()
-            // Keep the Watch fed even if the user never opens "Hoy": push the primary location.
+            // Keep the Watch fed even if the user never opens "Hoy": push the primary location as active,
+            // plus the whole favourites menu and their snapshots so the Watch can switch places on its own.
             if let primary, let snapshot = SharedCache.snapshot(forINE: primary.ine) {
-                WatchSync.shared.send(snapshot)
+                WatchSync.shared.send(active: snapshot, favorites: locations)
             }
         }
         return firstError

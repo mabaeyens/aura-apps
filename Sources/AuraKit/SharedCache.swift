@@ -11,6 +11,14 @@ public enum SharedCache {
     /// Shared App Group identifier. Keep in sync with both targets' entitlements.
     public static let appGroupID = "group.com.mab.Aura"
 
+    /// The App Group's shared user defaults, for small cross-process/cross-device state (e.g. which
+    /// location the phone considers active, so the Watch can default to it). Nil if the group is missing.
+    public static var groupDefaults: UserDefaults? { UserDefaults(suiteName: appGroupID) }
+
+    /// Defaults key under which the phone-active INE is stored (written on each Watch sync, read by the
+    /// Watch to default its shown location before the user overrides it).
+    public static let activeINEKey = "AuraKit.activeINE"
+
     private static var fileURL: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?

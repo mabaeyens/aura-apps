@@ -332,8 +332,9 @@ struct TodayView: View {
             snapshot = snap
             loadedINE = location.ine
             loadedAt = Date()
-            // Mirror the on-screen location to the paired Watch's complication.
-            WatchSync.shared.send(snap)
+            // Mirror the on-screen location to the paired Watch (as its active), plus the whole favourites
+            // menu and their snapshots, so the Watch can switch to any saved place on its own.
+            WatchSync.shared.send(active: snap, favorites: store.favorites)
             errorMessage = nil
             await loadRadar(for: location, force: force)
             news = await NewsService.latest(force: force)
