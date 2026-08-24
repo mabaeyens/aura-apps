@@ -25,9 +25,16 @@ struct WatchRootView: View {
     @State private var showingPicker = false
     @State private var showingScenePicker = false
 
+    /// The instant the wrist renders "now" from — the live clock. The sky's sun/moon position and every
+    /// time-derived label (the "· Atardecer" moment word, the hourly strip) all read from this one value,
+    /// so they agree, exactly as the phone keeps them matched through its own `displayNow`. Before this the
+    /// sky used the live clock while the hero card read the snapshot's build time, so a day-old snapshot
+    /// could label a high midday sun "Atardecer".
+    private var displayNow: Date { Date() }
+
     /// The sunless hero art for the current sky+time, or `nil` to fall back to the procedural sky.
-    private var heroImage: Image? {
-        HeroBackground.heroImage(for: snapshot,
+    private func heroImage(now: Date) -> Image? {
+        HeroBackground.heroImage(for: snapshot, now: now,
                                  family: HeroBackground.Family(storage: heroFamily),
                                  exists: { UIImage(named: $0) != nil })
     }
@@ -54,11 +61,12 @@ struct WatchRootView: View {
     }
 
     var body: some View {
+        let now = displayNow
         ZStack {
             // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
             // crop the mountains, tree and river off the bottom of the tall art). `heroHorizon` pins a low
             // dawn/dusk sun above the art's skyline so it rides the sky, not the scenery in front of it.
-            AuraSky(snapshot: snapshot, heroImage: heroImage, heroAnchor: .bottom,
+            AuraSky(snapshot: snapshot, now: now, heroImage: heroImage(now: now), heroAnchor: .bottom,
                     heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
                     heroAspect: HeroBackground.heroAspect).ignoresSafeArea()
             if let snapshot {
@@ -71,7 +79,7 @@ struct WatchRootView: View {
                 GeometryReader { geo in
                     ScrollView {
                         VStack(spacing: 8) {
-                            AuraForecastStack(snapshot: snapshot, size: .watch, now: snapshot.updated,
+                            AuraForecastStack(snapshot: snapshot, size: .watch, now: now,
                                               heroFillHeight: geo.size.height)
                             // The location switcher lives at the foot of the scroll, below the last card
                             // (UVI) — not pinned in the top safe area, where the taps were swallowed next

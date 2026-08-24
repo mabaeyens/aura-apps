@@ -205,7 +205,13 @@ public extension WeatherSnapshot {
     /// Lets a complication pick the moon icon at view time instead of trusting a possibly-stale AEMET
     /// day/night code. Falls back to the cached sky code's "n" suffix when sun times are unknown.
     func isNight(at date: Date = Date()) -> Bool {
-        if let sunrise, let sunset { return date < sunrise || date >= sunset }
+        if let sunrise, let sunset {
+            // Re-date the stored sun times onto `date`'s day: a day-old snapshot's absolute sunset is
+            // "before now" at any hour, which otherwise reads as night at noon (see AuraSunPath.onSameDay).
+            let sr = AuraSunPath.onSameDay(as: date, sunrise)
+            let ss = AuraSunPath.onSameDay(as: date, sunset)
+            return date < sr || date >= ss
+        }
         return (currentSky ?? "").hasSuffix("n")
     }
 }

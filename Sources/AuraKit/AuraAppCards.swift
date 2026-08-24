@@ -214,7 +214,7 @@ public struct AuraHeroCard: View {
             Text(ForecastPhrase.dataline(for: snapshot, now: now))
                 .font(.system(size: size.bodySize - (size == .phone ? 4 : 3), weight: .regular))
                 .foregroundStyle(.white.opacity(0.9))
-                .lineLimit(size == .phone ? 3 : 4).minimumScaleFactor(0.85)
+                .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
 
             // An active aviso reads as its sign plus a one-word summary ("Calor", "Tormentas"), right

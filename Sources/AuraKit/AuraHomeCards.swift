@@ -28,7 +28,9 @@ private struct SkyText: ViewModifier {
     func body(content: Content) -> some View {
         content
             .foregroundStyle(.white)
-            .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+            // A firmer halo than a hairline shadow: white values have to stay legible over the palest
+            // part of the sky too (a near-white noon on the XL card), not just a mid-blue.
+            .shadow(color: .black.opacity(0.45), radius: 2, y: 0.5)
     }
 }
 
@@ -148,11 +150,13 @@ private struct HomeHourColumn: View {
         VStack(spacing: large ? 5 : 3) {
             Text("\(hour.hour)")
                 .font(large ? .subheadline : .caption2).skyText()
-            ConditionGlyph(sky: hour.sky, isNight: (hour.sky ?? "").hasSuffix("n"))
-                .font(large ? .title3 : .body)
-                .frame(height: large ? 26 : 20)
+            // A fixed slot gives every condition the same point size and footprint, so a wide rain cloud
+            // no longer renders taller than a sun — which was leaving the columns at unequal heights and
+            // knocking the hour/temperature rows out of line across the strip.
+            ConditionGlyph(sky: hour.sky, isNight: (hour.sky ?? "").hasSuffix("n"),
+                           slot: large ? 20 : 15)
             Text(HomeFormat.temp(hour.temp))
-                .font(large ? .body : .caption).fontWeight(.semibold).skyText()
+                .font(large ? .body : .caption2).fontWeight(.semibold).skyText()
         }
         .frame(maxWidth: .infinity)
     }
@@ -164,9 +168,6 @@ private struct HomeHourColumn: View {
 /// right, like Apple's own forecast.
 private struct HomeDayList: View {
     let days: [DaySnapshot]
-    /// Spread the rows to fill the available height (even vertical gaps) instead of stacking them tight at
-    /// the top — used on the XL card's right column, which has the room to breathe.
-    var fill: Bool = false
     /// Bigger type and a taller band, for the iPad XL card where the small caption sizes read cramped.
     var large: Bool = false
 
@@ -178,18 +179,10 @@ private struct HomeDayList: View {
     }
 
     var body: some View {
-        if fill {
-            VStack(spacing: 0) {
-                ForEach(Array(days.enumerated()), id: \.element.id) { idx, day in
-                    HomeDayRow(day: day, span: span, large: large)
-                    if idx < days.count - 1 { Spacer(minLength: 6) }
-                }
-            }
-            .frame(maxHeight: .infinity)
-        } else {
-            VStack(spacing: 5) {
-                ForEach(days) { HomeDayRow(day: $0, span: span, large: large) }
-            }
+        // Rows breathe (a wider gap on the XL, where the small spacing read cramped) but stay a tight
+        // group, so the block reads as one distinct area.
+        VStack(spacing: large ? 12 : 5) {
+            ForEach(days) { HomeDayRow(day: $0, span: span, large: large) }
         }
     }
 }
@@ -211,6 +204,7 @@ private struct HomeDayRow: View {
                 .frame(width: large ? 24 : 20)
             Text(HomeFormat.temp(day.min))
                 .font(large ? .subheadline : .caption).foregroundStyle(.white.opacity(0.75))
+                .shadow(color: .black.opacity(0.45), radius: 2, y: 0.5)
                 .frame(width: large ? 38 : 30, alignment: .trailing)
             TempBand(low: day.min, high: day.max, span: span)
                 .frame(height: large ? 7 : 5)
@@ -495,18 +489,22 @@ public struct AuraHomeXL: View {
                 }
                 .frame(width: geo.size.width * 0.37, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 0) {
                     let hours = Array(snapshot.upcomingHours().prefix(7))
                     let days = Array(snapshot.days.prefix(4))
-                    // Hours ride the top in their own larger strip; the days fill the rest of the column,
-                    // spread to reach the bottom edge instead of clustering under the hours with dead space
-                    // below — the XL has estate to spare on the right (the "use the room" report).
+                    // Two distinct blocks — próximas horas, then próximos días — set apart by open sky, not
+                    // a divider. A little air keeps the hours off the top edge; the dominant gap in the
+                    // middle makes the separation; the days stay a grouped block (their own inner spacing)
+                    // rather than spread across the whole height.
+                    Spacer(minLength: 12)
                     if !hours.isEmpty {
                         HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0, large: true) } }
                     }
+                    Spacer(minLength: 26)
                     if !days.isEmpty {
-                        HomeDayList(days: days, fill: true, large: true)
+                        HomeDayList(days: days, large: true)
                     }
+                    Spacer(minLength: 12)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }

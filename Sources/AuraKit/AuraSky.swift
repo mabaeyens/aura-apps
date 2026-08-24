@@ -22,9 +22,27 @@ public struct AuraSunPath: Sendable {
     /// the moon's arc height instead.
     public let altitude: Double
 
+    /// Re-dates a sun time onto the same calendar day as `now`, keeping its clock time. The stored
+    /// `sunrise`/`sunset` are absolute Dates stamped when the snapshot was built; once that snapshot is a
+    /// day old, comparing a live `now` against them decides day/night by the *wrong day* — "today 11:55"
+    /// is after "yesterday's 21:00 sunset", which drew a night sky at noon. Sun times drift only a minute
+    /// or two a day, so re-dating them to `now` restores a correct time-of-day comparison. Returns the
+    /// input unchanged if the components can't be rebuilt.
+    public static func onSameDay(as now: Date, _ time: Date, calendar: Calendar = .current) -> Date {
+        let hms = calendar.dateComponents([.hour, .minute, .second], from: time)
+        return calendar.date(bySettingHour: hms.hour ?? 0, minute: hms.minute ?? 0,
+                             second: hms.second ?? 0, of: now) ?? time
+    }
+
     public init(now: Date, sunrise: Date?, sunset: Date?) {
-        guard let sr = sunrise, let ss = sunset, ss > sr else {
+        guard let sr0 = sunrise, let ss0 = sunset else {
             // No sun times (polar edge case / missing data): a neutral high-noon sky.
+            point = UnitPoint(x: 0.5, y: 0.16); isNight = false; altitude = 1; return
+        }
+        // Decide day/night against the render day, not the (possibly older) day the snapshot was built.
+        let sr = Self.onSameDay(as: now, sr0)
+        let ss = Self.onSameDay(as: now, ss0)
+        guard ss > sr else {
             point = UnitPoint(x: 0.5, y: 0.16); isNight = false; altitude = 1; return
         }
         if now >= sr && now <= ss {
