@@ -23,6 +23,7 @@ struct WatchRootView: View {
 
     @State private var snapshot: WeatherSnapshot?
     @State private var showingPicker = false
+    @State private var showingScenePicker = false
 
     /// The sunless hero art for the current sky+time, or `nil` to fall back to the procedural sky.
     private var heroImage: Image? {
@@ -87,6 +88,20 @@ struct WatchRootView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
+                            // The hero-art family switch (Paisaje / Ciudad), just below the location pill —
+                            // the same choice the phone offers, here on the wrist so the watch background
+                            // isn't stuck on the default. Writes the same `heroFamily` the sky reads above.
+                            Button { showingScenePicker = true } label: {
+                                Label(HeroBackground.Family(storage: heroFamily).displayName,
+                                      systemImage: "photo")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .lineLimit(1)
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 4)
                         .padding(.top, 40)   // clear the system clock and the rounded top corners
@@ -118,6 +133,44 @@ struct WatchRootView: View {
                 showingPicker = false
             }
         }
+        .sheet(isPresented: $showingScenePicker) {
+            WatchScenePicker(current: HeroBackground.Family(storage: heroFamily)) { pick in
+                heroFamily = pick.rawValue    // the sky re-resolves its hero on the next read
+                showingScenePicker = false
+            }
+        }
+    }
+}
+
+/// The wrist background switcher: the hero-art families (Paisaje, Ciudad), with a checkmark on the one
+/// in use. Mirrors the phone's setting so the watch can pick its own scenery without the phone.
+private struct WatchScenePicker: View {
+    let current: HeroBackground.Family
+    let onPick: (HeroBackground.Family) -> Void
+
+    /// A representative glyph per family for the row.
+    private func icon(_ family: HeroBackground.Family) -> String {
+        family == .cityscape ? "building.2.fill" : "mountain.2.fill"
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(HeroBackground.Family.allCases, id: \.self) { family in
+                    Button { onPick(family) } label: {
+                        HStack {
+                            Label(family.displayName, systemImage: icon(family))
+                            Spacer()
+                            if family == current {
+                                Image(systemName: "checkmark").foregroundStyle(.tint)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Fondo")
+        }
+        .fontDesign(.rounded)
     }
 }
 

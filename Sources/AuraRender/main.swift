@@ -102,9 +102,10 @@ dump("rectangular-ipad", size: CGSize(width: 330, height: 160)) { AuraAccessoryR
 // doesn't run past the bottom of a near-square slot (the "2×2 text is cut" report).
 dump("rectangular-ipad2x2", size: CGSize(width: 250, height: 172)) { AuraAccessoryRectangular(snapshot: snap) }
 
-// NOTE: the Home Screen cards (AuraHomeSmall/Medium/Large/XL) are intentionally NOT rendered here —
-// ImageRenderer segfaults on them offline. They build green in the widget extension and are verified in
-// the simulator instead; only the Lock Screen / complication faces above are dev-rendered.
+// NOTE: the Home Screen cards (AuraHomeSmall/Medium/Large/XL) are rendered by the sibling
+// `aura-widget-shots` tool (Sources/AuraWidgetShots), which draws each family at its true widget point
+// size over the containerBackground sky — the isolated widget faces for the App Store product page.
+// This tool stays focused on the Lock Screen / complication faces.
 
 // Temperature ramp: one swatch per degree from -5 to 45, each labelled, so the smooth AEMET/TVE
 // progression can be eyeballed (no hard bands, 20° green→yellow hand-off, red ~30°).
