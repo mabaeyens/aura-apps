@@ -121,19 +121,27 @@ public enum Palette {
         }
     }
 
-    /// The rain **complication**'s blue ramp: the same `precip(_:)` scale but with its 80 %+ step lightened
-    /// from the near-navy `precip` uses to `tempDeepBlue` (the 75 % colour), which stays legible at
-    /// complication size where the deep navy reads as black. Only the watch complication uses this — the
-    /// app's larger precip surfaces keep the deeper `precip(_:)`.
-    public static func precipComplication(_ prob: Int) -> Color {
-        prob >= 80 ? tempDeepBlue : precip(prob)
-    }
+    /// Control stops for the rain **complication**'s blue ramp (probability %, r, g, b): pale at a slim
+    /// chance, deepening as it climbs. Unlike the app's stepped `precip(_:)`, this is **continuously
+    /// interpolated** so the gauge band reads as one smooth blue rather than three flat plateaus. Capped at
+    /// `tempDeepBlue`, not the app's near-navy, which reads as black at complication size.
+    private static let precipStops: [(t: Double, r: Double, g: Double, b: Double)] = [
+        (0,   0.62, 0.84, 1.00),   // muy baja — azul pálido
+        (35,  0.25, 0.52, 0.93),   // media — tempBlue
+        (100, 0.16, 0.28, 0.78),   // alta — tempDeepBlue
+    ]
 
-    /// The complication ramp sampled across 0…100 %, for the rain gauge's **fixed** band: the arc always
-    /// shows the whole no-rain→certain ramp and never changes, while the gauge's dot rides it at the
-    /// current probability. Sampled off `precipComplication(_:)` so every point on the band is the exact
-    /// colour that value is tinted — the dot's colour matches the number and drop at the same value.
-    public static let precipComplicationScale = Gradient(colors: stride(from: 0, through: 100, by: 5).map { precipComplication($0) })
+    /// The rain **complication**'s blue for a given probability, continuously interpolated across
+    /// `precipStops`. Only the watch complication uses this — the app's larger precip surfaces keep the
+    /// stepped, deeper `precip(_:)`.
+    public static func precipComplication(_ prob: Int) -> Color { lerp(Double(prob), precipStops) }
+
+    /// The complication ramp sampled finely across 0…100 %, for the rain gauge's **fixed** band: the arc
+    /// always shows the whole no-rain→certain ramp and never changes, while the gauge's dot rides it at the
+    /// current probability. Sampled off the now-continuous `precipComplication(_:)` at a fine step, so the
+    /// band is smooth and every point on it is the exact colour that value is tinted — the dot's colour
+    /// matches the number and drop at the same value.
+    public static let precipComplicationScale = Gradient(colors: stride(from: 0, through: 100, by: 2).map { precipComplication($0) })
 
     /// The full cold→hot scale, for `Gauge` tints and range bars.
     public static let temperatureGradient = Gradient(colors: [

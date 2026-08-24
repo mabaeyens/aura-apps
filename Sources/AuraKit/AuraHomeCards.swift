@@ -474,9 +474,10 @@ public struct AuraHomeLarge: View {
         VStack(alignment: .leading, spacing: 10) {
             // The place name rides the condition line here (not its own row) so the card breathes. The
             // block's own high/low row is folded into the metrics line below, so max, min, rain, humidity
-            // and wind all sit together on one row.
+            // and wind all sit together on one row. The aviso is not an inline pill here — it sits as a
+            // bare sign in the card's top-right corner (see the overlay below).
             HomeConditionBlock(snapshot: snapshot, now: now, showHighLow: false,
-                               location: snapshot.localidad, alert: snapshot.activeAlert(at: now))
+                               location: snapshot.localidad)
             HomeMetricsRow(snapshot: snapshot, leadingHighLow: true)
 
             // No dividers between the blocks — open spacing separates them instead.
@@ -498,6 +499,17 @@ public struct AuraHomeLarge: View {
             HomeSunFooter(snapshot: snapshot)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        // The aviso as a bare level-tinted sign in the top-right corner, clear of the temperature and
+        // condition line, with a little padding off the edge.
+        .overlay(alignment: .topTrailing) {
+            if let alert = snapshot.activeAlert(at: now) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title3).fontWeight(.bold)
+                    .foregroundStyle(Palette.alert(alert.level))
+                    .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+                    .padding(.top, 2).padding(.trailing, 2)
+            }
+        }
     }
 }
 

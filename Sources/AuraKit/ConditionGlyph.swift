@@ -47,15 +47,18 @@ public struct ConditionGlyph: View {
     }
 }
 
-/// Sizes a condition glyph to a fixed point size inside a fixed-width slot, so a wide cloud and a narrow
-/// sun occupy the same footprint. A no-op when `slot` is nil (the caller sizes it with `.font`).
+/// Sizes a condition glyph to a fixed point size inside a fixed **square** slot, so a wide cloud, a narrow
+/// sun and a tall cloud-sun all occupy the same footprint — width *and* height. Fixing the height matters
+/// in the vertical hour columns: a taller multi-part symbol (`cloud.sun.fill`) would otherwise push its
+/// temperature down a few points, knocking the strip's temperature row out of line. A no-op when `slot` is
+/// nil (the caller sizes it with `.font`).
 private struct GlyphSlot: ViewModifier {
     let slot: CGFloat?
     func body(content: Content) -> some View {
         if let slot {
             content
                 .font(.system(size: slot))
-                .frame(width: slot * 1.5)
+                .frame(width: slot * 1.5, height: slot * 1.5)
         } else {
             content
         }
