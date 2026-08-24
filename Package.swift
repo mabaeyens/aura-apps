@@ -9,14 +9,12 @@ let package = Package(
         .executable(name: "aura-smoke", targets: ["AuraSmoke"]),
         .executable(name: "aura-render", targets: ["AuraRender"]),
         .executable(name: "aura-widget-shots", targets: ["AuraWidgetShots"]),
-        .executable(name: "aura-watch-shots", targets: ["AuraWatchShots"]),
     ],
     targets: [
         .target(name: "AuraKit"),
         .executableTarget(name: "AuraSmoke", dependencies: ["AuraKit"]),
         .executableTarget(name: "AuraRender", dependencies: ["AuraKit"]),
         .executableTarget(name: "AuraWidgetShots", dependencies: ["AuraKit"]),
-        .executableTarget(name: "AuraWatchShots", dependencies: ["AuraKit"]),
         .testTarget(name: "AuraKitTests", dependencies: ["AuraKit"]),
     ]
 )
