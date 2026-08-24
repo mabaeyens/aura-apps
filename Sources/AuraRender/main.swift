@@ -115,6 +115,16 @@ dump("aviso-corner",     size: CGSize(width: 44, height: 44)) { AuraAvisoCorner(
 dump("sunmoon-corner",   size: CGSize(width: 44, height: 44)) { AuraSunMoonCorner(snapshot: snap) }
 dump("sunmoon-circular", size: CGSize(width: 60, height: 60)) { AuraSunMoonCircular(snapshot: snap) }
 
+// ---- New: filling out the remaining watchOS accessory families for air-quality, aviso and summary ----
+// The `snap` preview already carries ICA category 2, an active naranja aviso, and hero temp/rain/humidity,
+// so every one of these renders populated content.
+dump("aq-rect",      size: CGSize(width: 170, height: 76)) { AuraAirQualityRectangular(snapshot: snap) }
+dump("aq-inline",    size: CGSize(width: 170, height: 22)) { AuraAirQualityInline(snapshot: snap) }
+dump("aviso-rect",   size: CGSize(width: 170, height: 76)) { AuraAvisoRectangular(snapshot: snap) }
+dump("summary-circ", size: CGSize(width: 76,  height: 76)) { AuraSummaryCircular(snapshot: snap) }
+dump("summary-corner", size: CGSize(width: 44, height: 44)) { AuraSummaryCorner(snapshot: snap) }
+dump("summary-rect", size: CGSize(width: 170, height: 76)) { AuraSummaryRectangular(snapshot: snap) }
+
 // NOTE: the Home Screen cards (AuraHomeSmall/Medium/Large/XL) are rendered by the sibling
 // `aura-widget-shots` tool (Sources/AuraWidgetShots), which draws each family at its true widget point
 // size over the containerBackground sky — the isolated widget faces for the App Store product page.

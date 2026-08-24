@@ -24,8 +24,109 @@ public struct AuraSummaryInline: View {
     /// The non-nil facts, each **prefixed by its own symbol** so the two percentages (rain, humidity) can
     /// never be mistaken for one another on a thin single line: 🌡 temp, ☂ rain, 💧 humidity. Built as a
     /// `Text` (not a joined string) because inline complications render embedded SF Symbols. Nil when the
-    /// snapshot carries none of them, so the slot falls back to the empty state.
-    private var line: Text? {
+    /// snapshot carries none of them, so the slot falls back to the empty state. Shared with
+    /// `AuraSummaryRectangular` via `AuraSummaryFormat.line` so the two surfaces can't drift apart.
+    private var line: Text? { AuraSummaryFormat.line(snapshot) }
+
+    public var body: some View {
+        if let line {
+            Label {
+                line
+            } icon: {
+                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky,
+                                                     isNight: snapshot.isNight(at: now)))
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+/// `.accessoryCircular`: the condition glyph centred with the current temperature — the summary's
+/// circular face, matching `AuraAirQualityCircular`'s centred framing. No ring (there's no bounded scale
+/// for "current conditions"), so a clean icon-over-value read carries it, temperature-tinted like the
+/// other circular temperature reads.
+public struct AuraSummaryCircular: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        if let temp = snapshot.heroTemp {
+            VStack(spacing: 1) {
+                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))
+                    .font(.title2)
+                Text("\(temp)°")
+                    .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
+                    .foregroundStyle(Palette.temperature(temp))
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+/// `.accessoryCorner` (Apple Watch): the condition glyph alone in the corner, with the current
+/// temperature on the curved bezel. Current conditions are a state, not a bounded value, so this is
+/// plain corner content + a `cornerLabel`, never a gauge — the same idiom as `AuraAvisoCorner`.
+public struct AuraSummaryCorner: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))
+            .font(.title3)
+    }
+
+    /// The curved bezel label: the current temperature.
+    public var cornerLabel: String { snapshot.heroTemp.map { "\($0)°" } ?? "—°" }
+}
+
+/// `.accessoryRectangular`: the condition icon beside the `temp · lluvia · humedad` line — the
+/// rectangular mate to `AuraSummaryInline`, following the same `GeometryReader` width branch, per-datum
+/// nil-drops and whole-line `Text` concatenation as `AuraAccessoryRectangular`.
+public struct AuraSummaryRectangular: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        if let line = AuraSummaryFormat.line(snapshot) {
+            GeometryReader { geo in
+                let wide = geo.size.width > 220
+                HStack(alignment: .center, spacing: wide ? 12 : 8) {
+                    Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky, isNight: snapshot.isNight(at: now)))
+                        .font(wide ? .title : .title2)
+                    line
+                        .font(wide ? .subheadline : .caption)
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+/// Shared `temp · lluvia · humedad` line-building for `AuraSummaryInline` and `AuraSummaryRectangular`,
+/// so the two surfaces render the same facts and can't drift apart. See `AuraSummaryInline` for the
+/// design rationale (nil-drop per datum, symbol-prefixed Text so the two percentages read unambiguously).
+private enum AuraSummaryFormat {
+    static func line(_ snapshot: WeatherSnapshot) -> Text? {
         let sp = "\u{2009}"           // thin space, symbol snug to its number
         let gap = Text("  ")
         var parts: [Text] = []
@@ -40,19 +141,6 @@ public struct AuraSummaryInline: View {
         }
         guard let first = parts.first else { return nil }
         return parts.dropFirst().reduce(first) { $0 + gap + $1 }
-    }
-
-    public var body: some View {
-        if let line {
-            Label {
-                line
-            } icon: {
-                Image(systemName: WeatherIcon.symbol(forSky: snapshot.currentSky,
-                                                     isNight: snapshot.isNight(at: now)))
-            }
-        } else {
-            AuraAccessoryEmpty()
-        }
     }
 }
 
@@ -235,5 +323,62 @@ public struct AuraAvisoCorner: View {
     public var cornerLabel: String {
         if let alert = snapshot.activeAlert(at: now) { return alert.phenomenon ?? "Aviso" }
         return "Sin avisos"
+    }
+}
+
+/// `.accessoryRectangular`: the aviso as a level-tinted triangle beside the phenomenon and its level —
+/// the rectangular mate to `AuraAvisoCircular`/`AuraAvisoCorner`, following the same `GeometryReader`
+/// width branch as `AuraAccessoryRectangular`. Calm state mirrors the circular/corner faces: the
+/// struck-through triangle in grey, "Sin avisos" — data is present, there's simply nothing active.
+public struct AuraAvisoRectangular: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        GeometryReader { geo in
+            let wide = geo.size.width > 220
+            if let alert = snapshot.activeAlert(at: now) {
+                active(alert, wide: wide)
+            } else {
+                calm(wide: wide)
+            }
+        }
+    }
+
+    private func active(_ alert: WeatherAlert, wide: Bool) -> some View {
+        HStack(alignment: .center, spacing: wide ? 12 : 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(wide ? .title : .title2)
+                .foregroundStyle(Palette.alert(alert.level))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(alert.phenomenon ?? "Aviso")
+                    .font(wide ? .subheadline : .caption).fontWeight(.semibold)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                Text("Nivel \(alert.level.rawValue)")
+                    .font(wide ? .footnote : .caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private func calm(wide: Bool) -> some View {
+        Label {
+            Text("Sin avisos")
+        } icon: {
+            Image(systemName: "exclamationmark.triangle")
+                .overlay {
+                    Image(systemName: "line.diagonal")
+                }
+        }
+        .font(wide ? .subheadline : .caption)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }

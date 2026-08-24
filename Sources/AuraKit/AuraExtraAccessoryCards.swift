@@ -130,6 +130,75 @@ public struct AuraAirQualityCorner: View {
     public var cornerLabel: String { snapshot.airQuality.map { "ICA \($0.category)" } ?? "ICA —" }
 }
 
+/// `.accessoryRectangular`: the ICA category number (large, ICA-tinted) beside the category name and the
+/// dominant pollutant/station line — the same two-line "headline + detail" shape as the other rectangular
+/// cells. Follows `AuraAccessoryRectangular`'s `GeometryReader` width branch so the iPad's roomier slot
+/// gets a step up in size rather than the iPhone's cramped one stretched thin. Empty when no station near.
+public struct AuraAirQualityRectangular: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    public var body: some View {
+        if let air = snapshot.airQuality {
+            GeometryReader { geo in
+                cell(air, wide: geo.size.width > 220)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+
+    private func cell(_ air: AirQuality, wide: Bool) -> some View {
+        let color = Palette.airQuality(air.category)
+        return HStack(alignment: .center, spacing: wide ? 12 : 8) {
+            Text("\(air.category)")
+                .font(wide ? .system(.largeTitle, design: .rounded) : .system(.title, design: .rounded))
+                .fontWeight(.semibold)
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(air.categoryName)
+                    .font(wide ? .subheadline : .caption).fontWeight(.semibold)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                detailLine(air)
+                    .font(wide ? .footnote : .caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    /// "O₃ · Retiro" — the dominant pollutant plus the reporting station, either half dropped if unknown.
+    private func detailLine(_ air: AirQuality) -> Text {
+        if let pollutant = air.pollutantLabel { return Text("\(pollutant) · \(air.station)") }
+        return Text(air.station)
+    }
+}
+
+/// `.accessoryInline`: the ICA glyph plus a short air-quality read — the category name, matching
+/// `AuraAvisoInline`'s inline style. Empty when no station is near.
+public struct AuraAirQualityInline: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    public var body: some View {
+        if let air = snapshot.airQuality {
+            // "ICA 2" rather than the full category name — some ICA names ("Razonablemente buena") run
+            // long enough to truncate on the inline slot's single line, same reasoning as the corner's
+            // `cornerLabel` fallback, which uses the same compact form.
+            Label {
+                Text("ICA \(air.category)")
+            } icon: {
+                Image(systemName: "aqi.medium")
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
 /// The official ICA ramp (categories 1…6) as a gradient, shared by the circular ring and the corner bezel
 /// gauge so they can't disagree.
 enum AirQualityScale {
