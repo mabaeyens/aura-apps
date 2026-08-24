@@ -80,10 +80,12 @@ public struct AuraSunCorner: View {
 
 // MARK: - Rain chance
 
-/// `.accessoryCircular`: the precipitation probability for the current hour as a ring fill, with a
-/// raindrop glyph and the percentage in the centre. Probability is encoded by the ring's fill (shape,
-/// not hue) so it still reads on the desaturated Lock Screen; the blue tint comes through on
-/// full-colour watch faces. Reads `currentPrecipProb` — the same field the rectangular card uses.
+/// `.accessoryCircular`: the precipitation probability for the current hour on a gauge whose band is the
+/// **fixed** 0…100 % blue ramp (`Palette.precipScale`) — the band never changes; only the dot moves along
+/// it to the current probability. The percentage sits in the centre and a raindrop glyph below it, both
+/// tinted to the value's colour so the dot, number and drop read the level together. The dot's position
+/// carries the reading on the desaturated Lock Screen, where the hue drops out. Reads `currentPrecipProb`
+/// — the same field the rectangular card uses.
 public struct AuraRainCircular: View {
     let snapshot: WeatherSnapshot
 
@@ -98,19 +100,21 @@ public struct AuraRainCircular: View {
 
     public var body: some View {
         Gauge(value: Double(prob ?? 0), in: 0...100) {
-            // White keeps the glyph legible and clearly distinct from the ring, which already carries
-            // the probability in Palette.precip. Without it the label inherits the gauge tint, so the
-            // glyph turns the same blue as the ring and reads as a smudge on it.
-            Image(systemName: isSnow ? "snowflake" : "drop.fill").foregroundStyle(.white)
+            // The glyph carries the same colour as the band/percentage — the complication ramp graded by
+            // the probability — so the drop reads at a glance as "how likely" without looking at the number.
+            Image(systemName: isSnow ? "snowflake" : "drop.fill").foregroundStyle(Palette.precipComplication(prob ?? 0))
         } currentValueLabel: {
             Text(prob.map { "\($0)" } ?? "—")
                 .fontWeight(.semibold).fontDesign(.rounded)
                 // Deepen the blue with the probability (an Aura convention — no official POP palette
                 // exists). Shows on colour faces; the Lock Screen desaturates it, ring fill unchanged.
-                .foregroundStyle(Palette.precip(prob ?? 0))
+                .foregroundStyle(Palette.precipComplication(prob ?? 0))
         }
         .gaugeStyle(.accessoryCircular)
-        .tint(Palette.precip(prob ?? 0))
+        // A FIXED band: the arc always shows the whole 0…100 % ramp (Palette.precipComplicationScale) and
+        // never changes — only the gauge's dot moves across it, to the current probability. The number and
+        // drop are tinted to that same position, so all three read the level together.
+        .tint(Palette.precipComplicationScale)
     }
 }
 
