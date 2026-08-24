@@ -5,22 +5,38 @@ import WidgetKit
 // Watch twins of the iOS Lock Screen summary/humidity/aviso glances. Layouts come from AuraKit so the
 // watch face and the iPhone Lock Screen render identical code.
 
-/// A one-line weather summary — temp · lluvia · humedad — for the inline complication slot.
+/// A weather summary glance in every accessory family: the condition glyph + temperature (circular),
+/// the glyph with the temperature on the bezel (corner), and the `temp · lluvia · humedad` line inline
+/// and rectangular. All four so it can fill any watch-face slot, including the Wayfinder sundial.
 struct AuraSummaryComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraSummary", provider: AuraComplicationProvider()) { entry in
-            Group {
-                if let snapshot = entry.snapshot {
-                    AuraSummaryInline(snapshot: snapshot, now: entry.date)
-                } else {
-                    AuraAccessoryEmpty()
-                }
-            }
-            .containerBackground(.fill.tertiary, for: .widget)
+            AuraSummaryComplicationView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Resumen")
-        .description("Temperatura, lluvia y humedad en una línea.")
-        .supportedFamilies([.accessoryInline])
+        .description("El tiempo de un vistazo: estado, temperatura, lluvia y humedad.")
+        .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner, .accessoryRectangular])
+    }
+}
+
+struct AuraSummaryComplicationView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            switch family {
+            case .accessoryInline:      AuraSummaryInline(snapshot: snapshot, now: entry.date)
+            case .accessoryRectangular: AuraSummaryRectangular(snapshot: snapshot, now: entry.date)
+            case .accessoryCorner:
+                let corner = AuraSummaryCorner(snapshot: snapshot, now: entry.date)
+                corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+            default:                    AuraSummaryCircular(snapshot: snapshot, now: entry.date)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
     }
 }
 
@@ -61,7 +77,7 @@ struct AuraHumidityView: View {
     }
 }
 
-/// A severe-weather aviso mark, circular or inline; the empty state when none is active.
+/// A severe-weather aviso mark in every accessory family; the empty state when none is active.
 struct AuraAvisoComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraAviso", provider: AuraComplicationProvider()) { entry in
@@ -70,7 +86,7 @@ struct AuraAvisoComplication: Widget {
         }
         .configurationDisplayName("Aviso")
         .description("El aviso meteorológico activo, si lo hay.")
-        .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner])
+        .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner, .accessoryRectangular])
     }
 }
 
@@ -81,11 +97,12 @@ struct AuraAvisoComplicationView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             switch family {
-            case .accessoryInline: AuraAvisoInline(snapshot: snapshot, now: entry.date)
+            case .accessoryInline:      AuraAvisoInline(snapshot: snapshot, now: entry.date)
+            case .accessoryRectangular: AuraAvisoRectangular(snapshot: snapshot, now: entry.date)
             case .accessoryCorner:
                 let corner = AuraAvisoCorner(snapshot: snapshot, now: entry.date)
                 corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
-            default:               AuraAvisoCircular(snapshot: snapshot, now: entry.date)
+            default:                    AuraAvisoCircular(snapshot: snapshot, now: entry.date)
             }
         } else {
             AuraAccessoryEmpty()

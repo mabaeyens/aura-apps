@@ -307,7 +307,7 @@ struct AuraAirQualityComplication: Widget {
         }
         .configurationDisplayName("Calidad del aire")
         .description("El índice de calidad del aire (ICA) de MITECO.")
-        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
     }
 }
 
@@ -318,6 +318,8 @@ struct AuraAirQualityView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             switch family {
+            case .accessoryInline:      AuraAirQualityInline(snapshot: snapshot)
+            case .accessoryRectangular: AuraAirQualityRectangular(snapshot: snapshot)
             case .accessoryCorner:
                 let corner = AuraAirQualityCorner(snapshot: snapshot)
                 if corner.hasValue {
