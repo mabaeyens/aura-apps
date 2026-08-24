@@ -34,6 +34,24 @@ AEMET,España,meteorología,previsión,lluvia,UV,calidad aire,avisos,alertas,rad
 
 ---
 
+## Listing URLs — own domain, not GitHub (both pages live)
+
+Point the listing at askmira.es pages instead of a raw GitHub markdown viewer. All three destinations
+exist and are deployed:
+
+| ASC field | Set to | Replaces |
+|---|---|---|
+| Support URL | `https://askmira.es/aura/soporte` | (the 1.5 fix — already set) |
+| Marketing URL | `https://askmira.es/aura` | (empty / GitHub repo) |
+| Privacy Policy URL | `https://askmira.es/aura/privacidad` | the GitHub-rendered `PRIVACY.md` |
+
+- All three are **app-level** ASC fields, editable without a new version or review, so the Marketing and
+  Privacy URLs can be swapped in **anytime** — no need to wait for the next build.
+- `aura/privacidad` is a hosted bilingual (ES/EN) privacy page (last updated 22 Aug 2026), so it reads
+  far better than GitHub's file viewer and won't 404 if the repo is ever made private.
+
+---
+
 ## Custom product pages (created 2026-08-24, via the ASC API)
 
 Four CPPs exist, all `PREPARE_FOR_SUBMISSION`, both locales, **promotional text set, no screenshots,

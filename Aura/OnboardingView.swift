@@ -10,6 +10,10 @@ struct OnboardingView: View {
     let onFinish: () -> Void
 
     @State private var page = 0
+    /// The key the user pastes on the AEMET page — saved to the Keychain inline, so onboarding never has to
+    /// send them off to Ajustes to finish. Cleared to empty after a save; `keySaved` lights the confirmation.
+    @State private var keyInput = ""
+    @State private var keySaved = false
     @Environment(\.openURL) private var openURL
 
     /// The notification preference picked on the notifications page. Editable later in Ajustes; shared
@@ -35,8 +39,8 @@ struct OnboardingView: View {
                  + "cada hora de tu ubicación."),
         Page(icon: "key.fill",
              title: "Tu clave de AEMET",
-             body: "AEMET es pública y gratuita, pero necesitas tu propia clave, también gratis. Pídela "
-                 + "aquí y pégala en Ajustes → Clave API.",
+             body: "AEMET es pública y gratuita, pero necesitas tu propia clave, también gratis. Pídela con "
+                 + "el botón y pégala aquí mismo. Podrás cambiarla cuando quieras en Ajustes.",
              showsKeyButton: true),
         Page(icon: "square.grid.2x2.fill",
              title: "En toda la pantalla",
@@ -113,15 +117,49 @@ struct OnboardingView: View {
             .padding(.horizontal, 8)
 
             if item.showsKeyButton {
-                Button {
-                    openURL(apiKeyURL)
-                } label: {
-                    Label("Solicitar mi clave gratis", systemImage: "arrow.up.right.square")
-                        .font(.callout.weight(.semibold))
-                        .padding(.horizontal, 18).padding(.vertical, 10)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .foregroundStyle(.white)
+                VStack(spacing: 14) {
+                    Button {
+                        openURL(apiKeyURL)
+                    } label: {
+                        Label("Solicitar mi clave gratis", systemImage: "arrow.up.right.square")
+                            .font(.callout.weight(.semibold))
+                            .padding(.horizontal, 18).padding(.vertical, 10)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+
+                    // Paste-and-save right here: no trip to Ajustes to finish setup.
+                    HStack(spacing: 8) {
+                        SecureField("Pega aquí tu clave", text: $keyInput)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .foregroundStyle(.white)
+                            .tint(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 11)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .onChange(of: keyInput) { _, _ in keySaved = false }
+                        Button {
+                            AuraKeychain.setAPIKey(keyInput.trimmingCharacters(in: .whitespaces))
+                            keyInput = ""
+                            keySaved = true
+                        } label: {
+                            Text("Guardar")
+                                .font(.callout.weight(.semibold))
+                                .padding(.horizontal, 16).padding(.vertical, 11)
+                                .background(.white, in: Capsule())
+                                .foregroundStyle(.black)
+                        }
+                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+
+                    if keySaved {
+                        Label("Clave guardada", systemImage: "checkmark.seal.fill")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .transition(.opacity)
+                    }
                 }
+                .animation(.default, value: keySaved)
             }
 
             if item.showsNotifyChoice {
