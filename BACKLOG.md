@@ -32,6 +32,17 @@
 
 ## Pending
 
+### Next App Store version (metadata — do at next release)
+- **Apply the expanded keyword list when I submit the next version.** Keywords can't be changed on the
+  live 1.0.0 (version metadata, locked once Ready for Distribution) — they ride the next build's review.
+  When `aura-release` creates the new version, before submitting, replace the keyword field on **both**
+  locales with: `AEMET,España,meteorología,previsión,lluvia,UV,calidad aire,avisos,alertas,radar,widget,reloj,sol`
+  (96/100 chars; new terms = avisos, alertas, radar, widget, reloj — the CPP angle differentiators).
+  Then, once approved, tick each custom product page's keyword set and submit the CPPs. Full detail,
+  the 4 CPP `ppid`s, and promo copy are in [`docs/APP_STORE_SUBMISSION.md`](docs/APP_STORE_SUBMISSION.md).
+  Context: the 4 CPPs (Widgets / Avisos / Apple Watch / Datos oficiales AEMET) are already created on
+  ASC with promo text set; screenshots (living-sky art) still parked.
+
 ### Blocked
 - **Fire risk (EFFIS/GWIS FWI)**: BUILT then REVERTED 2026-08-21 (commit `cf2d7b9`, reverted). The anonymous EFFIS/GWIS WMS `GetFeatureInfo` path (`ecmwf.query`, `INFO_FORMAT=text/html`, no key) works only for a `TIME` that **exactly matches a currently-loaded slice**, and cannot reliably return "today":
   - `ecmwf.query` is the only FWI layer that responds; `ecmwf_fwi_ens.query` returns empty and the `fwi_gadm_admin1/2.*` (administrative-unit) layers are `LayerNotDefined`.
