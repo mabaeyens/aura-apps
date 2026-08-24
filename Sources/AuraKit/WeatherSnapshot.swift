@@ -123,8 +123,18 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.airQuality = airQuality
         self.uvIndex = uvIndex
         self.uvHourly = uvHourly
-        self.sunrise = sunrise
-        self.sunset = sunset
+        // Guarantee sun times whenever coordinates are known. A snapshot built without orto/ocaso (some
+        // data paths, cached or degraded loads) would otherwise leave the sun path unplaced, pinning both
+        // the hero disc and the time-of-day label to a neutral noon. Compute them from the coordinates.
+        if let sunrise, let sunset {
+            self.sunrise = sunrise; self.sunset = sunset
+        } else if let latitude, let longitude {
+            let solar = SolarTimes(date: updated, latitude: latitude, longitude: longitude)
+            self.sunrise = sunrise ?? solar.sunrise
+            self.sunset = sunset ?? solar.sunset
+        } else {
+            self.sunrise = sunrise; self.sunset = sunset
+        }
         self.latitude = latitude
         self.longitude = longitude
         self.days = days

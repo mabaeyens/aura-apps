@@ -90,6 +90,18 @@ final class HeroBackgroundTests: XCTestCase {
         XCTAssertNil(HeroBackground.Condition(.unknown))
     }
 
+    // MARK: Wide per-condition grid (iPad / widgets)
+
+    func testWideGridNamesAndSceneToken() {
+        // The wide scene token is `landscape`/`city` (NOT the portrait `city_` prefix), matching the four
+        // legacy bases; 48 unique names per family.
+        XCTAssertEqual(HeroBackground.wideAssetName(.landscape, .clear, .dawn), "wide_landscape_clear_dawn")
+        XCTAssertEqual(HeroBackground.wideAssetName(.cityscape, .stormy, .night), "wide_city_stormy_night")
+        XCTAssertEqual(HeroBackground.wideAssetNames(for: .landscape).count, 48)
+        XCTAssertEqual(Set(HeroBackground.wideAssetNames(for: .cityscape)).count, 48)
+        XCTAssertTrue(HeroBackground.wideAssetNames(for: .cityscape).allSatisfy { $0.hasPrefix("wide_city_") })
+    }
+
     // MARK: Time buckets from the sun path
 
     private func at(_ h: Int, _ m: Int = 0) -> Date {
@@ -106,7 +118,15 @@ final class HeroBackgroundTests: XCTestCase {
         XCTAssertEqual(HeroBackground.Time(now: at(23),    sunrise: sunrise, sunset: sunset), .night)
     }
 
-    func testTimeBucketWithoutSunTimesIsNoon() {
-        XCTAssertEqual(HeroBackground.Time(now: at(3), sunrise: nil, sunset: nil), .noon)
+    // Without sun times the label must fall back to the local clock hour, not pin to noon — a snapshot
+    // that reached the hero without orto/ocaso used to read "Mediodía" at every hour (17:17 included).
+    func testTimeBucketWithoutSunTimesFallsBackToClockHour() {
+        XCTAssertEqual(HeroBackground.Time(now: at(3),      sunrise: nil, sunset: nil), .night)
+        XCTAssertEqual(HeroBackground.Time(now: at(7),      sunrise: nil, sunset: nil), .dawn)
+        XCTAssertEqual(HeroBackground.Time(now: at(10),     sunrise: nil, sunset: nil), .morning)
+        XCTAssertEqual(HeroBackground.Time(now: at(13),     sunrise: nil, sunset: nil), .noon)
+        XCTAssertEqual(HeroBackground.Time(now: at(17, 17), sunrise: nil, sunset: nil), .afternoon)
+        XCTAssertEqual(HeroBackground.Time(now: at(20),     sunrise: nil, sunset: nil), .dusk)
+        XCTAssertEqual(HeroBackground.Time(now: at(23),     sunrise: nil, sunset: nil), .night)
     }
 }

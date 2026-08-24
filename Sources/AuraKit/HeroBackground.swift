@@ -21,6 +21,10 @@ public enum HeroBackground {
         case dawn, morning, noon, afternoon, dusk, night
 
         public init(now: Date, sunrise: Date?, sunset: Date?) {
+            // No sun times (a snapshot built without coordinates): the sun path can't place the day, so the
+            // *label* falls back to the local clock hour rather than pinning to noon. AuraSunPath keeps its
+            // own neutral mid-sky default for the disc; that geometric fallback must not leak into the word.
+            guard sunrise != nil, sunset != nil else { self = Time(clockHour: now); return }
             let path = AuraSunPath(now: now, sunrise: sunrise, sunset: sunset)
             if path.isNight { self = .night; return }
             // point.x runs 0 (sunrise / east) → 1 (sunset / west) across the daylight span.
@@ -30,6 +34,19 @@ public enum HeroBackground {
             case ..<0.60: self = .noon
             case ..<0.88: self = .afternoon
             default:      self = .dusk
+            }
+        }
+
+        /// Fallback bucket from the local clock hour, used only when sun times are missing so the
+        /// time-of-day word still tracks the wall clock instead of defaulting to "Mediodía".
+        private init(clockHour now: Date) {
+            switch Calendar.current.component(.hour, from: now) {
+            case 6..<9:   self = .dawn
+            case 9..<12:  self = .morning
+            case 12..<15: self = .noon
+            case 15..<19: self = .afternoon
+            case 19..<21: self = .dusk
+            default:      self = .night
             }
         }
     }
@@ -101,17 +118,25 @@ public enum HeroBackground {
     public static func resolve(sky: Palette.Sky, time: Time, family: Family = .landscape,
                                available: Set<String>) -> String? {
         guard let condition = Condition(sky) else { return nil }
-        let exact = assetName(family, condition, time)
-        if available.contains(exact) { return exact }
+        return resolveName(condition: condition, time: time, available: available) {
+            assetName(family, $0, $1)
+        }
+    }
 
-        // Nearest existing time bucket for the same condition, over the daily cycle (so `dawn` is a
-        // neighbour of `night`). Ties resolve to the earlier bucket in the day.
+    /// Nearest-time resolver shared by the portrait and wide grids: exact `(condition, time)` → nearest
+    /// existing time for the **same** condition over the daily cycle (so `dawn` neighbours `night`, ties to
+    /// the earlier bucket) → `nil`. `name` maps a `(condition, time)` to the family's asset name so the two
+    /// grids share one algorithm and only differ in how they spell their filenames.
+    private static func resolveName(condition: Condition, time: Time, available: Set<String>,
+                                    name: (Condition, Time) -> String) -> String? {
+        let exact = name(condition, time)
+        if available.contains(exact) { return exact }
         let order = Time.allCases
         guard let want = order.firstIndex(of: time) else { return nil }
         let best = order.indices
-            .filter { available.contains(assetName(family, condition, order[$0])) }
+            .filter { available.contains(name(condition, order[$0])) }
             .min { cyclicDistance($0, want, order.count) < cyclicDistance($1, want, order.count) }
-        return best.map { assetName(family, condition, order[$0]) }
+        return best.map { name(condition, order[$0]) }
     }
 
     /// Convenience straight from a snapshot.
@@ -146,6 +171,45 @@ public enum HeroBackground {
     /// Day and night share a family's composition, so one value each.
     public static func wideBaseHorizon(_ family: Family) -> CGFloat {
         family == .cityscape ? 0.84 : 0.50
+    }
+
+    // MARK: Wide per-condition grid (iPad / widgets)
+
+    /// Canonical **wide** asset name, the 4:3 twin of the portrait grid, e.g. `"wide_landscape_clear_dawn"`
+    /// / `"wide_city_stormy_night"`. Same 8×6 grid, re-composed centre-weighted for a landscape canvas; the
+    /// scene token is `landscape`/`city` (matching the four legacy bases, which keep their own names).
+    public static func wideAssetName(_ family: Family, _ condition: Condition, _ time: Time) -> String {
+        let scene = family == .cityscape ? "city" : "landscape"
+        return "wide_\(scene)_\(condition.rawValue)_\(time.rawValue)"
+    }
+
+    /// Every name one family's full wide 8×6 grid would contain (48).
+    public static func wideAssetNames(for family: Family) -> [String] {
+        Condition.allCases.flatMap { c in Time.allCases.map { wideAssetName(family, c, $0) } }
+    }
+
+    /// Resolve the best **wide** asset *name* for a snapshot within a family, given which assets exist —
+    /// same chain as the portrait `resolve` (exact `(condition, time)` → nearest existing time for the same
+    /// condition → `nil`). The widget takes the name so it can load the display-sized `_w` tier; the app
+    /// turns it into an `Image` via `wideImage`. `nil` → no art for this sky, use the procedural sky.
+    public static func wideName(for snapshot: WeatherSnapshot?, now: Date = Date(),
+                                family: Family = .landscape, exists: (String) -> Bool) -> String? {
+        guard let snapshot else { return nil }
+        let (category, _) = Palette.sky(forCode: snapshot.currentSky)
+        guard let condition = Condition(category) else { return nil }
+        let time = Time(now: now, sunrise: snapshot.sunrise, sunset: snapshot.sunset)
+        let available = Set(wideAssetNames(for: family).filter(exists))
+        return resolveName(condition: condition, time: time, available: available) {
+            wideAssetName(family, $0, $1)
+        }
+    }
+
+    /// The **wide** per-condition hero *image* for a snapshot, or `nil` (→ procedural sky) when none has
+    /// shipped for this sky. The wide twin of `heroImage(for:)`; the art bakes the condition (and time),
+    /// so the caller passes `heroCarriesCondition: true` and `AuraSky` draws only the live sun/moon on top.
+    public static func wideImage(for snapshot: WeatherSnapshot?, now: Date = Date(),
+                                 family: Family = .landscape, exists: (String) -> Bool) -> Image? {
+        wideName(for: snapshot, now: now, family: family, exists: exists).map { Image($0) }
     }
 
     // MARK: Portrait hero horizons (iPhone / Watch full-screen)

@@ -81,13 +81,14 @@ struct TodayView: View {
         HeroBackground.assetNames(for: .cityscape).contains { UIImage(named: $0) != nil }
     }
 
-    /// The wide, conditionless base scene for the current family + day/night, used on the regular-width
-    /// (iPad / Mac) canvas where the portrait phone rasters can't reflow. `AuraSky` draws the live sun/moon
-    /// and the cloud veil over it. Nil until the four `wide_*` assets ship → the procedural sky fills in.
-    private var wideBaseImage: Image? {
-        HeroBackground.wideBaseImage(for: displaySnapshot, now: displayNow,
-                                     family: HeroBackground.Family(storage: heroFamily),
-                                     exists: { UIImage(named: $0) != nil })
+    /// The wide per-condition hero for the current family, used on the regular-width (iPad / Mac) canvas
+    /// where the portrait phone rasters can't reflow. It's the 4:3 twin of the portrait 8×6 grid, so the
+    /// condition and time of day are baked into the art and `AuraSky` draws only the live sun/moon on top.
+    /// Nil for an unknown sky (or before the art ships) → the procedural sky fills in.
+    private var wideHeroImage: Image? {
+        HeroBackground.wideImage(for: displaySnapshot, now: displayNow,
+                                 family: HeroBackground.Family(storage: heroFamily),
+                                 exists: { UIImage(named: $0) != nil })
     }
 
     /// The instant Aura renders "now" from. Normally the load time, so the sky and every time-derived
@@ -162,13 +163,13 @@ struct TodayView: View {
     /// The full-bleed sky behind everything.
     /// - iPhone (compact): the sunless 8×6 hero art (condition-baked) bleeds edge to edge behind the sun.
     /// - iPad / Mac (regular): the portrait phone rasters can't reflow to a wide/landscape canvas without
-    ///   being cropped to ribbons, so use a wide, conditionless base scene (family × day/night) with the
-    ///   live sun/moon and the cloud veil drawn on top. Until those four `wide_*` assets ship, `wideBaseImage`
-    ///   is nil and the fully procedural `AuraSky` fills the canvas instead.
+    ///   being cropped to ribbons, so use the wide per-condition hero (the 4:3 twin of the 8×6 grid) with
+    ///   the condition and time baked in and only the live sun/moon drawn on top. For an unknown sky (or
+    ///   before the art ships) `wideHeroImage` is nil and the fully procedural `AuraSky` fills the canvas.
     @ViewBuilder private var skyBackground: some View {
         if hSizeClass == .regular {
             AuraSky(snapshot: displaySnapshot, now: displayNow,
-                    heroImage: wideBaseImage, heroCarriesCondition: false,
+                    heroImage: wideHeroImage, heroCarriesCondition: true,
                     heroHorizon: HeroBackground.wideBaseHorizon(HeroBackground.Family(storage: heroFamily)),
                     heroAspect: HeroBackground.wideBaseAspect)
                 .ignoresSafeArea()

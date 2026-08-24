@@ -145,11 +145,11 @@ struct AuraHomeWidget: Widget {
     }
 }
 
-/// The Home Screen widget's background: the sunless wide base art behind the live sun/moon and cloud
-/// veil, with a gentle top-and-bottom scrim for text contrast. The base is downsampled to this family's
-/// display size (`WidgetHero`) so a screen full of Aura widgets stays within WidgetKit's memory budget;
-/// `heroCarriesCondition: false` lets AuraSky draw the weather veil and live light over the plain base.
-/// No base for this state → AuraSky's procedural sky.
+/// The Home Screen widget's background: the wide per-condition hero behind the live sun/moon, with a
+/// gentle top-and-bottom scrim for text contrast. The hero is pre-sized to this family's display size
+/// (`WidgetHero`) so a screen full of Aura widgets stays within WidgetKit's memory budget;
+/// `heroCarriesCondition: true` because the condition (and time) are baked into the art, so AuraSky
+/// draws only the live sun/moon on top. No hero for this sky → AuraSky's procedural sky.
 struct AuraHomeBackground: View {
     @Environment(\.widgetFamily) private var family
     let entry: AuraEntry
@@ -163,8 +163,8 @@ struct AuraHomeBackground: View {
             AuraSky(snapshot: entry.snapshot, now: entry.date,
                     heroImage: WidgetHero.base(for: entry.snapshot, now: entry.date,
                                                scene: entry.scene, full: full),
-                    heroCarriesCondition: false,
-                    // Anchor the wide base to the ground: on the short, wide Home families a centre crop
+                    heroCarriesCondition: true,
+                    // Anchor the wide hero to the ground: on the short, wide Home families a centre crop
                     // shows mostly sky, so pin the bottom to keep the horizon and landscape in frame.
                     heroAnchor: .bottom,
                     // Pin a low dawn/dusk sun just above the art's ridge so it sits *behind* the scenery,
