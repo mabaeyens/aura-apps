@@ -270,6 +270,16 @@ public struct AuraSky: View {
                     }
                     .allowsHitTesting(false)
                 }
+
+                // 6 — precipitation. The conditionless wide base (the widgets) is a plain clear-sky scene,
+                // so its only weather cue was the grey veil above — which reads as "overcast", not "rain".
+                // Draw static rain streaks (heavier for a storm) or snow flecks over it so the widget's sky
+                // matches its own condition glyph. Skipped over the baked 8×6 hero art, which already paints
+                // its own rain (`heroCarriesCondition`), and drawn over the procedural sky for consistency.
+                if heroImage == nil || !heroCarriesCondition, let precip = Self.precip(category) {
+                    Canvas { ctx, sz in Self.drawPrecip(&ctx, size: sz, kind: precip) }
+                        .allowsHitTesting(false)
+                }
             }
         }
         .ignoresSafeArea()
@@ -321,6 +331,55 @@ public struct AuraSky: View {
         case .storm:            return 0.72
         case .snow:             return 0.50
         case .unknown:          return 0.10
+        }
+    }
+
+    /// The kind of precipitation to draw over a conditionless base, or nil for a dry sky. Only rain,
+    /// storm and snow carry falling precipitation; the rest are just cloud (the veil covers them).
+    enum Precip { case rain, storm, snow }
+    private static func precip(_ category: Palette.Sky) -> Precip? {
+        switch category {
+        case .rain:  return .rain
+        case .storm: return .storm
+        case .snow:  return .snow
+        default:     return nil
+        }
+    }
+
+    /// A deterministic pseudo-random value in [0, 1) from an integer seed — a cheap hash so the
+    /// precipitation lands in the same places on every render (a widget never animates).
+    private static func frac(_ n: Int) -> CGFloat {
+        let x = sin(Double(n) * 12.9898) * 43758.5453
+        return CGFloat(x - x.rounded(.down))
+    }
+
+    /// Static precipitation over the sky: slanted rain streaks (denser for a storm) or round snow
+    /// flecks, in a cool near-white so they read against both a day and a night base.
+    private static func drawPrecip(_ ctx: inout GraphicsContext, size: CGSize, kind: Precip) {
+        let w = size.width, h = size.height
+        let tint = Color(red: 0.86, green: 0.91, blue: 0.98)
+        switch kind {
+        case .snow:
+            for i in 0..<44 {
+                let x = frac(i * 73 + 17) * w
+                let y = frac(i * 149 + 31) * h
+                let r = 1.1 + frac(i * 53 + 5) * 1.5
+                ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
+                         with: .color(.white.opacity(0.85)))
+            }
+        case .rain, .storm:
+            let count = kind == .storm ? 72 : 50
+            let len = h * (kind == .storm ? 0.075 : 0.06)
+            let dx = len * 0.32                          // a gentle wind-driven slant
+            for i in 0..<count {
+                let x = frac(i * 61 + 13) * (w + 40) - 20
+                let y = frac(i * 127 + 7) * (h * 1.1) - h * 0.05
+                var p = Path()
+                p.move(to: CGPoint(x: x, y: y))
+                p.addLine(to: CGPoint(x: x - dx, y: y + len))
+                ctx.stroke(p, with: .color(tint.opacity(0.5)),
+                           style: StrokeStyle(lineWidth: 1.3, lineCap: .round))
+            }
         }
     }
 

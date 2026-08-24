@@ -59,7 +59,7 @@ enum AEMETService {
     /// decides the real timing from the system Background App Refresh setting and usage patterns, so
     /// this is a request, not a guarantee. A failed submit (simulator, or the setting off) is fine to
     /// ignore: the app still refreshes on foreground.
-    static func scheduleBackgroundRefresh() {
+    nonisolated static func scheduleBackgroundRefresh() {
         let request = BGAppRefreshTaskRequest(identifier: backgroundRefreshIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
         do {

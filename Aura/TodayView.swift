@@ -119,7 +119,7 @@ struct TodayView: View {
     /// The active aviso to surface at the top of the screen, if any. Reads from `displaySnapshot` so a
     /// DEBUG screenshot run's overridden snapshot is honoured. When non-nil it lights the hero aviso badge
     /// and tints the "MÁS" scroll hint, so an active warning is visible before the user reaches its card.
-    private var activeAlert: WeatherAlert? { displaySnapshot?.alert }
+    private var activeAlert: WeatherAlert? { displaySnapshot?.activeAlert(at: Date()) }
 
     var body: some View {
         NavigationStack {

@@ -101,7 +101,7 @@ public struct AuraAvisoCircular: View {
     }
 
     public var body: some View {
-        if let alert = snapshot.alert {
+        if let alert = snapshot.activeAlert(at: now) {
             VStack(spacing: 1) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.title3)
@@ -131,11 +131,15 @@ public struct AuraAvisoCircular: View {
 /// ("Tormentas", "Lluvia"…) or just "Aviso" when the feed names no phenomenon. Empty when none is active.
 public struct AuraAvisoInline: View {
     let snapshot: WeatherSnapshot
+    let now: Date
 
-    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
 
     public var body: some View {
-        if let alert = snapshot.alert {
+        if let alert = snapshot.activeAlert(at: now) {
             Label {
                 Text(alert.phenomenon ?? "Aviso")
             } icon: {

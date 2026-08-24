@@ -26,14 +26,13 @@ func todayAt(_ h: Int, _ m: Int) -> Date {
     renderCal.date(bySettingHour: h, minute: m, second: 0, of: Date()) ?? Date()
 }
 
-let snap = WeatherSnapshot.preview
-
 /// The widget's containerBackground: the live sky over the sunless wide base, plus the same
 /// top-and-bottom scrim `AuraHomeBackground` applies for text contrast. `scene` picks nature vs city,
 /// `when` sets the light (afternoon sun in frame vs a low atardecer).
 @MainActor
-func widgetBackground(_ scene: HeroBackground.Family, when: Date) -> some View {
-    let base = diskImage("hero_asset_creation/output/wide_\(scene == .cityscape ? "city" : "landscape")_day.png")
+func widgetBackground(_ scene: HeroBackground.Family, when: Date, snap: WeatherSnapshot) -> some View {
+    let daynight = AuraSunPath(now: when, sunrise: snap.sunrise, sunset: snap.sunset).isNight ? "night" : "day"
+    let base = diskImage("hero_asset_creation/output/wide_\(scene == .cityscape ? "city" : "landscape")_\(daynight).png")
     return ZStack {
         AuraSky(snapshot: snap, now: when,
                 heroImage: base,
@@ -51,10 +50,10 @@ func widgetBackground(_ scene: HeroBackground.Family, when: Date) -> some View {
 /// clipped to the widget's continuous corner radius. Rendered at scale 4 to a transparent-corner PNG.
 @MainActor
 func widgetShot(_ name: String, size: CGSize, radius: CGFloat, margin: CGFloat,
-                scene: HeroBackground.Family, when: Date,
+                scene: HeroBackground.Family, when: Date, snap: WeatherSnapshot,
                 @ViewBuilder _ content: () -> some View) {
     let view = ZStack {
-        widgetBackground(scene, when: when)
+        widgetBackground(scene, when: when, snap: snap)
         content()
             .padding(margin)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -77,41 +76,44 @@ func widgetShot(_ name: String, size: CGSize, radius: CGFloat, margin: CGFloat,
 /// Render the full seven-face set (iPhone S/M/L + iPad S/M/L/XL) under one light + scene. `suffix` tags
 /// the filenames so the variants sit side by side (e.g. `widget-iphone-l-sunset.png`).
 @MainActor
-func renderSet(_ suffix: String, when: Date, scene: HeroBackground.Family) {
+func renderSet(_ suffix: String, when: Date, scene: HeroBackground.Family,
+               snap: WeatherSnapshot = WeatherSnapshot.preview) {
     let tag = suffix.isEmpty ? "" : "-\(suffix)"
     // iPhone (430pt class: 15/16 Pro Max) — near-fixed ~24pt corner, ~16pt content margin.
     let phoneRadius: CGFloat = 24, phoneMargin: CGFloat = 16
-    widgetShot("widget-iphone-s\(tag)", size: CGSize(width: 170, height: 170), radius: phoneRadius, margin: phoneMargin, scene: scene, when: when) {
+    widgetShot("widget-iphone-s\(tag)", size: CGSize(width: 170, height: 170), radius: phoneRadius, margin: phoneMargin, scene: scene, when: when, snap: snap) {
         AuraHomeSmall(snapshot: snap, now: when)
     }
-    widgetShot("widget-iphone-m\(tag)", size: CGSize(width: 364, height: 170), radius: phoneRadius, margin: phoneMargin, scene: scene, when: when) {
+    widgetShot("widget-iphone-m\(tag)", size: CGSize(width: 364, height: 170), radius: phoneRadius, margin: phoneMargin, scene: scene, when: when, snap: snap) {
         AuraHomeMedium(snapshot: snap, now: when)
     }
-    widgetShot("widget-iphone-l\(tag)", size: CGSize(width: 364, height: 382), radius: phoneRadius, margin: phoneMargin, scene: scene, when: when) {
+    widgetShot("widget-iphone-l\(tag)", size: CGSize(width: 364, height: 382), radius: phoneRadius, margin: phoneMargin, scene: scene, when: when, snap: snap) {
         AuraHomeLarge(snapshot: snap, now: when)
     }
     // iPad (12.9" portrait) — slightly larger radius (~30pt) and margin (~20pt); XL is iPad-only.
     let padRadius: CGFloat = 30, padMargin: CGFloat = 20
-    widgetShot("widget-ipad-s\(tag)", size: CGSize(width: 170, height: 170), radius: padRadius, margin: padMargin, scene: scene, when: when) {
+    widgetShot("widget-ipad-s\(tag)", size: CGSize(width: 170, height: 170), radius: padRadius, margin: padMargin, scene: scene, when: when, snap: snap) {
         AuraHomeSmall(snapshot: snap, now: when)
     }
-    widgetShot("widget-ipad-m\(tag)", size: CGSize(width: 378, height: 170), radius: padRadius, margin: padMargin, scene: scene, when: when) {
+    widgetShot("widget-ipad-m\(tag)", size: CGSize(width: 378, height: 170), radius: padRadius, margin: padMargin, scene: scene, when: when, snap: snap) {
         AuraHomeMedium(snapshot: snap, now: when)
     }
-    widgetShot("widget-ipad-l\(tag)", size: CGSize(width: 378, height: 378), radius: padRadius, margin: padMargin, scene: scene, when: when) {
+    widgetShot("widget-ipad-l\(tag)", size: CGSize(width: 378, height: 378), radius: padRadius, margin: padMargin, scene: scene, when: when, snap: snap) {
         AuraHomeLarge(snapshot: snap, now: when)
     }
-    widgetShot("widget-ipad-xl\(tag)", size: CGSize(width: 795, height: 378), radius: padRadius, margin: padMargin, scene: scene, when: when) {
+    widgetShot("widget-ipad-xl\(tag)", size: CGSize(width: 795, height: 378), radius: padRadius, margin: padMargin, scene: scene, when: when, snap: snap) {
         AuraHomeXL(snapshot: snap, now: when)
     }
 }
 
-// Three variants for the product page:
+// Variants for the product page and for verifying the wet-weather look:
 //   default  — warm mid-afternoon, nature: the sun disc sits in frame behind the scenery.
 //   sunset   — a low atardecer over the same landscape, at its most striking golden light.
 //   city     — the cityscape hero under the same flattering afternoon light.
+//   rain     — the same afternoon nature scene under a rainy snapshot (rain streaks + wet condition).
 renderSet("",       when: todayAt(17, 0), scene: .landscape)
 renderSet("sunset", when: todayAt(20, 40), scene: .landscape)
 renderSet("city",   when: todayAt(17, 0), scene: .cityscape)
+renderSet("rain",   when: todayAt(13, 0), scene: .landscape, snap: WeatherSnapshot.previewRain)
 
-print("done — 21 widget faces (3 variants × 7) written to \(outDir)")
+print("done — 28 widget faces (4 variants × 7) written to \(outDir)")

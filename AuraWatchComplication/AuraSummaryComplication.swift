@@ -63,7 +63,7 @@ struct AuraAvisoComplicationView: View {
     var body: some View {
         if let snapshot = entry.snapshot {
             switch family {
-            case .accessoryInline: AuraAvisoInline(snapshot: snapshot)
+            case .accessoryInline: AuraAvisoInline(snapshot: snapshot, now: entry.date)
             default:               AuraAvisoCircular(snapshot: snapshot, now: entry.date)
             }
         } else {

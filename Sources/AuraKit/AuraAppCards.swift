@@ -124,7 +124,7 @@ public struct AuraForecastStack: View {
                 // Push the cards below the fold: on a real screen the hero fills the first viewport so the
                 // clean sky + landscape read on their own; 0 (aura-render) keeps the hero its natural height.
                 .frame(minHeight: heroFillHeight > 0 ? heroFillHeight : nil, alignment: .top)
-            if let alert = snapshot.alert { AuraAlertCard(alert: alert, size: size) }
+            if let alert = snapshot.activeAlert(at: now) { AuraAlertCard(alert: alert, size: size) }
             // Re-anchor the strip to the real current hour: a snapshot served from cache must still
             // start at "now", not at the hour it was built.
             let upcoming = snapshot.upcomingHours(now: now)
@@ -220,7 +220,7 @@ public struct AuraHeroCard: View {
             // An active aviso reads as its sign plus a one-word summary ("Calor", "Tormentas"), right
             // under the dataline, tinted with the warning level's colour. The full text lives in the
             // tappable aviso card below the fold; here it is a glance.
-            if let alert = snapshot.alert {
+            if let alert = snapshot.activeAlert(at: now) {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(alert.shortLabel)

@@ -55,4 +55,45 @@ public extension WeatherSnapshot {
             updated: base
         )
     }
+
+    /// A rainy variant of `preview` — a long condition phrase and rain-coded skies — for exercising the
+    /// wet-weather look (the widget rain overlay, the medium card's two-line condition line).
+    static var previewRain: WeatherSnapshot {
+        let cal = Calendar(identifier: .gregorian)
+        let base = Date()
+        let days = (0..<7).compactMap { offset -> DaySnapshot? in
+            guard let date = cal.date(byAdding: .day, value: offset, to: base) else { return nil }
+            return DaySnapshot(date: date, min: 17 + offset, max: 27 - offset,
+                               sky: ["24", "24", "25", "13", "13", "46", "12"][offset],
+                               probPrecip: [75, 70, 60, 20, 15, 60, 5][offset])
+        }
+        let startHour = cal.component(.hour, from: base)
+        let skies = ["24", "24", "25", "24", "24n", "25n", "24n", "13n", "12n", "11n", "11n", "12n"]
+        let hours = (0..<12).map { i in
+            HourSlot(hour: (startHour + i) % 24, temp: 22 - i / 3, sky: skies[i],
+                     precipProb: [75, 70, 65, 60, 55, 50, 40, 30, 20, 10, 5, 5][i])
+        }
+        return WeatherSnapshot(
+            ine: "28079", localidad: "Madrid", provincia: "Madrid",
+            tempMin: 21, tempMax: 27, humedadMax: 80,
+            currentTemp: 21, observedTemp: 21, observedStation: "Madrid Retiro",
+            currentSky: "24", currentSkyText: "Muy nuboso con lluvia escasa",
+            currentHumidity: 58, currentPrecipProb: 75,
+            windSpeed: 19, windDirection: .so, windGust: 34,
+            airQuality: nil,
+            uvIndex: UVIndex(value: 3),
+            uvHourly: nil,
+            sunrise: cal.date(bySettingHour: 7, minute: 34, second: 0, of: base),
+            sunset: cal.date(bySettingHour: 21, minute: 0, second: 0, of: base),
+            days: days, hours: hours,
+            alert: WeatherAlert(level: .amarillo,
+                                event: "Aviso de lluvias de nivel amarillo",
+                                phenomenon: "Lluvia", zona: "280401",
+                                areaDesc: "Metropolitana", onset: base,
+                                expires: base.addingTimeInterval(3 * 3600)),
+            bulletin: "Cielos muy nubosos con lluvias débiles y ocasionales durante buena parte del día.",
+            bulletinPhenomenon: "Lluvia persistente",
+            updated: base
+        )
+    }
 }

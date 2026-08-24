@@ -146,6 +146,16 @@ public extension WeatherSnapshot {
     /// Whether the hero is a real station observation. Now always false — kept for API compatibility.
     var heroIsObserved: Bool { false }
 
+    /// The stored aviso, but only while it is still active at `now` (amarillo or worse, and not past its
+    /// `expires`). Avisos are filtered for expiry when fetched, but a cached snapshot outlives its aviso's
+    /// window: a fresh favourite is not refetched for an hour, so its snapshot keeps an aviso that has since
+    /// expired. Every surface that shows the warning must gate on this rather than trust the raw `alert`,
+    /// otherwise a widget pinned to a location the app is not currently refetching keeps flashing an aviso
+    /// the app has already dropped. Returns nil when there is no aviso, or it has lapsed.
+    func activeAlert(at now: Date = Date()) -> WeatherAlert? {
+        alert.flatMap { $0.isActive(at: now) ? $0 : nil }
+    }
+
     /// True when the snapshot carries current-hour data from the hourly feed — temperature, sky,
     /// humidity, precip chance, wind. When the hourly fetch comes back empty these all go nil together
     /// (the daily outlook, air quality and UV still populate), leaving a "thin" snapshot whose hero and

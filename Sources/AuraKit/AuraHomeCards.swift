@@ -45,6 +45,15 @@ private struct HomeConditionBlock: View {
     let snapshot: WeatherSnapshot
     let now: Date
     var tempFont: Font = .system(size: 44, weight: .semibold, design: .rounded)
+    /// The condition glyph's size. Shrunk on the medium card so the hero block stays narrow and the
+    /// hour strip beside it keeps its room.
+    var glyphFont: Font = .title
+    /// How many lines the condition line may wrap to before it truncates. The medium card allows two so
+    /// a long sky phrase ("Muy nuboso con lluvia escasa") reads in full instead of being cut mid-word.
+    var conditionLineLimit: Int = 1
+    /// Whether the block draws its own high/low row. The large card turns this off and folds the
+    /// high/low into a single metrics row alongside rain/humidity/wind.
+    var showHighLow: Bool = true
     var location: String? = nil
     var alert: WeatherAlert? = nil
 
@@ -62,7 +71,7 @@ private struct HomeConditionBlock: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .center, spacing: 8) {
                 ConditionGlyph(sky: snapshot.currentSky, isNight: snapshot.isNight(at: now))
-                    .font(.title)
+                    .font(glyphFont)
                 Text(HomeFormat.temp(snapshot.heroTemp))
                     .font(tempFont)
                     .lineLimit(1).minimumScaleFactor(0.7)
@@ -71,7 +80,7 @@ private struct HomeConditionBlock: View {
             if let conditionLine {
                 HStack(spacing: 6) {
                     Label {
-                        Text(conditionLine).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(conditionLine).lineLimit(conditionLineLimit).minimumScaleFactor(0.8)
                     } icon: {
                         if location != nil { Image(systemName: "location.fill") }
                     }
@@ -84,13 +93,15 @@ private struct HomeConditionBlock: View {
                     }
                 }
             }
-            HStack(spacing: 8) {
-                Label(HomeFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
-                Label(HomeFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
+            if showHighLow {
+                HStack(spacing: 8) {
+                    Label(HomeFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
+                    Label(HomeFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
+                }
+                .font(.caption).fontWeight(.medium)
+                .labelStyle(HomeTightLabel())
+                .skyText()
             }
-            .font(.caption).fontWeight(.medium)
-            .labelStyle(HomeTightLabel())
-            .skyText()
         }
     }
 }
@@ -100,6 +111,7 @@ private struct HomeConditionBlock: View {
 /// sign — the full "Aviso" pill crowded the row and pushed the location off the tile entirely.
 private struct HomeLocationRow: View {
     let snapshot: WeatherSnapshot
+    var now: Date = Date()
     var compact: Bool = false
 
     var body: some View {
@@ -110,7 +122,7 @@ private struct HomeLocationRow: View {
                 .lineLimit(1).minimumScaleFactor(0.8)
                 .skyText()
             Spacer(minLength: 4)
-            if let alert = snapshot.alert {
+            if let alert = snapshot.activeAlert(at: now) {
                 AvisoPill(level: alert.level, iconOnly: compact)
             }
         }
@@ -199,19 +211,23 @@ private struct HomeDayRow: View {
                 .font(large ? .subheadline : .caption).fontWeight(.semibold)
                 .frame(width: large ? 44 : 34, alignment: .leading)
                 .skyText()
-            ConditionGlyph(sky: day.sky, isNight: false)
-                .font(large ? .body : .footnote)
-                .frame(width: large ? 24 : 20)
+            // A fixed glyph slot gives every row the same height, so a tall rain cloud no longer makes
+            // its row deeper than a sun row and throws the vertical rhythm off (Lun sitting nearer Mar
+            // than Mar to Mié).
+            ConditionGlyph(sky: day.sky, isNight: false, slot: large ? 17 : 13)
             Text(HomeFormat.temp(day.min))
                 .font(large ? .subheadline : .caption).foregroundStyle(.white.opacity(0.75))
                 .shadow(color: .black.opacity(0.45), radius: 2, y: 0.5)
                 .frame(width: large ? 38 : 30, alignment: .trailing)
+            // A trailing inset shortens the band so the high value on the right always has room to show
+            // in full (a wide band was clipping "28°" to "2…").
             TempBand(low: day.min, high: day.max, span: span)
                 .frame(height: large ? 7 : 5)
                 .frame(maxWidth: .infinity)
+                .padding(.trailing, large ? 8 : 5)
             Text(HomeFormat.temp(day.max))
                 .font(large ? .subheadline : .caption).fontWeight(.semibold)
-                .frame(width: large ? 38 : 30, alignment: .trailing)
+                .frame(width: large ? 42 : 34, alignment: .trailing)
                 .skyText()
         }
     }
@@ -302,6 +318,9 @@ private struct HomeSunFooter: View {
 private struct HomeNextEventLine: View {
     let snapshot: WeatherSnapshot
     let now: Date
+    /// Show the UV index alongside the sun event, so the XL hero's foot reads "próximo sol · UV" on one
+    /// line instead of carrying UV up in the metrics row.
+    var showUV: Bool = false
 
     private var event: (date: Date, icon: String)? {
         switch snapshot.nextSunEvent(now: now) {
@@ -312,12 +331,18 @@ private struct HomeNextEventLine: View {
     }
 
     var body: some View {
-        if let event {
-            Label(HomeFormat.hhmm(event.date), systemImage: event.icon)
-                .labelStyle(HomeTightLabel())
-                .font(.caption).fontWeight(.medium)
-                .skyText()
+        HStack(spacing: 12) {
+            if let event {
+                Label(HomeFormat.hhmm(event.date), systemImage: event.icon)
+                    .labelStyle(HomeTightLabel())
+            }
+            if showUV, let uv = snapshot.uvIndex {
+                Label("UV \(uv.value)", systemImage: uv.glyph)
+                    .labelStyle(HomeTightLabel())
+            }
         }
+        .font(.caption).fontWeight(.medium)
+        .skyText()
     }
 }
 
@@ -326,9 +351,18 @@ private struct HomeNextEventLine: View {
 private struct HomeMetricsRow: View {
     let snapshot: WeatherSnapshot
     var showUV: Bool = false
+    /// Prepend today's high/low to the row so the large card carries max, min, rain, humidity and wind
+    /// on a single line (no separate high/low row, no dividers between the blocks).
+    var leadingHighLow: Bool = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: leadingHighLow ? 9 : 12) {
+            if leadingHighLow {
+                Label(HomeFormat.temp(snapshot.tempMax), systemImage: "arrow.up")
+                    .labelStyle(HomeTightLabel())
+                Label(HomeFormat.temp(snapshot.tempMin), systemImage: "arrow.down")
+                    .labelStyle(HomeTightLabel())
+            }
             if let precip = snapshot.currentPrecipProb {
                 Label("\(precip)%", systemImage: "umbrella.fill")
                     .labelStyle(HomeTightLabel())
@@ -347,6 +381,7 @@ private struct HomeMetricsRow: View {
             }
         }
         .font(.caption).fontWeight(.medium)
+        .lineLimit(1)
         .skyText()
     }
 
@@ -380,7 +415,7 @@ public struct AuraHomeSmall: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HomeLocationRow(snapshot: snapshot, compact: true)
+            HomeLocationRow(snapshot: snapshot, now: now, compact: true)
             Spacer(minLength: 0)
             HomeConditionBlock(snapshot: snapshot, now: now)
         }
@@ -402,12 +437,19 @@ public struct AuraHomeMedium: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HomeLocationRow(snapshot: snapshot)
-            HStack(alignment: .center, spacing: 12) {
+            HomeLocationRow(snapshot: snapshot, now: now)
+            HStack(alignment: .top, spacing: 10) {
+                // A smaller hero glyph and temperature keep the left block narrow, so the two-line
+                // condition phrase reads in full and the hour strip beside it stops crowding.
                 HomeConditionBlock(snapshot: snapshot, now: now,
-                                   tempFont: .system(size: 40, weight: .semibold, design: .rounded))
+                                   tempFont: .system(size: 34, weight: .semibold, design: .rounded),
+                                   glyphFont: .title3,
+                                   conditionLineLimit: 2)
                     .layoutPriority(1)
-                HomeHourStrip(snapshot: snapshot)
+                // Four hours, not five: a fifth column crowds the strip on the medium width. Pinned to
+                // the top (not centred) so the temperature row rides up level with the hero and doesn't
+                // sit down over the condition line beside it.
+                HomeHourStrip(snapshot: snapshot, count: 4)
             }
             .frame(maxHeight: .infinity)
         }
@@ -429,28 +471,30 @@ public struct AuraHomeLarge: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // The place name rides the condition line here (not its own row) so the card breathes.
-            HomeConditionBlock(snapshot: snapshot, now: now,
-                               location: snapshot.localidad, alert: snapshot.alert)
-            HomeMetricsRow(snapshot: snapshot)
+        VStack(alignment: .leading, spacing: 10) {
+            // The place name rides the condition line here (not its own row) so the card breathes. The
+            // block's own high/low row is folded into the metrics line below, so max, min, rain, humidity
+            // and wind all sit together on one row.
+            HomeConditionBlock(snapshot: snapshot, now: now, showHighLow: false,
+                               location: snapshot.localidad, alert: snapshot.activeAlert(at: now))
+            HomeMetricsRow(snapshot: snapshot, leadingHighLow: true)
 
+            // No dividers between the blocks — open spacing separates them instead.
             let hours = Array(snapshot.upcomingHours().prefix(5))
             if !hours.isEmpty {
-                Divider().overlay(.white.opacity(0.25))
                 HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0) } }
             }
 
             // Three day rows (not four): with the outlook drawn as full rows the large card also carries
             // the hour strip and the sun footer, and a fourth row pushed the footer off the bottom edge.
+            // Equal spacers above and below centre the outlook in the gap between the hour strip and the
+            // sun/UV footer, so it sits evenly rather than crowding up under the hours.
             let days = Array(snapshot.days.prefix(3))
+            Spacer(minLength: 0)
             if !days.isEmpty {
-                Divider().overlay(.white.opacity(0.25))
                 HomeDayList(days: days)
             }
-
             Spacer(minLength: 0)
-            Divider().overlay(.white.opacity(0.25))
             HomeSunFooter(snapshot: snapshot)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -475,7 +519,7 @@ public struct AuraHomeXL: View {
         GeometryReader { geo in
             HStack(alignment: .top, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    HomeLocationRow(snapshot: snapshot)
+                    HomeLocationRow(snapshot: snapshot, now: now)
                     Spacer(minLength: 0)
                     HomeConditionBlock(snapshot: snapshot, now: now,
                                        tempFont: .system(size: 52, weight: .semibold, design: .rounded))
@@ -483,9 +527,10 @@ public struct AuraHomeXL: View {
                         .font(.subheadline)
                         .lineLimit(2).minimumScaleFactor(0.85)
                         .skyText()
-                    HomeMetricsRow(snapshot: snapshot, showUV: true)
-                    // The next sunrise/sunset — the "when does the light change" line the hero column lacked.
-                    HomeNextEventLine(snapshot: snapshot, now: now)
+                    HomeMetricsRow(snapshot: snapshot)
+                    // The next sunrise/sunset — the "when does the light change" line — with the day's UV
+                    // index sitting alongside it rather than up in the metrics row.
+                    HomeNextEventLine(snapshot: snapshot, now: now, showUV: true)
                 }
                 .frame(width: geo.size.width * 0.37, alignment: .leading)
 
@@ -493,14 +538,13 @@ public struct AuraHomeXL: View {
                     let hours = Array(snapshot.upcomingHours().prefix(7))
                     let days = Array(snapshot.days.prefix(4))
                     // Two distinct blocks — próximas horas, then próximos días — set apart by open sky, not
-                    // a divider. A little air keeps the hours off the top edge; the dominant gap in the
-                    // middle makes the separation; the days stay a grouped block (their own inner spacing)
-                    // rather than spread across the whole height.
+                    // a divider. Three equal spacers distribute the whitespace evenly, so the hours sit
+                    // balanced between the top and the day block rather than crowded up under the top edge.
                     Spacer(minLength: 12)
                     if !hours.isEmpty {
                         HStack(spacing: 0) { ForEach(hours) { HomeHourColumn(hour: $0, large: true) } }
                     }
-                    Spacer(minLength: 26)
+                    Spacer(minLength: 12)
                     if !days.isEmpty {
                         HomeDayList(days: days, large: true)
                     }

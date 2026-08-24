@@ -119,7 +119,7 @@ public struct AuraAccessoryRectangular: View {
                 Text(AccessoryFormat.temp(snapshot.heroTemp))
                     .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
                     .lineLimit(1).minimumScaleFactor(0.7)
-                if snapshot.alert != nil {
+                if snapshot.activeAlert(at: now) != nil {
                     Spacer(minLength: 3)
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption2)
@@ -188,7 +188,7 @@ public struct AuraAccessoryRectangular: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            if let alert = snapshot.alert {
+            if let alert = snapshot.activeAlert(at: now) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.title3)
                     .foregroundStyle(Palette.alert(alert.level))
