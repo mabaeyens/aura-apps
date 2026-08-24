@@ -118,6 +118,52 @@ public struct AuraRainCircular: View {
     }
 }
 
+/// `.accessoryCorner` (Apple Watch): the precipitation probability as the drop (or snowflake) glyph + the
+/// percentage in the corner, with a curved 0…100 % gauge along the outer bezel on the fixed blue ramp.
+/// Probability is a bounded scale, so it takes the bezel gauge (like UV and humidity). Corner mate to
+/// `AuraRainCircular`.
+public struct AuraRainCorner: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    private var prob: Int? { snapshot.currentPrecipProb }
+    private var isSnow: Bool { Palette.sky(forCode: snapshot.currentSky).category == .snow }
+
+    public var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: isSnow ? "snowflake" : "drop.fill")
+            Text(prob.map { "\($0)" } ?? "—")
+                .fontWeight(.bold).fontDesign(.rounded)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .font(.title3)
+        .foregroundStyle(Palette.precipComplication(prob ?? 0))
+    }
+
+    /// Whether a probability is known, so the bezel gauge can be drawn (else fall back to `cornerLabel`).
+    public var hasValue: Bool { prob != nil }
+
+    /// The curved bezel gauge: the current probability on the fixed 0…100 % blue ramp, 0 and 100 at the ends.
+    @ViewBuilder public var cornerGauge: some View {
+        if let prob {
+            Gauge(value: Double(prob), in: 0...100) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            } minimumValueLabel: {
+                Text("0")
+            } maximumValueLabel: {
+                Text("100")
+            }
+            .tint(Palette.precipComplicationScale)
+        }
+    }
+
+    /// Fallback bezel label when the gauge is skipped — the percentage.
+    public var cornerLabel: String { prob.map { "\($0)%" } ?? "—" }
+}
+
 // MARK: - UV index
 
 /// The live "UV ahora" reading behind the UV complication. It prefers the **current hour** from the CAMS

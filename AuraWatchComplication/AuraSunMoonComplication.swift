@@ -16,7 +16,7 @@ struct AuraSunMoonComplication: Widget {
         }
         .configurationDisplayName("Sol y Luna")
         .description("El próximo amanecer, ocaso o salida de la luna.")
-        .supportedFamilies([.accessoryInline, .accessoryCircular])
+        .supportedFamilies([.accessoryInline, .accessoryCircular, .accessoryCorner])
     }
 }
 
@@ -28,6 +28,9 @@ struct AuraSunMoonComplicationView: View {
         if let snapshot = entry.snapshot {
             switch family {
             case .accessoryInline: AuraSunMoonInline(snapshot: snapshot, now: entry.date)
+            case .accessoryCorner:
+                let corner = AuraSunMoonCorner(snapshot: snapshot, now: entry.date)
+                corner.widgetLabel(corner.cornerLabel)
             default:               AuraSunMoonCircular(snapshot: snapshot, now: entry.date)
             }
         } else {

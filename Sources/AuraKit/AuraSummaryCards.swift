@@ -86,6 +86,50 @@ public struct AuraHumidityCircular: View {
     }
 }
 
+/// `.accessoryCorner` (Apple Watch): the current relative humidity as the drop glyph + percentage in the
+/// corner, with a curved 0…100 % gauge along the outer bezel. Humidity is a bounded scale, so it takes the
+/// bezel gauge (like UV and ICA). Corner mate to `AuraHumidityCircular`.
+public struct AuraHumidityCorner: View {
+    let snapshot: WeatherSnapshot
+
+    public init(snapshot: WeatherSnapshot) { self.snapshot = snapshot }
+
+    private var humidity: Int? { snapshot.currentHumidity }
+
+    public var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "humidity.fill")
+            Text(humidity.map { "\($0)" } ?? "—")
+                .fontWeight(.bold).fontDesign(.rounded)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        }
+        .font(.title3)
+        .foregroundStyle(.teal)
+    }
+
+    /// Whether humidity is known, so the bezel gauge can be drawn (else fall back to `cornerLabel`).
+    public var hasValue: Bool { humidity != nil }
+
+    /// The curved bezel gauge: the current humidity on a 0…100 % scale, tinted teal, 0 and 100 at the ends.
+    @ViewBuilder public var cornerGauge: some View {
+        if let humidity {
+            Gauge(value: Double(humidity), in: 0...100) {
+                EmptyView()
+            } currentValueLabel: {
+                EmptyView()
+            } minimumValueLabel: {
+                Text("0")
+            } maximumValueLabel: {
+                Text("100")
+            }
+            .tint(.teal)
+        }
+    }
+
+    /// Fallback bezel label when the gauge is skipped — the percentage.
+    public var cornerLabel: String { humidity.map { "\($0)%" } ?? "—" }
+}
+
 // MARK: - Aviso
 
 /// `.accessoryCircular`: a severe-weather aviso mark — a warning triangle over "Aviso", tinted to the
@@ -154,5 +198,42 @@ public struct AuraAvisoInline: View {
                         .foregroundStyle(.secondary)
                 }
         }
+    }
+}
+
+/// `.accessoryCorner` (Apple Watch): the active aviso as a level-tinted triangle in the corner, with the
+/// phenomenon on the curved bezel. An aviso is a state, not a bounded value, so this is plain corner text +
+/// glyph, never a gauge. When nothing is active it shows the same struck-through calm mark as the circular.
+public struct AuraAvisoCorner: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        if let alert = snapshot.activeAlert(at: now) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title3)
+                .foregroundStyle(Palette.alert(alert.level))
+        } else {
+            // Calm state, not missing data — the warning sign struck through, in grey.
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .overlay {
+                    Image(systemName: "line.diagonal")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                }
+        }
+    }
+
+    /// The curved bezel label: the phenomenon when an aviso is active, else the calm "Sin avisos".
+    public var cornerLabel: String {
+        if let alert = snapshot.activeAlert(at: now) { return alert.phenomenon ?? "Aviso" }
+        return "Sin avisos"
     }
 }

@@ -61,6 +61,10 @@ private struct AuraScaleSheet<Rows: View>: View {
     let barColors: [Color]
     let markerFraction: Double?
     let markerLabel: String
+    /// An optional live cue shown under the subtitle: an SF Symbol and a short sentence, e.g. the cloud note
+    /// on the UV sheet when the sky is overcast. Nil (the default) renders nothing, so other sheets are
+    /// unaffected.
+    var note: (icon: String, text: String)? = nil
     /// Render-only escape hatch: the offline `aura-render` tool passes `false` so the rows lay out without
     /// a `ScrollView` (which `ImageRenderer` can't render). The app always uses the default.
     var scrolls: Bool = true
@@ -100,6 +104,17 @@ private struct AuraScaleSheet<Rows: View>: View {
                     .font(.system(size: 15))
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
+                if let note {
+                    Label {
+                        Text(note.text)
+                    } icon: {
+                        Image(systemName: note.icon)
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+                }
             }
 
             AuraScaleBar(colors: barColors, markerFraction: markerFraction, label: markerLabel)
@@ -512,9 +527,12 @@ enum AirICA {
 
 public struct AuraUVSheet: View {
     let uvIndex: UVIndex
+    /// The sky is currently overcast/wet enough to hold the live UV below this clear-sky maximum — shows a
+    /// cloud note under the subtitle, the same cue the UV card and complication carry.
+    let cloudy: Bool
     var scrolls: Bool
-    public init(uvIndex: UVIndex, scrolls: Bool = true) {
-        self.uvIndex = uvIndex; self.scrolls = scrolls
+    public init(uvIndex: UVIndex, cloudy: Bool = false, scrolls: Bool = true) {
+        self.uvIndex = uvIndex; self.cloudy = cloudy; self.scrolls = scrolls
     }
 
     public var body: some View {
@@ -525,6 +543,7 @@ public struct AuraUVSheet: View {
             barColors: UVBands.bands.map { Palette.uvIndex($0.mid) },
             markerFraction: min(Double(uvIndex.value), 11) / 11,
             markerLabel: "UV \(uvIndex.value)",
+            note: cloudy ? ("cloud", "Ahora el cielo está nublado y baja el UV por debajo de este máximo.") : nil,
             scrolls: scrolls
         ) {
             ForEach(UVBands.bands, id: \.name) { band in

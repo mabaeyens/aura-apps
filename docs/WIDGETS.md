@@ -1,6 +1,6 @@
 # Aura — widgets & complications spec
 
-> **Aspirational design spec (2026-08-19), partly shipped.** What shipped is narrower than this document, but it now includes Home Screen widgets. As of 2026-08-22 the surfaces are: **Home Screen widgets** (`.systemSmall / .systemMedium / .systemLarge`, plus `.systemExtraLarge` on iPad) drawn over the live `AuraSky` with the sunless hero art behind — configurable by **location and a Naturaleza / Ciudad scene**; **Lock Screen accessory widgets** (`.accessoryCircular / .accessoryRectangular / .accessoryInline`) and a **Watch complication** (those three plus `.accessoryCorner`), configurable by **location only**. The **per-metric complication catalog** below is now largely shipped (as of 2026-08-22 the Watch gallery has 13 faces — circular / corner / rectangular / inline across temperature, wind, UV, rain, humidity, sun, hours, days and avisos). **Still on the roadmap, not yet built:** **per-metric configuration** (an App-Intent picker per slot, so one configurable complication replaces the metric-per-gallery-entry set), **location selection on the watch** (the phone syncs only the active location today), and **StandBy / Mac** widgets — the plan in this document still stands, this is where it's tracked. The rich per-metric UI also lives in the app's **"Hoy" card stack** (see the README and `AuraAppCards.swift`). The metric/colour-scale tables below are both the design reference and the checklist.
+> **Aspirational design spec (2026-08-19), partly shipped.** What shipped is narrower than this document, but it now includes Home Screen widgets. As of 2026-08-22 the surfaces are: **Home Screen widgets** (`.systemSmall / .systemMedium / .systemLarge`, plus `.systemExtraLarge` on iPad) drawn over the live `AuraSky` with the sunless hero art behind — configurable by **location and a Naturaleza / Ciudad scene**; **Lock Screen accessory widgets** (`.accessoryCircular / .accessoryRectangular / .accessoryInline`) and a **Watch complication** (those three plus `.accessoryCorner`), configurable by **location only**. The **per-metric complication catalog** below is now largely shipped (as of 2026-08-24 the Watch gallery has 15 faces — circular / corner / rectangular / inline across temperature, máx/mín, wind, UV, rain, humidity, air quality (ICA), sun, hours, days and avisos; every glance now offers both a circular and a corner variant, so one face can carry up to eight distinct Aura readings with no repeat). **Still on the roadmap, not yet built:** **per-metric configuration** (an App-Intent picker per slot, so one configurable complication replaces the metric-per-gallery-entry set), **location selection on the watch** (the phone syncs only the active location today), and **StandBy / Mac** widgets — the plan in this document still stands, this is where it's tracked. The rich per-metric UI also lives in the app's **"Hoy" card stack** (see the README and `AuraAppCards.swift`). The metric/colour-scale tables below are both the design reference and the checklist.
 >
 > **Widget memory note:** the gallery renders every supported family at once, so on iPad (four families including the extra-large) the hero art is loaded from **pre-sized tiers** by name (`WidgetHero` + the `AuraWidgets/Assets` catalog: an extra-large tier and a lighter `_w` tier) rather than decoding the full-resolution source per render — otherwise the transient decodes blow WidgetKit's ~30 MB per-process budget and the losing previews drop to blank placeholders.
 
@@ -47,11 +47,20 @@ Derived from the two watch faces I use today (Modular Ultra + California/analog 
 - **Precip prob gauge** — `%` + blue arc + umbrella. *(Face 2 bottom sub-dial)*
 - **Humidity** — `%`.
 - **Sun** — next event time + glyph.
+- **Máx/Mín** — the day's high over its low, each in its own temperature colour.
+- **Calidad del aire (ICA)** — category number inside a 1…6 ICA-colour arc + `aqi.medium` glyph.
 
 ### Corner (accessoryCorner)
+Every glance now offers a corner variant to match its circular one, so one face can fill a corner slot plus several round slots with no repeated datum. Bounded readings ride a curved bezel gauge; unbounded ones use plain corner text + glyph (HIG).
 - **Temp + range gauge** (curved) + icon. *(Face 2 top-right corner)*
-- **UV** curved gauge.
-- **Wind** curved gauge.
+- **UV** curved 0…peak gauge.
+- **Wind** curved strength gauge.
+- **Máx/Mín** — the day's high in the corner, the low on the bezel (plain, temperature is unbounded).
+- **Lluvia** curved 0…100 % gauge.
+- **Humedad** curved 0…100 % gauge.
+- **Calidad del aire (ICA)** curved 1…6 gauge + `aqi.medium` glyph.
+- **Aviso** — level-tinted triangle + phenomenon on the bezel (plain, a state not a value).
+- **Sol y Luna** — event glyph filling the corner + "Ocaso 21:11" on the bezel.
 
 ### Rectangular (accessoryRectangular)
 - **Hourly strip** — 3–5 hours × (icon, temp, precip%). *(Face 1 middle band — the flagship combo)*

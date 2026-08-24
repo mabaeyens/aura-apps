@@ -143,7 +143,8 @@ public struct AuraForecastStack: View {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
             }
             if let uvIndex = snapshot.uvIndex {
-                AuraUVCard(uvIndex: uvIndex, hourly: snapshot.uvHourly ?? [], now: now, size: size)
+                AuraUVCard(uvIndex: uvIndex, hourly: snapshot.uvHourly ?? [], now: now, size: size,
+                           cloudy: UVNow.cloudy(snapshot))
             }
             if let radar { AuraRadarCard(radar: radar, size: size, now: now) }
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
@@ -1071,8 +1072,13 @@ public struct AuraUVCard: View {
     let hourly: [UVHourSlot]
     let now: Date
     let size: AuraSize
-    public init(uvIndex: UVIndex, hourly: [UVHourSlot] = [], now: Date = Date(), size: AuraSize) {
-        self.uvIndex = uvIndex; self.hourly = hourly; self.now = now; self.size = size
+    /// True when the current sky is overcast/wet enough that cloud is materially holding the live UV below
+    /// its clear-sky potential. Drives the cloud cue on the "Ahora" reading and in the detail sheet — the
+    /// same signal the UV complication shows on the watch/Lock Screen.
+    let cloudy: Bool
+    public init(uvIndex: UVIndex, hourly: [UVHourSlot] = [], now: Date = Date(), size: AuraSize,
+                cloudy: Bool = false) {
+        self.uvIndex = uvIndex; self.hourly = hourly; self.now = now; self.size = size; self.cloudy = cloudy
     }
 
     public var body: some View {
@@ -1124,11 +1130,11 @@ public struct AuraUVCard: View {
                 // The hourly curve, only when CAMS data is present — the swatch above is AEMET's forecast
                 // daily maximum, this is how the UV actually rises and falls through today, hour by hour.
                 if today.count >= 3 {
-                    UVHourStrip(today: today, nowSlot: hourly.current(at: now), size: size)
+                    UVHourStrip(today: today, nowSlot: hourly.current(at: now), size: size, cloudy: cloudy)
                 }
             }
         }
-        .auraDetail(size) { AuraUVSheet(uvIndex: uvIndex) }
+        .auraDetail(size) { AuraUVSheet(uvIndex: uvIndex, cloudy: cloudy) }
         .auraSectionTitle("Índice UV".uppercased(), size)
     }
 }
@@ -1140,6 +1146,8 @@ private struct UVHourStrip: View {
     let today: [UVHourSlot]
     let nowSlot: UVHourSlot?
     let size: AuraSize
+    /// The current sky is holding the live UV below its clear-sky potential — show a cloud beside "Ahora".
+    var cloudy: Bool = false
 
     private var peak: UVHourSlot? { today.max { $0.uv < $1.uv } }
 
@@ -1160,6 +1168,12 @@ private struct UVHourStrip: View {
             // the daily max) and today's peak with its hour.
             HStack(spacing: 5) {
                 if let n = nowSlot, n.uv > 0 {
+                    // A hollow cloud beside the live reading when overcast/wet — the same cue the UV
+                    // complication shows: this "Ahora N" is the cloud-attenuated value, not the clear-sky peak.
+                    if cloudy {
+                        Image(systemName: "cloud")
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
                     Text("Ahora \(n.index) (\(UVIndex(value: n.index).bandName.lowercased()))")
                         .foregroundStyle(.white)
                     Text("·").foregroundStyle(.white.opacity(0.4))

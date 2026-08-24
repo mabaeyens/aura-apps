@@ -138,3 +138,55 @@ public struct AuraSunMoonCircular: View {
         }
     }
 }
+
+// MARK: - Corner
+
+/// `.accessoryCorner` (Apple Watch): the event glyph filling the corner — a rising sun at dawn, a setting
+/// sun by day, a moon after dark — with "Amanecer 7:12" / "Ocaso 21:11" on the curved bezel. A sun/moon
+/// event is a moment, not a bounded value, so this is a plain glyph and bezel text, never a gauge. Palette
+/// tint keeps it vibrant on full-colour faces; the Lock Screen desaturates it.
+public struct AuraSunMoonCorner: View {
+    let snapshot: WeatherSnapshot
+    let now: Date
+
+    public init(snapshot: WeatherSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        self.now = now
+    }
+
+    public var body: some View {
+        if let moment = SunMoonMoment.resolve(snapshot, now: now) {
+            glyph(moment)
+        } else {
+            Image(systemName: "sun.max")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// The curved bezel label: the event noun and its precise time, e.g. "Ocaso 21:11".
+    public var cornerLabel: String {
+        guard let moment = SunMoonMoment.resolve(snapshot, now: now) else { return "—" }
+        return "\(moment.label) \(SunMoonFormat.hhmm(moment.date))"
+    }
+
+    /// Same palette as the circular face — a blue-and-white moon at night, a yellow-over-orange sun by day —
+    /// resized to fill the corner so it doesn't render at a small fixed intrinsic size.
+    @ViewBuilder private func glyph(_ moment: SunMoonMoment) -> some View {
+        switch moment {
+        case .night:
+            Image(systemName: moment.systemImage)
+                .resizable()
+                .scaledToFit()
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(Palette.nightMoon, .white)
+        case .dawn, .day:
+            Image(systemName: moment.systemImage)
+                .resizable()
+                .scaledToFit()
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.yellow, .orange)
+        }
+    }
+}

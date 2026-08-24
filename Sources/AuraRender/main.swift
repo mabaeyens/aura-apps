@@ -102,6 +102,19 @@ dump("rectangular-ipad", size: CGSize(width: 330, height: 160)) { AuraAccessoryR
 // doesn't run past the bottom of a near-square slot (the "2×2 text is cut" report).
 dump("rectangular-ipad2x2", size: CGSize(width: 250, height: 172)) { AuraAccessoryRectangular(snapshot: snap) }
 
+// ---- New complications: every glance now in corner + circular, plus Máx/Mín and Calidad del aire ----
+// Corner PNGs show the corner *content* only — WidgetKit draws the bezel arc on a real face. The preview
+// snapshot carries hi/lo (34/18), humidity (42%), precip (15%), ICA category 2 and an active naranja aviso.
+dump("minmax-circular",  size: CGSize(width: 76, height: 76)) { AuraMinMaxCircular(snapshot: snap) }
+dump("minmax-corner",    size: CGSize(width: 44, height: 44)) { AuraMinMaxCorner(snapshot: snap) }
+dump("air-circular",     size: CGSize(width: 76, height: 76)) { AuraAirQualityCircular(snapshot: snap) }
+dump("air-corner",       size: CGSize(width: 44, height: 44)) { AuraAirQualityCorner(snapshot: snap) }
+dump("humidity-corner",  size: CGSize(width: 44, height: 44)) { AuraHumidityCorner(snapshot: snap) }
+dump("rain-corner",      size: CGSize(width: 44, height: 44)) { AuraRainCorner(snapshot: snap) }
+dump("aviso-corner",     size: CGSize(width: 44, height: 44)) { AuraAvisoCorner(snapshot: snap) }
+dump("sunmoon-corner",   size: CGSize(width: 44, height: 44)) { AuraSunMoonCorner(snapshot: snap) }
+dump("sunmoon-circular", size: CGSize(width: 60, height: 60)) { AuraSunMoonCircular(snapshot: snap) }
+
 // NOTE: the Home Screen cards (AuraHomeSmall/Medium/Large/XL) are rendered by the sibling
 // `aura-widget-shots` tool (Sources/AuraWidgetShots), which draws each family at its true widget point
 // size over the containerBackground sky — the isolated widget faces for the App Store product page.
@@ -478,6 +491,11 @@ write(sheetPreview(AuraAirQualitySheet(airQuality: partialAQ, now: aqNow, scroll
 write(sheetPreview(AuraUVSheet(uvIndex: UVIndex(value: 8), scrolls: false),
                    size: CGSize(width: 380, height: 660)),
       name: "sheet-uv", size: CGSize(width: 380, height: 660))
+// The cloudy variant: the cloud note under the subtitle, the cue the UV card/complication carry when the
+// sky is holding the live UV below today's clear-sky maximum.
+write(sheetPreview(AuraUVSheet(uvIndex: UVIndex(value: 8), cloudy: true, scrolls: false),
+                   size: CGSize(width: 380, height: 700)),
+      name: "sheet-uv-cloudy", size: CGSize(width: 380, height: 700))
 // Moon detail sheet: Madrid coordinates and a fixed waxing-gibbous evening (2026-08-23 22:00 UTC, moon up)
 // so phase, true illumination and both moonrise/moonset populate — the .preview snapshot carries no coords.
 func utcDate(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int) -> Date {
@@ -555,6 +573,21 @@ func uvCardPreview() -> some View {
     .fontDesign(.rounded)
 }
 write(uvCardPreview(), name: "app-uv-card", size: CGSize(width: 340, height: 232))
+// The cloudy variant: a hollow cloud beside the live "Ahora N" reading when the sky is overcast.
+func uvCardCloudyPreview() -> some View {
+    let when = todayAt(13, 0)
+    return ZStack {
+        AuraSky(snapshot: .preview, now: when)
+        AuraUVCard(uvIndex: UVIndex(value: 8), hourly: WeatherSnapshot.preview.uvHourly ?? [],
+                   now: when, size: .phone, cloudy: true)
+            .environment(\.colorScheme, .dark)
+            .padding(16)
+    }
+    .frame(width: 340, height: 232)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .fontDesign(.rounded)
+}
+write(uvCardCloudyPreview(), name: "app-uv-card-cloudy", size: CGSize(width: 340, height: 232))
 
 // ---- UV complication "ahora": current-hour reading on a 0…today's-peak ring ----
 // The preview snapshot carries a realistic CAMS bell (peak index 8 around 14h). Rendered at three hours

@@ -24,22 +24,40 @@ struct AuraSummaryComplication: Widget {
     }
 }
 
-/// The current relative humidity as a circular face.
+/// The current relative humidity as a ring (circular), or the drop + percentage with a 0…100 % gauge
+/// curving the bezel (corner).
 struct AuraHumidityComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraHumidity", provider: AuraComplicationProvider()) { entry in
-            Group {
-                if let snapshot = entry.snapshot {
-                    AuraHumidityCircular(snapshot: snapshot)
-                } else {
-                    AuraAccessoryEmpty()
-                }
-            }
-            .containerBackground(.fill.tertiary, for: .widget)
+            AuraHumidityView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Humedad")
         .description("La humedad relativa actual.")
-        .supportedFamilies([.accessoryCircular])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
+}
+
+struct AuraHumidityView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            switch family {
+            case .accessoryCorner:
+                let corner = AuraHumidityCorner(snapshot: snapshot)
+                if corner.hasValue {
+                    corner.widgetCurvesContent().widgetLabel { corner.cornerGauge }
+                } else {
+                    corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+                }
+            default:
+                AuraHumidityCircular(snapshot: snapshot)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
     }
 }
 
@@ -52,7 +70,7 @@ struct AuraAvisoComplication: Widget {
         }
         .configurationDisplayName("Aviso")
         .description("El aviso meteorológico activo, si lo hay.")
-        .supportedFamilies([.accessoryCircular, .accessoryInline])
+        .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner])
     }
 }
 
@@ -64,6 +82,9 @@ struct AuraAvisoComplicationView: View {
         if let snapshot = entry.snapshot {
             switch family {
             case .accessoryInline: AuraAvisoInline(snapshot: snapshot, now: entry.date)
+            case .accessoryCorner:
+                let corner = AuraAvisoCorner(snapshot: snapshot, now: entry.date)
+                corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
             default:               AuraAvisoCircular(snapshot: snapshot, now: entry.date)
             }
         } else {

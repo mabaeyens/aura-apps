@@ -176,22 +176,40 @@ struct AuraWindView: View {
 
 // MARK: - Rain chance
 
-/// Precipitation probability for the current hour — a ring fill with a raindrop and the percentage.
+/// Precipitation probability for the current hour — a ring fill with a raindrop and the percentage
+/// (circular), or the drop + percentage with a 0…100 % gauge curving the bezel (corner).
 struct AuraRainComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraRain", provider: AuraComplicationProvider()) { entry in
-            Group {
-                if let snapshot = entry.snapshot {
-                    AuraRainCircular(snapshot: snapshot)
-                } else {
-                    AuraAccessoryEmpty()
-                }
-            }
-            .containerBackground(.fill.tertiary, for: .widget)
+            AuraRainView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Lluvia")
         .description("La probabilidad de precipitación de la hora actual.")
-        .supportedFamilies([.accessoryCircular])
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
+}
+
+struct AuraRainView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            switch family {
+            case .accessoryCorner:
+                let corner = AuraRainCorner(snapshot: snapshot)
+                if corner.hasValue {
+                    corner.widgetCurvesContent().widgetLabel { corner.cornerGauge }
+                } else {
+                    corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+                }
+            default:
+                AuraRainCircular(snapshot: snapshot)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
     }
 }
 
@@ -234,6 +252,81 @@ struct AuraUVView: View {
                 } else {
                     AuraUVCircular(snapshot: snapshot, now: entry.date)
                 }
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+// MARK: - Máx / Mín del día
+
+/// Today's high and low — each in its own temperature colour (circular), or the high in the corner with
+/// the low on the bezel (corner). Temperature is unbounded, so the corner uses plain text, not a gauge.
+struct AuraMinMaxComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraMinMax", provider: AuraComplicationProvider()) { entry in
+            AuraMinMaxView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Máx/Mín")
+        .description("La máxima y la mínima de hoy.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
+}
+
+struct AuraMinMaxView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            switch family {
+            case .accessoryCorner:
+                let corner = AuraMinMaxCorner(snapshot: snapshot)
+                corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+            default:
+                AuraMinMaxCircular(snapshot: snapshot)
+            }
+        } else {
+            AuraAccessoryEmpty()
+        }
+    }
+}
+
+// MARK: - Calidad del aire (ICA)
+
+/// The MITECO air-quality index (ICA 1…6) — a ring fill in the official ICA colour with the category and
+/// the aqi glyph (circular), or the glyph + category with a 1…6 gauge curving the bezel (corner). ICA is a
+/// bounded scale, so the corner takes the bezel gauge. Empty when no station is near.
+struct AuraAirQualityComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "AuraAirQuality", provider: AuraComplicationProvider()) { entry in
+            AuraAirQualityView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Calidad del aire")
+        .description("El índice de calidad del aire (ICA) de MITECO.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+    }
+}
+
+struct AuraAirQualityView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: AuraComplicationEntry
+
+    var body: some View {
+        if let snapshot = entry.snapshot {
+            switch family {
+            case .accessoryCorner:
+                let corner = AuraAirQualityCorner(snapshot: snapshot)
+                if corner.hasValue {
+                    corner.widgetCurvesContent().widgetLabel { corner.cornerGauge }
+                } else {
+                    corner.widgetCurvesContent().widgetLabel(corner.cornerLabel)
+                }
+            default:
+                AuraAirQualityCircular(snapshot: snapshot)
             }
         } else {
             AuraAccessoryEmpty()

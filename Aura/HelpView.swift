@@ -131,6 +131,7 @@ struct HelpView: View {
             iconRow("sun.max.trianglebadge.exclamationmark", "UV alto (6–7)", "Protégete del sol.")
             iconRow("beach.umbrella.fill",                   "UV muy alto (8–10)", "Evita el sol del mediodía.")
             iconRow("thermometer.variable.and.figure",       "UV extremadamente alto (11+)", "Evita la exposición al sol.")
+            iconRow("cloud",                                 "UV atenuado por nubes", "El cielo nublado baja el UV de ahora por debajo del máximo previsto.")
         } header: {
             Text("Índice UV")
         } footer: {
