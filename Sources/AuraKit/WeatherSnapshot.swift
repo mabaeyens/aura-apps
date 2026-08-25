@@ -432,52 +432,65 @@ public extension WeatherSnapshot {
         return (nil, nil, nil)
     }
 
-    /// The relative humidity for the current hour (or the next available reading), %.
-    private static func currentHumidity(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
+    /// Shared scaffold for the current-hour extractors: run `pick` over day 0 from the current hour, then
+    /// day 1 from hour 0, returning the first non-nil result. Every `current*` reader differs only in `pick`.
+    private static func currentValue<T>(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date,
+                                        _ pick: (MunicipioHourly.Dia, Int) -> T?) -> T? {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
         let currentHour = cal.component(.hour, from: now)
-
-        func humidity(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
-            let readings = dia.humedadRelativa.compactMap { hv -> (hour: Int, value: Int)? in
-                guard let hour = Int(hv.periodo), let value = Int(hv.value) else { return nil }
-                return (hour, value)
-            }.sorted { $0.hour < $1.hour }
-            return (readings.first { $0.hour >= from } ?? readings.first)?.value
-        }
-
         let dias = forecast.prediccion.dia
-        if let day0 = dias.first, let h = humidity(in: day0, from: currentHour) { return h }
-        if dias.count > 1, let h = humidity(in: dias[1], from: 0) { return h }
+        if let day0 = dias.first, let v = pick(day0, currentHour) { return v }
+        if dias.count > 1, let v = pick(dias[1], 0) { return v }
         return nil
+    }
+
+    /// Pick from a single-hour array (`periodo` names one hour): the first reading at or after `from`, else
+    /// the earliest available. `parse` converts the string value to the reading's type.
+    private static func hourlyReading<V>(_ values: [MunicipioHourly.HourValue], from: Int,
+                                         _ parse: (String) -> V?) -> V? {
+        let readings = values.compactMap { hv -> (hour: Int, value: V)? in
+            guard let hour = Int(hv.periodo), let value = parse(hv.value) else { return nil }
+            return (hour, value)
+        }.sorted { $0.hour < $1.hour }
+        return (readings.first { $0.hour >= from } ?? readings.first)?.value
+    }
+
+    /// Parse a coarse-block array (`periodo` = "SSEE", start and end hour, e.g. "1218") into sorted
+    /// (start, end, value) blocks; `end == 0` reads as 24. Shared by the block readers and `slots(for:)`.
+    private static func blocks(_ values: [MunicipioHourly.HourValue]) -> [(start: Int, end: Int, value: Int)] {
+        values.compactMap { hv -> (start: Int, end: Int, value: Int)? in
+            guard hv.periodo.count == 4,
+                  let start = Int(hv.periodo.prefix(2)),
+                  var end = Int(hv.periodo.suffix(2)),
+                  let value = Int(hv.value) else { return nil }
+            if end == 0 { end = 24 }
+            return (start, end, value)
+        }.sorted { $0.start < $1.start }
+    }
+
+    /// Pick from a coarse-block array: the block covering `from`, else the next upcoming block, else the first.
+    private static func blockReading(_ values: [MunicipioHourly.HourValue], from: Int) -> Int? {
+        let bs = blocks(values)
+        if let covering = bs.first(where: { $0.start <= from && from < $0.end }) { return covering.value }
+        if let next = bs.first(where: { $0.start >= from }) { return next.value }
+        return bs.first?.value
+    }
+
+    /// The relative humidity for the current hour (or the next available reading), %.
+    private static func currentHumidity(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
+        currentValue(forecast, timeZone: timeZone, now: now) { dia, from in
+            hourlyReading(dia.humedadRelativa, from: from) { Int($0) }
+        }
     }
 
     /// The precipitation probability for the current hour, %, from the hourly feed's coarse blocks
     /// (periodo is 4 chars, "SSEE" — start and end hour, e.g. "1218"). Picks the block covering the
     /// current hour, else the next upcoming block.
     private static func currentPrecipProb(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
-        let currentHour = cal.component(.hour, from: now)
-
-        func prob(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
-            let blocks = dia.probPrecipitacion.compactMap { hv -> (start: Int, end: Int, value: Int)? in
-                guard hv.periodo.count == 4,
-                      let start = Int(hv.periodo.prefix(2)),
-                      var end = Int(hv.periodo.suffix(2)),
-                      let value = Int(hv.value) else { return nil }
-                if end == 0 { end = 24 }
-                return (start, end, value)
-            }.sorted { $0.start < $1.start }
-            if let covering = blocks.first(where: { $0.start <= from && from < $0.end }) { return covering.value }
-            if let next = blocks.first(where: { $0.start >= from }) { return next.value }
-            return blocks.first?.value
+        currentValue(forecast, timeZone: timeZone, now: now) { dia, from in
+            blockReading(dia.probPrecipitacion, from: from)
         }
-
-        let dias = forecast.prediccion.dia
-        if let day0 = dias.first, let p = prob(in: day0, from: currentHour) { return p }
-        if dias.count > 1, let p = prob(in: dias[1], from: 0) { return p }
-        return nil
     }
 
     /// Parse an AEMET precipitation/snow amount string into mm. "Ip" (precipitación inapreciable) is a
@@ -492,81 +505,31 @@ public extension WeatherSnapshot {
 
     /// The rain amount for the current hour, mm, from the hourly feed.
     private static func currentPrecipMm(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Double? {
-        currentMm(forecast, timeZone: timeZone, now: now) { $0.precipitacion }
+        currentValue(forecast, timeZone: timeZone, now: now) { dia, from in
+            hourlyReading(dia.precipitacion ?? [], from: from) { precipAmount($0) }
+        }
     }
 
     /// The snow amount for the current hour, mm, from the hourly feed.
     private static func currentSnowMm(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Double? {
-        currentMm(forecast, timeZone: timeZone, now: now) { $0.nieve }
-    }
-
-    /// Current-hour amount in mm from one of the hourly amount arrays (single-hour `periodo`, same keying
-    /// as humidity/temperature). Picks the current hour, else the next available.
-    private static func currentMm(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date,
-                                  _ array: (MunicipioHourly.Dia) -> [MunicipioHourly.HourValue]?) -> Double? {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
-        let currentHour = cal.component(.hour, from: now)
-
-        func amount(in dia: MunicipioHourly.Dia, from: Int) -> Double? {
-            let readings = (array(dia) ?? []).compactMap { hv -> (hour: Int, value: Double)? in
-                guard let hour = Int(hv.periodo), let mm = precipAmount(hv.value) else { return nil }
-                return (hour, mm)
-            }.sorted { $0.hour < $1.hour }
-            return (readings.first { $0.hour >= from } ?? readings.first)?.value
+        currentValue(forecast, timeZone: timeZone, now: now) { dia, from in
+            hourlyReading(dia.nieve ?? [], from: from) { precipAmount($0) }
         }
-
-        let dias = forecast.prediccion.dia
-        if let day0 = dias.first, let mm = amount(in: day0, from: currentHour) { return mm }
-        if dias.count > 1, let mm = amount(in: dias[1], from: 0) { return mm }
-        return nil
     }
 
     /// The feels-like temperature for the current hour, °C, from the hourly feed (single-hour `periodo`).
     private static func currentFeelsLike(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
-        let currentHour = cal.component(.hour, from: now)
-
-        func feels(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
-            let readings = (dia.sensTermica ?? []).compactMap { hv -> (hour: Int, value: Int)? in
-                guard let hour = Int(hv.periodo), let value = Int(hv.value) else { return nil }
-                return (hour, value)
-            }.sorted { $0.hour < $1.hour }
-            return (readings.first { $0.hour >= from } ?? readings.first)?.value
+        currentValue(forecast, timeZone: timeZone, now: now) { dia, from in
+            hourlyReading(dia.sensTermica ?? [], from: from) { Int($0) }
         }
-
-        let dias = forecast.prediccion.dia
-        if let day0 = dias.first, let f = feels(in: day0, from: currentHour) { return f }
-        if dias.count > 1, let f = feels(in: dias[1], from: 0) { return f }
-        return nil
     }
 
     /// The storm probability for the current hour, %, from the hourly feed's coarse blocks (same "SSEE"
     /// periodo format as `probPrecipitacion`).
     private static func currentStormProb(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> Int? {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
-        let currentHour = cal.component(.hour, from: now)
-
-        func prob(in dia: MunicipioHourly.Dia, from: Int) -> Int? {
-            let blocks = (dia.probTormenta ?? []).compactMap { hv -> (start: Int, end: Int, value: Int)? in
-                guard hv.periodo.count == 4,
-                      let start = Int(hv.periodo.prefix(2)),
-                      var end = Int(hv.periodo.suffix(2)),
-                      let value = Int(hv.value) else { return nil }
-                if end == 0 { end = 24 }
-                return (start, end, value)
-            }.sorted { $0.start < $1.start }
-            if let covering = blocks.first(where: { $0.start <= from && from < $0.end }) { return covering.value }
-            if let next = blocks.first(where: { $0.start >= from }) { return next.value }
-            return blocks.first?.value
+        currentValue(forecast, timeZone: timeZone, now: now) { dia, from in
+            blockReading(dia.probTormenta ?? [], from: from)
         }
-
-        let dias = forecast.prediccion.dia
-        if let day0 = dias.first, let p = prob(in: day0, from: currentHour) { return p }
-        if dias.count > 1, let p = prob(in: dias[1], from: 0) { return p }
-        return nil
     }
 
     /// Merge one day's parallel hourly arrays into ordered `HourSlot`s, each stamped with the absolute
@@ -577,14 +540,7 @@ public extension WeatherSnapshot {
             guard let h = Int(s.periodo) else { return nil }
             return (h, s.value)
         }, uniquingKeysWith: { a, _ in a })
-        let blocks = dia.probPrecipitacion.compactMap { hv -> (start: Int, end: Int, value: Int)? in
-            guard hv.periodo.count == 4,
-                  let start = Int(hv.periodo.prefix(2)),
-                  var end = Int(hv.periodo.suffix(2)),
-                  let value = Int(hv.value) else { return nil }
-            if end == 0 { end = 24 }
-            return (start, end, value)
-        }
+        let precipBlocks = blocks(dia.probPrecipitacion)
 
         // Per-hour wind speed, from the mixed wind/gust array (wind entries carry `velocidad`).
         let winds = Dictionary((dia.vientoAndRachaMax ?? []).compactMap { w -> (Int, Int)? in
@@ -604,7 +560,7 @@ public extension WeatherSnapshot {
 
         let hours = Set(temps.keys).union(skies.keys).sorted()
         return hours.map { hour in
-            let prob = blocks.first { $0.start <= hour && hour < $0.end }?.value
+            let prob = precipBlocks.first { $0.start <= hour && hour < $0.end }?.value
             let date = dayStart.flatMap { cal.date(byAdding: .hour, value: hour, to: $0) }
             return HourSlot(hour: hour, temp: temps[hour], sky: skies[hour], precipProb: prob,
                             windSpeed: winds[hour], windGust: gusts[hour], date: date)
