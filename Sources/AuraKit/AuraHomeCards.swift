@@ -213,12 +213,12 @@ private struct HomeDayRow: View {
             // its row deeper than a sun row and throws the vertical rhythm off (Lun sitting nearer Mar
             // than Mar to Mié).
             ConditionGlyph(sky: day.sky, isNight: false, slot: large ? 17 : 13)
-            // Same solid white + halo as the high, so the low reads as clearly over a bright sky (the
-            // greyed 0.75 white washed out on the large widget). The high stays semibold, keeping the
-            // low/high hierarchy without dimming the low into illegibility.
+            // Low and high share one size and weight — same font, same semibold — so the pair reads as a
+            // matched set rather than a bold high beside a lighter low. The band between them carries the
+            // hierarchy; the numbers don't need to.
             Text(HomeFormat.temp(day.min))
-                .font(large ? .subheadline : .caption).skyText()
-                .frame(width: large ? 38 : 30, alignment: .trailing)
+                .font(large ? .subheadline : .caption).fontWeight(.semibold).skyText()
+                .frame(width: large ? 42 : 34, alignment: .trailing)
             // A trailing inset shortens the band so the high value on the right always has room to show
             // in full (a wide band was clipping "28°" to "2…").
             TempBand(low: day.min, high: day.max, span: span)

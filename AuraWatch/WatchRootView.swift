@@ -57,12 +57,11 @@ struct WatchRootView: View {
     }
 
     var body: some View {
-        // Read the real top safe-area inset from this outer reader, which keeps the safe area: the band the
-        // system clock and rounded corners occupy, which differs across watch case sizes (40/41mm vs
-        // 45/49mm). The hero and card layers inside bleed past the top edge, so a reader within them would
-        // report 0. The fill height is unchanged — only the old fixed 40pt top padding is replaced by this.
+        // The outer reader gives the real top safe-area inset (the band the system clock and rounded
+        // corners occupy). The hero fill adds it back, so the hero still covers the whole first screen even
+        // though the text now sits at a small top inset — otherwise the next card ("Próximas horas") peeks
+        // above the fold.
         GeometryReader { proxy in
-            let topInset = proxy.safeAreaInsets.top
             let now = displayNow
             ZStack {
                 // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
@@ -82,7 +81,7 @@ struct WatchRootView: View {
                         ScrollView {
                             VStack(spacing: 8) {
                                 AuraForecastStack(snapshot: snapshot, size: .watch, now: now,
-                                                  heroFillHeight: geo.size.height)
+                                                  heroFillHeight: geo.size.height + proxy.safeAreaInsets.top + 4)
                                     // The Watch reuses the dense phone cards at their smallest size, so
                                     // its type is capped: it still tracks the reader's Text Size, but only
                                     // up to the point the cards stay legible on a 40-49mm screen.
@@ -118,7 +117,12 @@ struct WatchRootView: View {
                                 .buttonStyle(.plain)
                             }
                             .padding(.horizontal, 4)
-                            .padding(.top, topInset)   // clear the system clock and the rounded top corners
+                            // Sit the editorial text a set fraction of the top safe-area inset below the
+                            // edge. The inset is the band the system reserves for the clock and rounded
+                            // corners and it scales per case (40/41 vs 45/49 vs Ultra); the full inset drops
+                            // the text too far under the clock, so 0.7 of it clears the digits with a tight
+                            // gap and holds that same proportion on every watch — no hand-tuned constant.
+                            .padding(.top, proxy.safeAreaInsets.top * 0.7)
                             .padding(.bottom, 6)
                         }
                     }
