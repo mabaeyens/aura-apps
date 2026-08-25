@@ -467,7 +467,7 @@ public struct AuraWindCircular: View {
     @ViewBuilder private func centre(diameter d: CGFloat) -> some View {
         if !card {
             Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                .font(.system(size: d * 0.38, weight: .heavy, design: .rounded))
+                .font(.system(size: d * 0.38, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.5), radius: 1)
         }

@@ -1,9 +1,8 @@
 import AuraKit
 import CoreLocation
 
-/// Thin Core Location wrapper: requests a one-shot fix and reports the nearest seed city.
-/// Phase 1 maps a GPS coordinate to the closest bundled municipality; a full INE reverse
-/// lookup arrives with the complete municipality table in a later phase.
+/// Thin Core Location wrapper: requests a one-shot fix and reports the nearest municipality
+/// from the full bundled table (`MunicipioDatabase`) by great-circle distance.
 @MainActor
 final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isResolving = false
@@ -62,10 +61,10 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         completion = nil
     }
 
-    /// Nearest bundled city by great-circle distance.
+    /// Nearest municipality by great-circle distance, across the full bundled table.
     static func nearestCity(latitude: Double, longitude: Double) -> Location? {
         let here = CLLocation(latitude: latitude, longitude: longitude)
-        return Location.seedCities.min { a, b in
+        return MunicipioDatabase.all.min { a, b in
             here.distance(from: CLLocation(latitude: a.latitude, longitude: a.longitude)) <
             here.distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
         }

@@ -26,6 +26,11 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public let observedTemp: Int?
     /// Name of the station `observedTemp` came from, e.g. "Madrid Retiro".
     public let observedStation: String?
+    /// Great-circle distance from the location to that station, km.
+    public let observedStationDistanceKm: Double?
+    /// Which surface metrics that station actually reports, so the UI can show whether it covers
+    /// everything or only some fields. Empty when no station resolved.
+    public let observedMetrics: ObservedMetrics
     /// AEMET sky-state code for the current hour (e.g. "11", "13n"), for the condition icon.
     public let currentSky: String?
     /// AEMET's Spanish description of the current sky state (e.g. "Despejado").
@@ -85,6 +90,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     public init(ine: String, localidad: String, provincia: String,
                 tempMin: Int?, tempMax: Int?, humedadMax: Int?,
                 currentTemp: Int? = nil, observedTemp: Int? = nil, observedStation: String? = nil,
+                observedStationDistanceKm: Double? = nil, observedMetrics: ObservedMetrics = [],
                 currentSky: String? = nil, currentSkyText: String? = nil,
                 currentHumidity: Int? = nil, currentPrecipProb: Int? = nil,
                 currentPrecipMm: Double? = nil, currentSnowMm: Double? = nil,
@@ -109,6 +115,8 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
         self.currentTemp = currentTemp
         self.observedTemp = observedTemp
         self.observedStation = observedStation
+        self.observedStationDistanceKm = observedStationDistanceKm
+        self.observedMetrics = observedMetrics
         self.currentSky = currentSky
         self.currentSkyText = currentSkyText
         self.currentHumidity = currentHumidity
@@ -346,6 +354,8 @@ public extension WeatherSnapshot {
             currentTemp: resolved?.current?.temp,
             observedTemp: observed?.temperature,
             observedStation: observed?.stationName,
+            observedStationDistanceKm: observed?.distanceKm(from: location),
+            observedMetrics: observed?.availableMetrics ?? [],
             currentSky: resolved?.current?.sky,
             currentSkyText: resolved?.currentText,
             currentHumidity: humidityNow,

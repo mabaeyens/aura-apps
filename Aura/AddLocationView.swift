@@ -1,8 +1,8 @@
 import AuraKit
 import SwiftUI
 
-/// Searchable picker over the bundled city list. Phase 1 ships provincial capitals and a few
-/// major cities; the full municipality table (with in-app search) lands in a later phase.
+/// Searchable picker over the full bundled municipality table (`MunicipioDatabase`): accent- and
+/// case-insensitive search across every Spanish municipality, with the capitals shown before a query.
 struct AddLocationView: View {
     let onSelect: (Location) -> Void
 
@@ -10,12 +10,14 @@ struct AddLocationView: View {
     @State private var query = ""
 
     private var results: [Location] {
-        let sorted = Location.seedCities.sorted { $0.nombre.localizedCaseInsensitiveCompare($1.nombre) == .orderedAscending }
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return sorted }
-        return sorted.filter {
-            $0.nombre.localizedCaseInsensitiveContains(query) ||
-            $0.provincia.localizedCaseInsensitiveContains(query)
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        // No query yet: show the capitals as a starting point rather than all ~8100 municipalities.
+        guard !trimmed.isEmpty else {
+            return Location.seedCities.sorted { $0.nombre.localizedCaseInsensitiveCompare($1.nombre) == .orderedAscending }
         }
+        // Accent- and case-insensitive search across the full municipality table, capped for a snappy list.
+        let folded = trimmed.foldedForSearch
+        return MunicipioDatabase.searchable.lazy.filter { $0.matches(folded) }.prefix(50).map(\.location)
     }
 
     var body: some View {

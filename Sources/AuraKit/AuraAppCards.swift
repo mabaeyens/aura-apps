@@ -169,6 +169,11 @@ public struct AuraForecastStack: View {
                 AuraSunArcCard(snapshot: snapshot, size: size, now: now)
             }
             AuraWindCard(snapshot: snapshot, size: size)
+            // Which station the observed reading comes from, and whether it reports every surface metric.
+            // Phone only — the Watch keeps its stack to the essentials.
+            if size == .phone, snapshot.observedStation != nil {
+                AuraStationCard(snapshot: snapshot, size: size)
+            }
             if let airQuality = snapshot.airQuality {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
             }
@@ -1006,6 +1011,99 @@ public struct AuraWindCard: View {
     private var directionText: String {
         guard let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 else { return "En calma" }
         return "del \(dir.spanishName) · \(Int(dir.degrees))°"
+    }
+}
+
+// MARK: - Observation station
+
+/// The nearest recent AEMET station behind this location's observed reading: its name, how far it sits,
+/// and which surface metrics it actually reports — so a station that measures only some fields reads as
+/// clearly as one that measures them all. Shown on the phone, only when a station resolved.
+public struct AuraStationCard: View {
+    let snapshot: WeatherSnapshot
+    let size: AuraSize
+    public init(snapshot: WeatherSnapshot, size: AuraSize) {
+        self.snapshot = snapshot; self.size = size
+    }
+
+    /// The canonical metric order, each with its chip icon and short label.
+    private static let metrics: [(flag: ObservedMetrics, icon: String, label: String)] = [
+        (.temperature,   "thermometer.medium", "Temp."),
+        (.wind,          "wind",               "Viento"),
+        (.humidity,      "humidity.fill",      "Humedad"),
+        (.pressure,      "gauge.medium",       "Presión"),
+        (.precipitation, "cloud.rain.fill",    "Lluvia"),
+    ]
+
+    /// Full metric names for the completeness line, in the same order.
+    private static let fullNames: [(flag: ObservedMetrics, name: String)] = [
+        (.temperature, "temperatura"), (.wind, "viento"), (.humidity, "humedad"),
+        (.pressure, "presión"), (.precipitation, "precipitación"),
+    ]
+
+    public var body: some View {
+        let available = snapshot.observedMetrics
+        return AuraCard(size: size) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(header)
+                    .auraFont(size.bodySize - 1, relativeTo: .title3, weight: .semibold)
+                    .foregroundStyle(.white)
+                    .lineLimit(2).minimumScaleFactor(0.8)
+                HStack(alignment: .top, spacing: 6) {
+                    ForEach(Self.metrics, id: \.icon) { metric in
+                        metricChip(icon: metric.icon, label: metric.label,
+                                   on: available.contains(metric.flag))
+                    }
+                }
+                Text(completeness(available))
+                    .auraFont(size.smallSize - 1, relativeTo: .callout)
+                    .foregroundStyle(.white.opacity(0.6))
+                    .lineLimit(2).minimumScaleFactor(0.8)
+            }
+        }
+        .auraSectionTitle("Estación de observación".uppercased(), size)
+    }
+
+    /// "Madrid Retiro · a 3 km" — the station and its distance (Spanish decimal comma under 10 km).
+    private var header: String {
+        let name = snapshot.observedStation ?? "—"
+        guard let km = snapshot.observedStationDistanceKm else { return name }
+        let dist = km < 10
+            ? String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")
+            : "\(Int(km.rounded()))"
+        return "\(name) · a \(dist) km"
+    }
+
+    /// One metric chip: icon over short label, greyed (MITECO's grey-for-unavailable convention) when the
+    /// station doesn't report it.
+    private func metricChip(icon: String, label: String, on: Bool) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: size == .phone ? 17 : 12, weight: .medium))
+                .foregroundStyle(on ? .white : .white.opacity(0.3))
+            Text(label)
+                .auraFont(size.smallSize - 1, relativeTo: .callout, weight: .medium)
+                .foregroundStyle(.white.opacity(on ? 0.7 : 0.35))
+        }
+        .frame(maxWidth: .infinity)
+        .lineLimit(1).minimumScaleFactor(0.6)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 3)
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
+            .fill(Color.white.opacity(on ? 0.12 : 0.04)))
+        // Read each chip as one element ("Viento, sí" / "Presión, no").
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label), \(on ? "sí" : "no")")
+    }
+
+    /// "Mide todos los datos de superficie." or "No mide: presión y precipitación."
+    private func completeness(_ available: ObservedMetrics) -> String {
+        let missing = Self.fullNames.filter { !available.contains($0.flag) }.map(\.name)
+        guard !missing.isEmpty else { return "Mide todos los datos de superficie." }
+        let list = missing.count > 1
+            ? missing.dropLast().joined(separator: ", ") + " y " + missing.last!
+            : missing[0]
+        return "No mide: \(list)."
     }
 }
 
