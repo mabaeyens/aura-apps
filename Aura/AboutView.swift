@@ -1,4 +1,5 @@
 import SwiftUI
+import AuraKit
 
 /// "Acerca de Aura" — the info screen, pushed from Ajustes. iPhone only. Mirrors the Mira/Vera
 /// about screens: app icon, version, what Aura is, and the AEMET attribution. Spanish, like the
@@ -147,7 +148,7 @@ struct AboutView: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color(red: 0.07, green: 0.22, blue: 0.37))
                 .frame(width: 100, height: 100)
-                .overlay(Image(systemName: "wind").font(.system(size: 44)).foregroundStyle(.white))
+                .overlay(Image(systemName: "wind").auraFont(44, relativeTo: .largeTitle).foregroundStyle(.white))
         }
     }
 

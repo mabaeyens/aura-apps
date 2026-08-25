@@ -32,7 +32,7 @@ private struct AuraDetailModifier<Detail: View>: ViewModifier {
             // testing so the tap lands on the card as a whole, not just the glyph.
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "hand.tap.fill")
-                    .font(.system(size: 15))
+                    .auraFont(15, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.4))
                     .padding(12)
                     .allowsHitTesting(false)
@@ -84,7 +84,7 @@ private struct AuraScaleSheet<Rows: View>: View {
         .overlay(alignment: .topTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 27))
+                    .auraFont(27, relativeTo: .title2)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -97,11 +97,11 @@ private struct AuraScaleSheet<Rows: View>: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
                     .foregroundStyle(.white)
                     .padding(.trailing, 34)   // clear of the close button
                 Text(subtitle)
-                    .font(.system(size: 15))
+                    .auraFont(15, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
                 if let note {
@@ -110,7 +110,7 @@ private struct AuraScaleSheet<Rows: View>: View {
                     } icon: {
                         Image(systemName: note.icon)
                     }
-                    .font(.system(size: 14, weight: .medium))
+                    .auraFont(14, relativeTo: .callout, weight: .medium)
                     .foregroundStyle(.white.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 2)
@@ -123,7 +123,7 @@ private struct AuraScaleSheet<Rows: View>: View {
             rows
 
             Text(footnote)
-                .font(.system(size: 13))
+                .auraFont(13, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
@@ -177,7 +177,7 @@ private struct AuraScaleBar: View {
     private var marker: some View {
         VStack(spacing: 0) {
             Text(label)
-                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                .auraFont(13, relativeTo: .callout, weight: .heavy, design: .rounded)
                 .foregroundStyle(.black.opacity(0.85))
                 .lineLimit(1).minimumScaleFactor(0.7)
                 .padding(.horizontal, 9).padding(.vertical, 3)
@@ -220,7 +220,7 @@ private struct AuraScaleRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Text(badge)
-                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .auraFont(15, relativeTo: .body, weight: .heavy, design: .rounded)
                 .foregroundStyle(.white)
                 .lineLimit(1).minimumScaleFactor(0.55)
                 .frame(width: 46, height: 46)
@@ -231,24 +231,24 @@ private struct AuraScaleRow: View {
                 HStack(spacing: 8) {
                     if let glyph {
                         Image(systemName: glyph)
-                            .font(.system(size: 16, weight: .semibold))
+                            .auraFont(16, relativeTo: .body, weight: .semibold)
                             .foregroundStyle(.white)
                             .frame(width: 24)
                     }
                     Text(name)
-                        .font(.system(size: 17, weight: .semibold))
+                        .auraFont(17, relativeTo: .body, weight: .semibold)
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
                     if isCurrent {
                         Text(currentLabel)
-                            .font(.system(size: 12, weight: .heavy))
+                            .auraFont(12, relativeTo: .caption, weight: .heavy)
                             .foregroundStyle(.black.opacity(0.85))
                             .padding(.horizontal, 7).padding(.vertical, 2)
                             .background(.white, in: Capsule())
                     }
                 }
                 Text(detail)
-                    .font(.system(size: 14))
+                    .auraFont(14, relativeTo: .callout)
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -270,29 +270,33 @@ private struct AirComponentScale: View {
     let component: AirComponent?
     let isDriver: Bool
     let now: Date
+    // The value and its unit are a concatenated `Text` (Text + Text), which needs a real `Font` on
+    // each half rather than the `.auraFont` view modifier — so their sizes scale via `@ScaledMetric`.
+    @ScaledMetric(relativeTo: .body) private var valueSize: CGFloat = 16
+    @ScaledMetric(relativeTo: .caption) private var unitSize: CGFloat = 12
 
     var body: some View {
         let measured = component != nil
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(AirComponent.label(for: token))
-                    .font(.system(size: 17, weight: .bold))
+                    .auraFont(17, relativeTo: .body, weight: .bold)
                     .foregroundStyle(.white.opacity(measured ? 1 : 0.4))
                 if isDriver, measured {
                     Text("dominante")
-                        .font(.system(size: 11, weight: .heavy))
+                        .auraFont(11, relativeTo: .caption, weight: .heavy)
                         .foregroundStyle(.black.opacity(0.85))
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(.white, in: Capsule())
                 }
                 Spacer(minLength: 0)
                 if let c = component {
-                    (Text(c.valueText + " ").font(.system(size: 16, weight: .bold, design: .rounded))
-                     + Text("µg/m³").font(.system(size: 12, weight: .medium)))
+                    (Text(c.valueText + " ").font(.system(size: valueSize, weight: .bold, design: .rounded))
+                     + Text("µg/m³").font(.system(size: unitSize, weight: .medium)))
                         .foregroundStyle(.white)
                 } else {
                     Text("No medido en esta estación")
-                        .font(.system(size: 13))
+                        .auraFont(13, relativeTo: .callout)
                         .foregroundStyle(.white.opacity(0.42))
                 }
             }
@@ -300,12 +304,12 @@ private struct AirComponentScale: View {
             if let c = component {
                 HStack(spacing: 6) {
                     Text(AirQuality.categoryName(c.icaCategory))
-                        .font(.system(size: 13, weight: .semibold))
+                        .auraFont(13, relativeTo: .callout, weight: .semibold)
                         .foregroundStyle(Palette.airQuality(c.icaCategory))
                     if let source = source(c) {
                         Text("·").foregroundStyle(.white.opacity(0.3))
                         Text(source)
-                            .font(.system(size: 13))
+                            .auraFont(13, relativeTo: .callout)
                             .foregroundStyle(.white.opacity(0.5))
                             .lineLimit(1).minimumScaleFactor(0.7)
                     }
@@ -481,11 +485,11 @@ public struct AuraAirQualitySheet: View {
         return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("POR CONTAMINANTE")
-                    .font(.system(size: 14, weight: .semibold))
+                    .auraFont(14, relativeTo: .callout, weight: .semibold)
                     .tracking(1.1)
                     .foregroundStyle(.white.opacity(0.72))
                 Text("Cada uno, de la estación más cercana que lo mide.")
-                    .font(.system(size: 13))
+                    .auraFont(13, relativeTo: .callout)
                     .foregroundStyle(.white.opacity(0.5))
             }
             .padding(.top, 10)

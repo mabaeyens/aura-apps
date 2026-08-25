@@ -220,7 +220,7 @@ struct HelpView: View {
         legendRow(glyph: {
             Image(systemName: symbol)
                 .symbolRenderingMode(.multicolor)
-                .font(.system(size: 22))
+                .auraFont(22, relativeTo: .title2)
         }, title: title, meaning: meaning)
     }
 
@@ -231,7 +231,7 @@ struct HelpView: View {
     private func conditionRow(_ code: String, night: Bool, _ title: String) -> some View {
         legendRow(glyph: {
             ConditionGlyph(sky: code, isNight: night)
-                .font(.system(size: 19))
+                .auraFont(19, relativeTo: .title3)
                 .frame(width: 38, height: 30)
                 .background(skyTile(night: night))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -271,7 +271,7 @@ private struct WindArrowMark: View {
     var body: some View {
         Image(systemName: "location.north.fill")
             .symbolRenderingMode(.hierarchical)
-            .font(.system(size: 20))
+            .auraFont(20, relativeTo: .title3)
             .foregroundStyle(.teal)
     }
 }

@@ -83,13 +83,17 @@ struct WatchRootView: View {
                             VStack(spacing: 8) {
                                 AuraForecastStack(snapshot: snapshot, size: .watch, now: now,
                                                   heroFillHeight: geo.size.height)
+                                    // The Watch reuses the dense phone cards at their smallest size, so
+                                    // its type is capped: it still tracks the reader's Text Size, but only
+                                    // up to the point the cards stay legible on a 40-49mm screen.
+                                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
                                 // The location switcher lives at the foot of the scroll, below the last card
                                 // (UVI) — not pinned in the top safe area, where the taps were swallowed next
                                 // to the system clock. A frosted pill, shown only with more than one place.
                                 if locationChoices.count > 1 {
                                     Button { showingPicker = true } label: {
                                         Label(snapshot.localidad, systemImage: "mappin.and.ellipse")
-                                            .font(.system(size: 14, weight: .semibold))
+                                            .auraFont(14, relativeTo: .callout, weight: .semibold)
                                             .lineLimit(1)
                                             .foregroundStyle(.white)
                                             .frame(maxWidth: .infinity)
@@ -104,7 +108,7 @@ struct WatchRootView: View {
                                 Button { showingScenePicker = true } label: {
                                     Label(HeroBackground.Family(storage: heroFamily).displayName,
                                           systemImage: "photo")
-                                        .font(.system(size: 14, weight: .semibold))
+                                        .auraFont(14, relativeTo: .callout, weight: .semibold)
                                         .lineLimit(1)
                                         .foregroundStyle(.white)
                                         .frame(maxWidth: .infinity)

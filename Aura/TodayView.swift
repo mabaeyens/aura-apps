@@ -223,7 +223,7 @@ struct TodayView: View {
             Button { route = .tip }       label: { Label("Propina", systemImage: "waterbottle") }
         } label: {
             Image(systemName: "line.3.horizontal")
-                .font(.system(size: 17, weight: .semibold))
+                .auraFont(17, relativeTo: .body, weight: .semibold)
                 .foregroundStyle(.white)
                 .frame(width: 38, height: 38)
                 .background(.ultraThinMaterial, in: Circle())
@@ -253,15 +253,15 @@ struct TodayView: View {
                 HStack(spacing: 8) {
                     if let alert = activeAlert {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 12, weight: .bold))
+                            .auraFont(12, relativeTo: .caption, weight: .bold)
                             .foregroundStyle(Palette.alert(alert.level))
                     }
                     Text("MÁS")
-                        .font(.system(size: 11, weight: .bold)).tracking(2)
+                        .auraFont(11, relativeTo: .caption, weight: .bold).tracking(2)
                         .foregroundStyle(.white.opacity(0.85))
                 }
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 12, weight: .semibold))
+                    .auraFont(12, relativeTo: .caption, weight: .semibold)
                     .foregroundStyle(.white.opacity(0.85))
             }
             .shadow(color: .black.opacity(0.35), radius: 5, y: 1)

@@ -84,7 +84,7 @@ private extension View {
     func auraSectionTitle(_ text: String, _ size: AuraSize) -> some View {
         VStack(alignment: .leading, spacing: size == .phone ? 8 : 5) {
             Text(text)
-                .font(.system(size: size.titleSize, weight: .semibold))
+                .auraFont(size.titleSize, relativeTo: .caption, weight: .semibold)
                 .tracking(1.1)
                 .foregroundStyle(.white.opacity(0.72))
             self
@@ -151,9 +151,17 @@ public struct AuraForecastStack: View {
             // start at "now", not at the hour it was built.
             let upcoming = snapshot.upcomingHours(now: now)
             if !upcoming.isEmpty {
+                // The strip is five fixed columns sized to the viewport, so its type can only grow so
+                // far before it collides across columns — cap it and let it scale up to that ceiling.
                 AuraHourlyCard(hours: upcoming, size: size, scrolls: hoursScroll)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             }
-            if !snapshot.days.isEmpty { AuraDailyCard(days: snapshot.days, size: size) }
+            // The daily rows reflow their column widths with the text (see AuraDailyCard), but a
+            // multi-column row on a phone still can't hold the very largest sizes — cap the top end.
+            if !snapshot.days.isEmpty {
+                AuraDailyCard(days: snapshot.days, size: size)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+            }
             // One slot, two cards: the Sol arc while the sun is up, the Luna arc once it's dark.
             if snapshot.isNight(at: now) {
                 AuraMoonArcCard(snapshot: snapshot, size: size, now: now)
@@ -178,7 +186,7 @@ public struct AuraForecastStack: View {
             // the hourly UV curve does.
             Text(Self.credit(hasAir: snapshot.airQuality != nil,
                              hasHourlyUV: !(snapshot.uvHourly ?? []).isEmpty))
-                .font(.system(size: size == .phone ? 14 : 11, weight: .medium))
+                .auraFont(size == .phone ? 14 : 11, relativeTo: .callout, weight: .medium)
                 .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, size == .phone ? 4 : 2)
@@ -230,24 +238,24 @@ public struct AuraHeroCard: View {
         // sentence by `ForecastPhrase`). Text aligns with the cards below via the same horizontal inset.
         VStack(alignment: .leading, spacing: size == .phone ? 6 : 3) {
             Text("\(snapshot.localidad.uppercased()) · \(momentLabel)")
-                .font(.system(size: size.bodySize, weight: .semibold))
+                .auraFont(size.bodySize, relativeTo: .title3, weight: .semibold)
                 .tracking(0.5)
                 .foregroundStyle(.white)
                 .lineLimit(1).minimumScaleFactor(0.7)
 
             Text(snapshot.heroTemp.map { "\($0)°" } ?? "—")
-                .font(.system(size: size.heroTemp, weight: .bold, design: .rounded))
+                .auraFont(size.heroTemp, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                 .foregroundStyle(.white)
                 .lineLimit(1).minimumScaleFactor(0.6)
 
             Text(ForecastPhrase.headline(for: snapshot, now: now))
-                .font(.system(size: size.bodySize, weight: .semibold))
+                .auraFont(size.bodySize, relativeTo: .title3, weight: .semibold)
                 .foregroundStyle(.white)
                 .lineLimit(2).minimumScaleFactor(0.85)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(ForecastPhrase.dataline(for: snapshot, now: now))
-                .font(.system(size: size.bodySize - (size == .phone ? 4 : 3), weight: .regular))
+                .auraFont(size.bodySize - (size == .phone ? 4 : 3), relativeTo: .title3, weight: .regular)
                 .foregroundStyle(.white.opacity(0.9))
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
@@ -260,7 +268,7 @@ public struct AuraHeroCard: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(alert.shortLabel)
                 }
-                .font(.system(size: size.bodySize, weight: .semibold))
+                .auraFont(size.bodySize, relativeTo: .title3, weight: .semibold)
                 .foregroundStyle(Palette.alert(alert.level))
                 // A dark capsule behind the level-tinted label so the amarillo levels (a yellow that
                 // vanishes over a pale dawn or hazy sky — the "Tormentas" case) stay legible on any sky,
@@ -353,7 +361,7 @@ public struct AuraHourlyCard: View {
             GridRow {
                 ForEach(items) { h in
                     Text(AuraTime.hourLabel(hour: h.hour))
-                        .font(.system(size: size.smallSize, weight: .medium))
+                        .auraFont(size.smallSize, relativeTo: .callout, weight: .medium)
                         .foregroundStyle(.white.opacity(0.75))
                         .colWidth(columnWidth)
                 }
@@ -362,7 +370,7 @@ public struct AuraHourlyCard: View {
                 ForEach(items) { h in
                     Image(systemName: WeatherIcon.symbol(forSky: h.sky))
                         .symbolRenderingMode(.multicolor)
-                        .font(.system(size: size.iconSize + 6))
+                        .auraFont(size.iconSize + 6, relativeTo: .title2)
                         .frame(minHeight: size.iconSize + 8)
                         .colWidth(columnWidth)
                 }
@@ -370,7 +378,7 @@ public struct AuraHourlyCard: View {
             GridRow {
                 ForEach(items) { h in
                     Text(h.temp.map { "\($0)°" } ?? "—")
-                        .font(.system(size: size.bodySize - 2, weight: .bold))
+                        .auraFont(size.bodySize - 2, relativeTo: .title3, weight: .bold)
                         .foregroundStyle(Palette.temperature(h.temp))
                         .colWidth(columnWidth)
                 }
@@ -379,7 +387,7 @@ public struct AuraHourlyCard: View {
                 GridRow {
                     ForEach(items) { h in
                         Text(h.precipProb.map { $0 > 0 ? "\($0)%" : "" } ?? "")
-                            .font(.system(size: size.smallSize - 1, weight: .semibold))
+                            .auraFont(size.smallSize - 1, relativeTo: .callout, weight: .semibold)
                             .foregroundStyle(auraPrecipColor)
                             .colWidth(columnWidth)
                     }
@@ -404,6 +412,10 @@ public struct AuraDailyCard: View {
     let size: AuraSize
     public init(days: [DaySnapshot], size: AuraSize) { self.days = days; self.size = size }
 
+    /// Grows from 1.0 in step with the row's `.title3` text, so the fixed weekday/temperature columns
+    /// widen with the type instead of clipping it. One factor drives both phone and Watch column widths.
+    @ScaledMetric(relativeTo: .title3) private var typeScale: CGFloat = 1
+
     /// The week's overall low and high — every row's range bar is drawn on this shared scale, so a warm
     /// day's bar sits visibly to the right of a cold day's, the way Apple Weather charts a week.
     private var weekLo: Int { days.compactMap(\.min).min() ?? 0 }
@@ -415,29 +427,29 @@ public struct AuraDailyCard: View {
                 ForEach(days) { d in
                     HStack(spacing: size == .phone ? 10 : 6) {
                         Text(Self.weekday(d.date))
-                            .frame(width: size == .phone ? 52 : 34, alignment: .leading)
+                            .frame(width: (size == .phone ? 52 : 34) * typeScale, alignment: .leading)
                             .foregroundStyle(.white)
                         VStack(spacing: 1) {
                             Image(systemName: WeatherIcon.symbol(forSky: d.sky))
                                 .symbolRenderingMode(.multicolor)
-                                .font(.system(size: size.iconSize))
+                                .auraFont(size.iconSize, relativeTo: .title2)
                             // Always render the precip line (a blank space when there's no meaningful
                             // chance) so every day's row is exactly the same height, rain or not.
                             Text(d.probPrecip.map { $0 >= 10 ? "\($0)%" : " " } ?? " ")
-                                .font(.system(size: size.smallSize - 2, weight: .semibold))
+                                .auraFont(size.smallSize - 2, relativeTo: .callout, weight: .semibold)
                                 .foregroundStyle(auraPrecipColor)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                         }
-                        .frame(width: size == .phone ? 40 : 27)
+                        .frame(width: (size == .phone ? 40 : 27) * typeScale)
 
                         Text(fmt(d.min)).foregroundStyle(Palette.temperature(d.min))
-                            .frame(width: size == .phone ? 46 : 30, alignment: .trailing)
+                            .frame(width: (size == .phone ? 46 : 30) * typeScale, alignment: .trailing)
                         rangeBar(d)
                         Text(fmt(d.max)).fontWeight(.bold).foregroundStyle(Palette.temperature(d.max))
-                            .frame(width: size == .phone ? 46 : 30, alignment: .leading)
+                            .frame(width: (size == .phone ? 46 : 30) * typeScale, alignment: .leading)
                     }
-                    .font(.system(size: size.bodySize - 1, weight: .medium))
+                    .auraFont(size.bodySize - 1, relativeTo: .title3, weight: .medium)
                     .monospacedDigit()
                     // One element per day — otherwise VoiceOver reads the weekday, both temps and the
                     // range bar as disconnected fragments.
@@ -586,18 +598,18 @@ struct CelestialArcEnd: View {
         VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: size.smallSize))
+                    .auraFont(size.smallSize, relativeTo: .callout)
                     .foregroundStyle(iconColor)
                 Text(time.map { AuraTime.hhmm($0) } ?? "—")
-                    .font(.system(size: size.bodySize - (size == .phone ? 2 : 3), weight: .semibold))
+                    .auraFont(size.bodySize - (size == .phone ? 2 : 3), relativeTo: .title3, weight: .semibold)
                     .foregroundStyle(.white)
             }
             Text(label)
-                .font(.system(size: size.smallSize - 2))
+                .auraFont(size.smallSize - 2, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.6))
             if size == .phone, let civilLabel, let civilTime {
                 Text("\(civilLabel) \(AuraTime.hhmm(civilTime))")
-                    .font(.system(size: size.smallSize - 3))
+                    .auraFont(size.smallSize - 3, relativeTo: .callout)
                     .foregroundStyle(.white.opacity(0.42))
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -632,14 +644,14 @@ struct AuraCelestialArcCard<Glyph: View, Ends: View, Footer: View, Detail: View>
                                      travelledColors: travelledColors, glyph: glyph)
                     ends()
                     Text(readout)
-                        .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
+                        .auraFont(size.smallSize + (size == .phone ? 1 : 0), relativeTo: .callout, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.82))
                         .frame(maxWidth: .infinity, alignment: .center)
                     footer()
                 }
             } else {
                 Text(unavailableText)
-                    .font(.system(size: size.bodySize - 2))
+                    .auraFont(size.bodySize - 2, relativeTo: .title3)
                     .foregroundStyle(.white.opacity(0.6))
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, size == .phone ? 10 : 6)
@@ -785,13 +797,13 @@ public struct AuraSunArcCard: View {
                 // delta there too. Dimmer than the readout so it reads as secondary.
                 if size == .phone, let noon = solarNoon {
                     Text("Mediodía solar \(hhmm(noon))")
-                        .font(.system(size: size.smallSize, weight: .semibold))
+                        .auraFont(size.smallSize, relativeTo: .callout, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
                 if let line = dayLengthLine {
                     Text(line)
-                        .font(.system(size: size.smallSize, weight: .semibold))
+                        .auraFont(size.smallSize, relativeTo: .callout, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .center)
                         .lineLimit(1).minimumScaleFactor(0.75)
@@ -965,16 +977,16 @@ public struct AuraWindCard: View {
                     .frame(width: rose, height: rose)
                 VStack(alignment: .leading, spacing: size == .phone ? 4 : 2) {
                     Text(snapshot.windSpeed.map { "\($0) km/h" } ?? "—")
-                        .font(.system(size: size.bodySize + (size == .phone ? 6 : 2), weight: .bold))
+                        .auraFont(size.bodySize + (size == .phone ? 6 : 2), relativeTo: .title3, weight: .bold)
                         .foregroundStyle(.white)
                         .lineLimit(1).minimumScaleFactor(0.7)
                     Text(directionText)
-                        .font(.system(size: size.smallSize))
+                        .auraFont(size.smallSize, relativeTo: .callout)
                         .foregroundStyle(.white.opacity(0.7))
                         .lineLimit(2).minimumScaleFactor(0.8)
                     if let gust = snapshot.windGust {
                         Text("Rachas \(gust) km/h")
-                            .font(.system(size: size.smallSize, weight: .semibold))
+                            .auraFont(size.smallSize, relativeTo: .callout, weight: .semibold)
                             .foregroundStyle(.white.opacity(0.9))
                             .lineLimit(1).minimumScaleFactor(0.7)
                     }
@@ -1020,8 +1032,7 @@ public struct AuraAirQualityCard: View {
                     ZStack {
                         Circle().fill(color)
                         Text("\(airQuality.category)")
-                            .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
-                                          weight: .heavy, design: .rounded))
+                            .auraFont(size.bodySize + (size == .phone ? 3 : 0), relativeTo: .title3, weight: .heavy, design: .rounded)
                             .foregroundStyle(.white)
                     }
                     .frame(width: swatch, height: swatch)
@@ -1029,11 +1040,11 @@ public struct AuraAirQualityCard: View {
 
                     VStack(alignment: .leading, spacing: size == .phone ? 3 : 1) {
                         Text(airQuality.categoryName)
-                            .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                            .auraFont(size.bodySize - (size == .phone ? 1 : 3), relativeTo: .title3, weight: .semibold)
                             .foregroundStyle(.white)
                             .lineLimit(2).minimumScaleFactor(0.8)
                         Text(detail)
-                            .font(.system(size: size.smallSize - 1))
+                            .auraFont(size.smallSize - 1, relativeTo: .callout)
                             .foregroundStyle(.white.opacity(0.65))
                             .lineLimit(1).minimumScaleFactor(0.65)
                     }
@@ -1068,7 +1079,7 @@ public struct AuraAirQualityCard: View {
                 }
             }
             Text("µg/m³")
-                .font(.system(size: size.smallSize - 2))
+                .auraFont(size.smallSize - 2, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.4))
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -1082,10 +1093,10 @@ public struct AuraAirQualityCard: View {
         let color = Palette.airQuality(component?.icaCategory ?? 0)   // 0 → grey (unmeasured)
         VStack(spacing: 4) {
             Text(AirComponent.label(for: token))
-                .font(.system(size: size.smallSize - 1, weight: .medium))
+                .auraFont(size.smallSize - 1, relativeTo: .callout, weight: .medium)
                 .foregroundStyle(.white.opacity(measured ? 0.7 : 0.35))
             Text(component?.valueText ?? "–")
-                .font(.system(size: size.bodySize - 1, weight: .bold, design: .rounded))
+                .auraFont(size.bodySize - 1, relativeTo: .title3, weight: .bold, design: .rounded)
                 .foregroundStyle(measured ? .white : .white.opacity(0.3))
             Capsule()
                 .fill(color)
@@ -1157,14 +1168,13 @@ public struct AuraUVCard: View {
                         ZStack {
                             Circle().fill(color)
                             Text("\(uvIndex.value)")
-                                .font(.system(size: size.bodySize + (size == .phone ? 3 : 0),
-                                              weight: .heavy, design: .rounded))
+                                .auraFont(size.bodySize + (size == .phone ? 3 : 0), relativeTo: .title3, weight: .heavy, design: .rounded)
                                 .foregroundStyle(.white)
                         }
                         .frame(width: swatch, height: swatch)
                         .shadow(color: color.opacity(0.6), radius: 5)
                         Text("Máx. hoy")
-                            .font(.system(size: size.smallSize - (size == .phone ? 2 : 3), weight: .semibold))
+                            .auraFont(size.smallSize - (size == .phone ? 2 : 3), relativeTo: .callout, weight: .semibold)
                             .foregroundStyle(.white.opacity(0.6))
                     }
 
@@ -1173,15 +1183,15 @@ public struct AuraUVCard: View {
                             // The band's protection glyph — the same symbol the UV complication shows, so
                             // the card teaches what that icon means (its legend lives in the tap sheet).
                             Image(systemName: uvIndex.glyph)
-                                .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                                .auraFont(size.bodySize - (size == .phone ? 1 : 3), relativeTo: .title3, weight: .semibold)
                                 .foregroundStyle(color)
                             Text(uvIndex.bandName)
-                                .font(.system(size: size.bodySize - (size == .phone ? 1 : 3), weight: .semibold))
+                                .auraFont(size.bodySize - (size == .phone ? 1 : 3), relativeTo: .title3, weight: .semibold)
                                 .foregroundStyle(.white)
                                 .lineLimit(1).minimumScaleFactor(0.8)
                         }
                         Text(uvIndex.advice)
-                            .font(.system(size: size.smallSize - 1))
+                            .auraFont(size.smallSize - 1, relativeTo: .callout)
                             .foregroundStyle(.white.opacity(0.65))
                             .lineLimit(1).minimumScaleFactor(0.65)
                     }
@@ -1248,7 +1258,7 @@ private struct UVHourStrip: View {
                 }
                 Spacer(minLength: 0)
             }
-            .font(.system(size: size.smallSize - 2, weight: .semibold))
+            .auraFont(size.smallSize - 2, relativeTo: .callout, weight: .semibold)
             .lineLimit(1)
             .minimumScaleFactor(0.7)   // the band word widens "Ahora N", so shrink before it truncates
 
@@ -1256,7 +1266,7 @@ private struct UVHourStrip: View {
             // the stretch where the index sits at or above the WHO threshold of 3.
             if let w = protectionWindow {
                 Text("Protégete de \(w.start)h a \(w.end)h")
-                    .font(.system(size: size.smallSize - 2, weight: .semibold))
+                    .auraFont(size.smallSize - 2, relativeTo: .callout, weight: .semibold)
                     .foregroundStyle(.white.opacity(0.7))
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -1324,10 +1334,10 @@ public struct AuraRadarCard: View {
                 dbzLegend
                 VStack(alignment: .leading, spacing: 2) {
                     Text(subtitle)
-                        .font(.system(size: size.smallSize))
+                        .auraFont(size.smallSize, relativeTo: .callout)
                         .foregroundStyle(.white.opacity(0.65))
                     Text(rangeLine)
-                        .font(.system(size: size.smallSize - 1))
+                        .auraFont(size.smallSize - 1, relativeTo: .callout)
                         .foregroundStyle(.white.opacity(0.5))
                         .lineLimit(1).minimumScaleFactor(0.8)
                 }
@@ -1374,7 +1384,7 @@ public struct AuraRadarCard: View {
                 Spacer(minLength: 2)
                 Text("Torrencial")
             }
-            .font(.system(size: size.smallSize - 3, weight: .medium))
+            .auraFont(size.smallSize - 3, relativeTo: .callout, weight: .medium)
             .foregroundStyle(.white.opacity(0.55))
             .lineLimit(1).minimumScaleFactor(0.7)
         }
@@ -1418,18 +1428,18 @@ public struct AuraNewsCard: View {
         Button { openURL(item.link) } label: {
             VStack(alignment: .leading, spacing: size == .phone ? 5 : 3) {
                 Text(item.title)
-                    .font(.system(size: size.bodySize - (size == .phone ? 4 : 3), weight: .semibold))
+                    .auraFont(size.bodySize - (size == .phone ? 4 : 3), relativeTo: .title3, weight: .semibold)
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
                     .lineLimit(3)
                 HStack(spacing: 6) {
                     Text(item.source.displayName)
-                        .font(.system(size: size.smallSize - 3, weight: .heavy))
+                        .auraFont(size.smallSize - 3, relativeTo: .callout, weight: .heavy)
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Self.badgeColor(item.source), in: Capsule())
                     Text(Self.relative(from: item.date, now: now))
-                        .font(.system(size: size.smallSize - 2))
+                        .auraFont(size.smallSize - 2, relativeTo: .callout)
                         .foregroundStyle(.white.opacity(0.6))
                 }
             }
@@ -1475,26 +1485,26 @@ public struct AuraAlertCard: View {
         return VStack(alignment: .leading, spacing: size == .phone ? 8 : 6) {
             HStack(spacing: size == .phone ? 9 : 6) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: size.iconSize))
+                    .auraFont(size.iconSize, relativeTo: .title2)
                 Text(headerText)
-                    .font(.system(size: size.bodySize - 1, weight: .semibold))
+                    .auraFont(size.bodySize - 1, relativeTo: .title3, weight: .semibold)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(alignment: .leading, spacing: 3) {
                 if alert.event != headerText {
                     Text(alert.event)
-                        .font(.system(size: size.bodySize - 2))
+                        .auraFont(size.bodySize - 2, relativeTo: .title3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if let zone = alert.areaDesc, !zone.isEmpty {
                     Text(zone)
-                        .font(.system(size: size.bodySize - 3, weight: .medium))
+                        .auraFont(size.bodySize - 3, relativeTo: .title3, weight: .medium)
                         .opacity(0.9)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if let validity = validityText {
                     Text(validity)
-                        .font(.system(size: size.bodySize - 3, weight: .medium))
+                        .auraFont(size.bodySize - 3, relativeTo: .title3, weight: .medium)
                         .opacity(0.9)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -1538,12 +1548,12 @@ public struct AuraBulletinCard: View {
             VStack(alignment: .leading, spacing: size == .phone ? 9 : 6) {
                 if let phenomenon {
                     Label(phenomenon, systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: size == .phone ? 18 : 14, weight: .semibold))
+                        .auraFont(size == .phone ? 18 : 14, relativeTo: .title3, weight: .semibold)
                         .foregroundStyle(Palette.tempOrange)
                 }
                 ForEach(Array(BulletinText.sentences(text).enumerated()), id: \.offset) { _, line in
                     Text(line)
-                        .font(.system(size: size == .phone ? 19 : 15))
+                        .auraFont(size == .phone ? 19 : 15, relativeTo: .title3)
                         .foregroundStyle(.white.opacity(0.9))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

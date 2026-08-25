@@ -72,7 +72,7 @@ struct TipJarView: View {
     private var header: some View {
         VStack(spacing: 14) {
             Image(systemName: "waterbottle.fill")
-                .font(.system(size: 44, weight: .regular))
+                .auraFont(44, relativeTo: .largeTitle, weight: .regular)
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.25), radius: 6, y: 1)
                 .accessibilityHidden(true)
@@ -206,7 +206,7 @@ struct TipJarView: View {
 
             VStack(spacing: 14) {
                 Image(systemName: icon)
-                    .font(.system(size: 52))
+                    .auraFont(52, relativeTo: .largeTitle)
                     .foregroundStyle(.white)
                     .accessibilityHidden(true)
                 Text(title)

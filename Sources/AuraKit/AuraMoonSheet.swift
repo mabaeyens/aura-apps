@@ -36,7 +36,7 @@ public struct AuraMoonSheet: View {
         .overlay(alignment: .topTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 27))
+                    .auraFont(27, relativeTo: .title2)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -52,11 +52,11 @@ public struct AuraMoonSheet: View {
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Luna")
-                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
                     .foregroundStyle(.white)
                     .padding(.trailing, 34)   // clear of the close button
                 Text("\(phase) · \(illumPct) % iluminada")
-                    .font(.system(size: 15))
+                    .auraFont(15, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -88,7 +88,7 @@ public struct AuraMoonSheet: View {
             }
 
             Text("La fase y el porcentaje se calculan a partir de la posición real del Sol y la Luna; salida y puesta, para tu ubicación. Las horas de las próximas fases son aproximadas (unas horas de margen).")
-                .font(.system(size: 13))
+                .auraFont(13, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
@@ -102,15 +102,15 @@ public struct AuraMoonSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 17))
+                    .auraFont(17, relativeTo: .body)
                     .foregroundStyle(tint)
                     .frame(width: 24)
                 Text(label)
-                    .font(.system(size: 16))
+                    .auraFont(16, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer()
                 Text(value)
-                    .font(.system(size: 16, weight: .semibold))
+                    .auraFont(16, relativeTo: .body, weight: .semibold)
                     .foregroundStyle(.white)
             }
             .padding(.vertical, 11)

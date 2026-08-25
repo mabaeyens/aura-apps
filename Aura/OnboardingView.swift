@@ -102,7 +102,7 @@ struct OnboardingView: View {
             Spacer()
             Image(systemName: item.icon)
                 .symbolRenderingMode(.hierarchical)
-                .font(.system(size: 66, weight: .semibold))
+                .auraFont(66, relativeTo: .largeTitle, weight: .semibold)
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.35), radius: 4, y: 1)
             VStack(spacing: 12) {

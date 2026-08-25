@@ -57,7 +57,7 @@ public struct AuraSolarSheet: View {
         .overlay(alignment: .topTrailing) {
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 27))
+                    .auraFont(27, relativeTo: .title2)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -70,11 +70,11 @@ public struct AuraSolarSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Sol")
-                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
                     .foregroundStyle(.white)
                     .padding(.trailing, 34)   // clear of the close button
                 Text(subtitle)
-                    .font(.system(size: 15))
+                    .auraFont(15, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -86,7 +86,7 @@ public struct AuraSolarSheet: View {
                                          center: .center, startRadius: 6, endRadius: 130))
                     .frame(height: 180)
                 Image(systemName: "sun.max.fill")
-                    .font(.system(size: 76))
+                    .auraFont(76, relativeTo: .largeTitle)
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(Color(red: 1.0, green: 0.95, blue: 0.85),
                                      Color(red: 1.0, green: 0.78, blue: 0.35))
@@ -110,7 +110,7 @@ public struct AuraSolarSheet: View {
             }
 
             Text("Orto y ocaso vienen del parte de AEMET para tu municipio; la primera y la última luz (crepúsculo civil), el mediodía solar y la duración del día se calculan para tus coordenadas.")
-                .font(.system(size: 13))
+                .auraFont(13, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
@@ -141,15 +141,15 @@ public struct AuraSolarSheet: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 17))
+                    .auraFont(17, relativeTo: .body)
                     .foregroundStyle(tint)
                     .frame(width: 24)
                 Text(label)
-                    .font(.system(size: 16))
+                    .auraFont(16, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer()
                 Text(value)
-                    .font(.system(size: 16, weight: .semibold))
+                    .auraFont(16, relativeTo: .body, weight: .semibold)
                     .foregroundStyle(.white)
             }
             .padding(.vertical, 11)
