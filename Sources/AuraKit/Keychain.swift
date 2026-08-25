@@ -33,12 +33,19 @@ public enum AuraKeychain {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        let attributes: [String: Any] = [kSecValueData as String: data]
+        // `ThisDeviceOnly`: a credential should never leave this device. Without it the key is copied
+        // into encrypted device backups and restored onto a new device; with it, a device migration
+        // simply re-prompts for the key. Setting it on the update path too migrates existing installs
+        // the next time the key is saved.
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
         let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if status == errSecItemNotFound {
             var insert = query
             insert[kSecValueData as String] = data
-            insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             SecItemAdd(insert as CFDictionary, nil)
         }
     }

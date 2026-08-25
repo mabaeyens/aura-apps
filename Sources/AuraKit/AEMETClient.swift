@@ -14,15 +14,36 @@ public struct AEMETClient: Sendable {
         case aemetStatus(Int, String)
         case decoding(String)
         case rateLimited
+        case invalidParameter(String)
     }
 
     private let apiKey: String
     private let session: URLSession
     private let base = "https://opendata.aemet.es/opendata/api"
 
-    public init(apiKey: String, session: URLSession = .shared) {
+    /// The key rides in the `api_key` query parameter (AEMET's only supported scheme), so these requests
+    /// must never be cached: a persistent `URLCache` writes the key-bearing URL into `Cache.db` on disk.
+    /// This ephemeral session keeps no on-disk cache, cookies, or credential store.
+    private static let uncachedSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.urlCache = nil
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: config)
+    }()
+
+    public init(apiKey: String, session: URLSession? = nil) {
         self.apiKey = apiKey
-        self.session = session
+        self.session = session ?? AEMETClient.uncachedSession
+    }
+
+    /// Rejects any path component that isn't a plain ASCII-alphanumeric code. Every AEMET path segment
+    /// Aura builds — INE municipality, province, avisos area, radar site, community — is a short
+    /// alphanumeric identifier drawn from a bundled catalog. Validating here means a future free-text
+    /// location search can never smuggle a crafted `../`, query string, or path separator into the URL.
+    static func validCode(_ s: String, length: Int? = nil) -> Bool {
+        guard !s.isEmpty, s.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return false }
+        if let length { return s.count == length }
+        return true
     }
 
     /// The envelope returned by every first call.
@@ -128,6 +149,7 @@ public struct AEMETClient: Sendable {
 public extension AEMETClient {
     /// Daily forecast for an INE municipality code (e.g. "28079" for Madrid).
     func municipioDiaria(_ ine: String) async throws -> MunicipioForecast {
+        guard AEMETClient.validCode(ine, length: 5) else { throw ClientError.invalidParameter("ine=\(ine)") }
         let list = try await fetch("/prediccion/especifica/municipio/diaria/\(ine)",
                                    as: [MunicipioForecast].self)
         guard let first = list.first else { throw ClientError.decoding("empty forecast array") }
@@ -136,6 +158,7 @@ public extension AEMETClient {
 
     /// Hourly forecast for an INE municipality code — powers the "now" reading and the hourly strip.
     func municipioHoraria(_ ine: String) async throws -> MunicipioHourly {
+        guard AEMETClient.validCode(ine, length: 5) else { throw ClientError.invalidParameter("ine=\(ine)") }
         let list = try await fetch("/prediccion/especifica/municipio/horaria/\(ine)",
                                    as: [MunicipioHourly].self)
         guard let first = list.first else { throw ClientError.decoding("empty hourly array") }
@@ -145,14 +168,16 @@ public extension AEMETClient {
     /// The latest regional radar image (a ~240 km-radius reflectivity frame centred on the radar site).
     /// Raw image bytes (GIF/PNG); pick the site with `RadarSite.nearest(...)`. Updates every ~10 min.
     func radarRegional(_ code: String) async throws -> Data {
-        try await fetchBinary("/red/radar/regional/\(code)")
+        guard AEMETClient.validCode(code) else { throw ClientError.invalidParameter("radar=\(code)") }
+        return try await fetchBinary("/red/radar/regional/\(code)")
     }
 
     /// Forecast daily-max UV index for every provincial capital, in one call. `dia` 0 = today … 4.
     /// One fetch serves every location; resolve per location by INE with `UVIndex.pick(ine:in:)`. The
     /// payload is a single JSON object (not the array most `/prediccion` products use).
     func uviCities(dia: Int = 0) async throws -> [UVIForecast.City] {
-        try await fetch("/prediccion/especifica/uvi/\(dia)", as: UVIForecast.self).ciudad
+        guard (0...6).contains(dia) else { throw ClientError.invalidParameter("dia=\(dia)") }
+        return try await fetch("/prediccion/especifica/uvi/\(dia)", as: UVIForecast.self).ciudad
     }
 
     /// Every conventional station's recent surface observations, in one call. Large (thousands of
@@ -165,6 +190,7 @@ public extension AEMETClient {
     /// Active meteorological warnings for an AEMET avisos area (a `.tar` of CAP-XML files). `area`
     /// is a two-digit community code (`AvisoArea.forProvincia`). Filter to a location by province.
     func avisos(area: String) async throws -> [WeatherAlert] {
+        guard AEMETClient.validCode(area, length: 2) else { throw ClientError.invalidParameter("area=\(area)") }
         let tar = try await fetchBinary("/avisos_cap/ultimoelaborado/area/\(area)")
         return TarReader.files(from: tar)
             .filter { $0.name.hasSuffix(".xml") }
@@ -176,14 +202,16 @@ public extension AEMETClient {
     /// return a bulletin dated days back. For a bulletin that always covers today, use
     /// `comunidadBulletin(_:)`. Kept for diagnostics.
     func prediccionCCAAHoy(_ ccaa: String) async throws -> String {
-        try await fetchText("/prediccion/ccaa/hoy/\(ccaa)")
+        guard AEMETClient.validCode(ccaa) else { throw ClientError.invalidParameter("ccaa=\(ccaa)") }
+        return try await fetchText("/prediccion/ccaa/hoy/\(ccaa)")
     }
 
     /// Raw text of the per-province `hoy` product. `provincia` is the 2-digit INE province code
     /// (`Location.provinciaCode`). Same amendment-only caveat as `prediccionCCAAHoy`, and AEMET
     /// maintains it even less consistently. Kept for diagnostics.
     func prediccionProvinciaHoy(_ provincia: String) async throws -> String {
-        try await fetchText("/prediccion/provincia/hoy/\(provincia)")
+        guard AEMETClient.validCode(provincia, length: 2) else { throw ClientError.invalidParameter("provincia=\(provincia)") }
+        return try await fetchText("/prediccion/provincia/hoy/\(provincia)")
     }
 }
 
