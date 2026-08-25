@@ -203,7 +203,8 @@ public enum MitecoAirQuality {
         var best: (station: Station, km: Double)?
         for s in stations {
             let km = haversine(lat, lon, s.latitude, s.longitude)
-            if best == nil || km < best!.km { best = (s, km) }
+            if let current = best, km >= current.km { continue }
+            best = (s, km)
         }
         return best
     }

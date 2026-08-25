@@ -87,14 +87,16 @@ public struct AEMETClient: Sendable {
     private func perform(_ url: URL) async throws -> Data {
         var attempt = 0
         while true {
-            await RequestPacer.shared.waitForSlot()
+            try await RequestPacer.shared.waitForSlot()
             let (data, response) = try await session.data(from: url)
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             if code == 200 { return data }
             if code == 429, attempt < 2 {
                 attempt += 1
                 let backoff = pow(2.0, Double(attempt))   // 2 s, then 4 s
-                try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
+                // Propagate cancellation (`try`, not `try?`): a request cancelled mid-backoff must stop
+                // retrying, not swallow the CancellationError and loop again.
+                try await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
                 continue
             }
             if code == 429 { throw ClientError.rateLimited }
@@ -235,8 +237,10 @@ actor RequestPacer {
         self.window = window
     }
 
-    /// Reserves the next slot, sleeping only if `limit` requests already fired inside `window`.
-    func waitForSlot() async {
+    /// Reserves the next slot, sleeping only if `limit` requests already fired inside `window`. Throws
+    /// `CancellationError` if the waiting task is cancelled, so a cancelled request stops queuing instead of
+    /// swallowing the cancellation and looping.
+    func waitForSlot() async throws {
         while true {
             let now = Date()
             recent.removeAll { now.timeIntervalSince($0) >= window }
@@ -246,7 +250,7 @@ actor RequestPacer {
             }
             if let oldest = recent.first {
                 let wait = window - now.timeIntervalSince(oldest)
-                if wait > 0 { try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
+                if wait > 0 { try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000)) }
             }
         }
     }

@@ -90,6 +90,8 @@ enum AEMETService {
             return false
         }
         guard !stale.isEmpty else { return nil }
+        // Bail before the network work if the trigger was already cancelled (app backgrounded, view gone).
+        if Task.isCancelled { return nil }
 
         // One national observation fetch serves every location; nearest station is resolved locally.
         var observations: [StationObservation] = []
@@ -123,6 +125,9 @@ enum AEMETService {
 
         var didUpdate = false
         for location in stale {
+            // Stop fetching the rest the moment the task is cancelled; whatever was already upserted still
+            // reloads the widgets below, so a partial refresh isn't wasted.
+            if Task.isCancelled { break }
             let daily: MunicipioForecast
             do { daily = try await client.municipioDiaria(location.ine) }
             catch { note(error); continue }

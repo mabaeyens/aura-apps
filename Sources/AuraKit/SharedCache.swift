@@ -43,10 +43,23 @@ public enum SharedCache {
             .appendingPathComponent("snapshots.json")
     }
 
+    /// Serializes the cache's file access within this process so the read-modify-write in `upsert`/`prune`
+    /// can't interleave with another task's read or write and lose an update. Recursive so the mutating
+    /// paths can call `read`/`write` while already holding it. Cross-process safety comes from the atomic
+    /// write (a rename, so a reader in another process sees the whole old file or the whole new one); the
+    /// app is the only writer, so there are no cross-process read-modify-write races to guard.
+    private static let lock = NSRecursiveLock()
+    private static func sync<T>(_ body: () -> T) -> T {
+        lock.lock(); defer { lock.unlock() }
+        return body()
+    }
+
     /// All cached snapshots, newest write wins per location. Empty if nothing has been cached yet.
     public static func read() -> [WeatherSnapshot] {
-        guard let url = fileURL, let data = try? Data(contentsOf: url) else { return [] }
-        return (try? decoder.decode([WeatherSnapshot].self, from: data)) ?? []
+        sync {
+            guard let url = fileURL, let data = try? Data(contentsOf: url) else { return [] }
+            return (try? decoder.decode([WeatherSnapshot].self, from: data)) ?? []
+        }
     }
 
     /// The cached snapshot for one municipality, if present.
@@ -67,15 +80,20 @@ public enum SharedCache {
 
     /// Replace all cached snapshots.
     public static func write(_ snapshots: [WeatherSnapshot]) {
-        guard let url = fileURL, let data = try? encoder.encode(snapshots) else { return }
-        try? data.write(to: url, options: .atomic)
+        sync {
+            guard let url = fileURL, let data = try? encoder.encode(snapshots) else { return }
+            try? data.write(to: url, options: .atomic)
+        }
     }
 
-    /// Insert or update the snapshot for its location, leaving the others untouched.
+    /// Insert or update the snapshot for its location, leaving the others untouched. Read and write are
+    /// held under the same lock so two concurrent upserts can't each read the old file and clobber the other.
     public static func upsert(_ snapshot: WeatherSnapshot) {
-        var all = read().filter { $0.ine != snapshot.ine }
-        all.append(snapshot)
-        write(all)
+        sync {
+            var all = read().filter { $0.ine != snapshot.ine }
+            all.append(snapshot)
+            write(all)
+        }
     }
 
     /// Trim the cache so it can't grow without bound as favourites come and go. Drops any snapshot
@@ -86,19 +104,21 @@ public enum SharedCache {
     public static func prune(keepINEs: Set<String>? = nil,
                              maxAge: TimeInterval = 30 * 24 * 60 * 60,
                              maxCount: Int = 24) {
-        let now = Date()
-        var all = read()
-        let before = all.count
+        sync {
+            let now = Date()
+            var all = read()
+            let before = all.count
 
-        all = all.filter { snapshot in
-            if now.timeIntervalSince(snapshot.updated) >= maxAge { return false }
-            if let keep = keepINEs, !keep.contains(snapshot.ine) { return false }
-            return true
+            all = all.filter { snapshot in
+                if now.timeIntervalSince(snapshot.updated) >= maxAge { return false }
+                if let keep = keepINEs, !keep.contains(snapshot.ine) { return false }
+                return true
+            }
+            if all.count > maxCount {
+                all = Array(all.sorted { $0.updated > $1.updated }.prefix(maxCount))
+            }
+            if all.count != before { write(all) }
         }
-        if all.count > maxCount {
-            all = Array(all.sorted { $0.updated > $1.updated }.prefix(maxCount))
-        }
-        if all.count != before { write(all) }
     }
 
     private static let encoder: JSONEncoder = {
