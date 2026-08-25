@@ -44,6 +44,14 @@ final class LocationStore: ObservableObject {
         favorites.first { $0.ine == selectedINE } ?? favorites.first
     }
 
+    /// Switch to a saved location by its INE — the entry point for a widget deep link (`aura://location/…`).
+    /// Ignores an INE that is no longer a favourite (a widget still pinned to a since-removed place) so the
+    /// tap is a no-op rather than a silent jump to whatever `selected` falls back to.
+    func select(ine: String) {
+        guard favorites.contains(where: { $0.ine == ine }) else { return }
+        selectedINE = ine
+    }
+
     func add(_ location: Location) {
         guard !favorites.contains(where: { $0.ine == location.ine }) else {
             selectedINE = location.ine

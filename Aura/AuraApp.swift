@@ -17,6 +17,13 @@ struct AuraApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(store)
+                // Widget deep link: a per-location Lock Screen or Home widget carries `aura://location/<ine>`,
+                // so a tap opens the app to the place that widget shows instead of the app's own active one.
+                .onOpenURL { url in
+                    guard url.scheme == "aura", url.host == "location" else { return }
+                    let ine = url.lastPathComponent
+                    if !ine.isEmpty { store.select(ine: ine) }
+                }
                 // Cache every saved location at launch so widgets have data whichever one is picked,
                 // and sweep any stale radar frames left in the Caches directory.
                 .task {

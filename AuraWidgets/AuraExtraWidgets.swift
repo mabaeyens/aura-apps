@@ -24,6 +24,7 @@ struct AuraSunMoonWidget: Widget {
                                provider: AuraProvider()) { entry in
             AuraSunMoonEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Sol y Luna")
         .description("El próximo amanecer, ocaso o salida de la luna.")
@@ -65,6 +66,7 @@ struct AuraSummaryWidget: Widget {
                 }
             }
             .containerBackground(.fill.tertiary, for: .widget)
+            .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Resumen")
         .description("Temperatura, lluvia y humedad en una línea.")
@@ -86,6 +88,7 @@ struct AuraHumidityWidget: Widget {
                 }
             }
             .containerBackground(.fill.tertiary, for: .widget)
+            .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Humedad")
         .description("La humedad relativa actual.")
@@ -102,6 +105,7 @@ struct AuraAvisoWidget: Widget {
                                provider: AuraProvider()) { entry in
             AuraAvisoEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Aviso")
         .description("El aviso meteorológico activo, si lo hay.")
@@ -138,6 +142,7 @@ struct AuraHomeWidget: Widget {
                                provider: AuraHomeProvider()) { entry in
             AuraHomeEntryView(entry: entry)
                 .containerBackground(for: .widget) { AuraHomeBackground(entry: entry) }
+                .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Aura")
         .description("El tiempo de tu ubicación en la pantalla de inicio.")

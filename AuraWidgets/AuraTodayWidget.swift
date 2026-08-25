@@ -9,6 +9,11 @@ struct AuraEntry: TimelineEntry {
     let date: Date
     let snapshot: WeatherSnapshot?
     var scene: HeroBackground.Family = .landscape
+
+    /// The deep link the widget carries so a tap opens the app to the location it shows, not the app's
+    /// own active one (see `AuraApp.onOpenURL`). Nil before anything is cached, so the tap just launches
+    /// the app rather than routing to nowhere.
+    var deepLink: URL? { snapshot.flatMap { URL(string: "aura://location/\($0.ine)") } }
 }
 
 /// The configured location's cached snapshot, falling back to the first cached location so a freshly
@@ -74,6 +79,7 @@ struct AuraTodayWidget: Widget {
                                provider: AuraProvider()) { entry in
             AuraTodayEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
+                .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("El tiempo")
         .description("La predicción de hoy para tu ubicación.")
@@ -96,6 +102,7 @@ struct AuraRainWidget: Widget {
                 }
             }
             .containerBackground(.fill.tertiary, for: .widget)
+            .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Lluvia")
         .description("La probabilidad de precipitación de la hora actual.")
@@ -117,6 +124,7 @@ struct AuraUVWidget: Widget {
                 }
             }
             .containerBackground(.fill.tertiary, for: .widget)
+            .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("UV ahora")
         .description("El índice UV de la hora, sobre el máximo del día.")
