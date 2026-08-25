@@ -454,6 +454,174 @@ public struct AuraDailyCard: View {
     }
 }
 
+// MARK: - Celestial arc (shared by the sun and moon cards)
+
+/// Shared geometry for the sun and moon arc cards. The sin(π·t) polyline, the compact duration format and
+/// the arc box dimensions are identical for both, so the two cards trace the same curve and line up.
+enum CelestialArc {
+    static func height(_ size: AuraSize) -> CGFloat { size == .phone ? 96 : 58 }
+    static func glyphRadius(_ size: AuraSize) -> CGFloat { size == .phone ? 12 : 7.5 }
+
+    /// A quadratic-looking arc sampled as a polyline: y follows sin(π·t) so it's flat at both horizons and
+    /// highest at the apex, matching `AuraSunPath`'s own altitude curve.
+    static func path(w: CGFloat, baseline: CGFloat, rise: CGFloat, from: CGFloat, to: CGFloat) -> Path {
+        var p = Path()
+        guard to > from else { return p }
+        let steps = 48
+        for i in 0...steps {
+            let t = from + (to - from) * CGFloat(i) / CGFloat(steps)
+            let point = CGPoint(x: t * w, y: baseline - CGFloat(sin(Double(t) * .pi)) * rise)
+            if i == 0 { p.move(to: point) } else { p.addLine(to: point) }
+        }
+        return p
+    }
+
+    /// Compact "3 h 12 min" / "43 min". `wrapDay` adds 24 h to a negative span (tomorrow's event).
+    static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
+        var seconds = Int(to.timeIntervalSince(from))
+        if wrapDay && seconds < 0 { seconds += 24 * 3600 }
+        guard seconds > 0 else { return nil }
+        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
+        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes)) min" : "\(minutes) min"
+    }
+}
+
+/// The drawn arc shared by both cards: horizon line, the full day/night arc (faint), the travelled portion
+/// in the body's own light (drawn only when `travelledColors` is non-nil — the sun skips it at night, the
+/// moon's collapses to nothing while it is down since `fraction` is 0), and a glyph at the live position.
+/// The sun supplies its disc-and-glow, the moon its phased disc, both through `glyph(point, radius)`.
+struct CelestialArcView<Glyph: View>: View {
+    let size: AuraSize
+    let fraction: CGFloat
+    let fullArcOpacity: Double
+    let travelledColors: [Color]?
+    @ViewBuilder let glyph: (CGPoint, CGFloat) -> Glyph
+
+    var body: some View {
+        let glyphR = CelestialArc.glyphRadius(size)
+        return GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let baseline = h - 1
+            let rise = h - glyphR - 3
+            let f = fraction
+            let point = CGPoint(x: f * w, y: baseline - sin(Double(f) * .pi) * Double(rise))
+            ZStack {
+                // Horizon.
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: baseline))
+                    p.addLine(to: CGPoint(x: w, y: baseline))
+                }
+                .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
+
+                // The full arc, faint.
+                CelestialArc.path(w: w, baseline: baseline, rise: rise, from: 0, to: 1)
+                    .stroke(.white.opacity(fullArcOpacity),
+                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
+
+                // The travelled portion, rise → now, in the body's own light.
+                if let colors = travelledColors {
+                    CelestialArc.path(w: w, baseline: baseline, rise: rise, from: 0, to: f)
+                        .stroke(
+                            LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                }
+
+                glyph(point, glyphR)
+            }
+        }
+        .frame(height: CelestialArc.height(size))
+        // Inset by the glyph radius so the disc sits fully inside the card at the rise/set ends (fraction 0
+        // and 1) instead of half-clipping on the card edge.
+        .padding(.horizontal, glyphR)
+    }
+}
+
+/// One end of an arc card: an icon + precise time, its label below, and an optional civil-twilight footnote
+/// (the sun's first/last light, phone only). Shared by both cards; the moon passes no civil line.
+struct CelestialArcEnd: View {
+    let size: AuraSize
+    let icon: String
+    let iconColor: Color
+    let label: String
+    let time: Date?
+    var trailing: Bool = false
+    var civilLabel: String? = nil
+    var civilTime: Date? = nil
+
+    var body: some View {
+        VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: size.smallSize))
+                    .foregroundStyle(iconColor)
+                Text(time.map { AuraTime.hhmm($0) } ?? "—")
+                    .font(.system(size: size.bodySize - (size == .phone ? 2 : 3), weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            Text(label)
+                .font(.system(size: size.smallSize - 2))
+                .foregroundStyle(.white.opacity(0.6))
+            if size == .phone, let civilLabel, let civilTime {
+                Text("\(civilLabel) \(AuraTime.hhmm(civilTime))")
+                    .font(.system(size: size.smallSize - 3))
+                    .foregroundStyle(.white.opacity(0.42))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }
+        }
+    }
+}
+
+/// The generic sun/moon arc card. Holds the shared scaffold — an `AuraCard` with the drawn arc, the two
+/// ends, the centre readout, an optional footer, plus the detail sheet and collapsed accessibility — and
+/// takes only what differs from the sun and the moon: the arc's glyph and colours, the ends, the readout,
+/// the footer lines and the spoken value.
+struct AuraCelestialArcCard<Glyph: View, Ends: View, Footer: View, Detail: View>: View {
+    let size: AuraSize
+    let title: String
+    let hasTimes: Bool
+    let unavailableText: String
+    let accessibilityValue: String
+    let fraction: CGFloat
+    let fullArcOpacity: Double
+    let travelledColors: [Color]?
+    @ViewBuilder let glyph: (CGPoint, CGFloat) -> Glyph
+    @ViewBuilder let ends: () -> Ends
+    let readout: String
+    @ViewBuilder let footer: () -> Footer
+    @ViewBuilder let detail: () -> Detail
+
+    var body: some View {
+        AuraCard(size: size) {
+            if hasTimes {
+                VStack(spacing: size == .phone ? 12 : 7) {
+                    CelestialArcView(size: size, fraction: fraction, fullArcOpacity: fullArcOpacity,
+                                     travelledColors: travelledColors, glyph: glyph)
+                    ends()
+                    Text(readout)
+                        .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    footer()
+                }
+            } else {
+                Text(unavailableText)
+                    .font(.system(size: size.bodySize - 2))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, size == .phone ? 10 : 6)
+            }
+        }
+        .auraDetail(size, detail: detail)
+        .auraSectionTitle(title.uppercased(), size)
+        // The arc is a drawn path — silent to VoiceOver. Collapse the whole card into one element and speak
+        // the facts it encodes: the two events and the centre readout.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(accessibilityValue)
+    }
+}
+
 // MARK: - Sun arc
 
 /// A full-width daytime arc. The sun rides from orto (left / east) to ocaso (right / west) along a
@@ -500,7 +668,7 @@ public struct AuraSunArcCard: View {
     /// The daylight-length line: total daylight, plus the day-over-day delta on the phone (too wide for
     /// the watch). `nil` when orto/ocaso are unavailable.
     private var dayLengthLine: String? {
-        guard let sr = sunrise, let ss = sunset, let len = Self.compact(from: sr, to: ss) else { return nil }
+        guard let sr = sunrise, let ss = sunset, let len = CelestialArc.compact(from: sr, to: ss) else { return nil }
         var line = "\(len) de luz"
         if size == .phone, let dm = dayLengthDeltaMinutes {
             if dm > 0 { line += " · \(dm) min más que ayer" }
@@ -535,48 +703,65 @@ public struct AuraSunArcCard: View {
     }
 
     public var body: some View {
-        AuraCard(size: size) {
-            if hasTimes {
-                VStack(spacing: size == .phone ? 12 : 7) {
-                    arc
-                    ends
-                    Text(readout)
-                        .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.82))
-                        .frame(maxWidth: .infinity, alignment: .center)
-
-                    // Solar noon (the arc's apex) and how long today's daylight runs — both from the same
-                    // orto/ocaso, no new data. Noon is phone-only; the length line carries the
-                    // day-over-day delta there too. Dimmer than the readout so it reads as secondary.
-                    if size == .phone, let noon = solarNoon {
-                        Text("Mediodía solar \(hhmm(noon))")
-                            .font(.system(size: size.smallSize, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.6))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    if let line = dayLengthLine {
-                        Text(line)
-                            .font(.system(size: size.smallSize, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.6))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .lineLimit(1).minimumScaleFactor(0.75)
-                    }
+        let night = !isDay
+        return AuraCelestialArcCard(
+            size: size,
+            title: "Sol",
+            hasTimes: hasTimes,
+            unavailableText: "Horario solar no disponible",
+            accessibilityValue: a11yValue,
+            fraction: fraction,
+            // The full arc dims and the travelled portion drops out once the sun is down.
+            fullArcOpacity: night ? 0.16 : 0.24,
+            travelledColors: night ? nil : [Palette.tempOrange, Palette.tempYellow],
+            glyph: { point, glyphR in
+                // The sun: a soft glow under a solid disc. Muted and pale after dark.
+                let core = night ? Color(white: 0.82) : Palette.tempYellow
+                let glow = night ? Color(white: 0.6) : Palette.tempOrange
+                ZStack {
+                    Circle().fill(glow.opacity(night ? 0.35 : 0.6))
+                        .frame(width: glyphR * 2.8, height: glyphR * 2.8)
+                        .blur(radius: size == .phone ? 7 : 4)
+                        .position(point)
+                    Circle().fill(core)
+                        .frame(width: glyphR * 2, height: glyphR * 2)
+                        .position(point)
                 }
-            } else {
-                Text("Horario solar no disponible")
-                    .font(.system(size: size.bodySize - 2))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, size == .phone ? 10 : 6)
-            }
-        }
-        .auraDetail(size) { AuraSolarSheet(snapshot: snapshot, now: now) }
-        .auraSectionTitle("Sol".uppercased(), size)
-        // The arc is a drawn path — silent to VoiceOver. Collapse the whole card into one element and
-        // speak the facts it encodes: orto, ocaso and the daylight-remaining readout.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Sol")
-        .accessibilityValue(a11yValue)
+            },
+            ends: {
+                // Orto on the left, ocaso on the right, each with its icon, precise location-based time and
+                // (phone only) its civil-twilight line — first light before orto, last light after ocaso.
+                HStack(alignment: .top) {
+                    CelestialArcEnd(size: size, icon: "sunrise.fill", iconColor: Palette.tempOrange,
+                                    label: "Orto", time: sunrise,
+                                    civilLabel: "Primera luz", civilTime: civilDawn)
+                    Spacer()
+                    CelestialArcEnd(size: size, icon: "sunset.fill", iconColor: Palette.tempOrange,
+                                    label: "Ocaso", time: sunset, trailing: true,
+                                    civilLabel: "Última luz", civilTime: civilDusk)
+                }
+            },
+            readout: readout,
+            footer: {
+                // Solar noon (the arc's apex) and how long today's daylight runs — both from the same
+                // orto/ocaso, no new data. Noon is phone-only; the length line carries the day-over-day
+                // delta there too. Dimmer than the readout so it reads as secondary.
+                if size == .phone, let noon = solarNoon {
+                    Text("Mediodía solar \(hhmm(noon))")
+                        .font(.system(size: size.smallSize, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+                if let line = dayLengthLine {
+                    Text(line)
+                        .font(.system(size: size.smallSize, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .lineLimit(1).minimumScaleFactor(0.75)
+                }
+            },
+            detail: { AuraSolarSheet(snapshot: snapshot, now: now) }
+        )
     }
 
     /// Spoken summary for VoiceOver: sunrise, sunset and the centre readout, or the unavailable notice.
@@ -586,142 +771,27 @@ public struct AuraSunArcCard: View {
         if let dawn = civilDawn { parts.append("primera luz a las \(hhmm(dawn))") }
         if let dusk = civilDusk { parts.append("última luz a las \(hhmm(dusk))") }
         if let noon = solarNoon { parts.append("mediodía solar a las \(hhmm(noon))") }
-        if let len = Self.compact(from: sr, to: ss) { parts.append("\(len) de luz") }
+        if let len = CelestialArc.compact(from: sr, to: ss) { parts.append("\(len) de luz") }
         var value = parts.joined(separator: ", ") + "."
         let r = readout
         if !r.isEmpty { value += " \(r)." }
         return value
     }
 
-    // The arc itself: horizon line, the full day arc (faint), the travelled portion (warm), and the sun
-    // glyph glowing at its live position. At night the whole arc dims and the sun rests at the horizon.
-    private var arc: some View {
-        let arcHeight: CGFloat = size == .phone ? 96 : 58
-        let glyphR: CGFloat = size == .phone ? 12 : 7.5
-        let night = !isDay
-        return GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            let baseline = h - 1
-            let rise = h - glyphR - 3
-            let f = fraction
-            let sun = CGPoint(x: f * w, y: baseline - sin(Double(f) * .pi) * Double(rise))
-            ZStack {
-                // Horizon.
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: baseline))
-                    p.addLine(to: CGPoint(x: w, y: baseline))
-                }
-                .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-
-                // The full day arc, faint (dashed once the sun has passed / at night).
-                Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: 1)
-                    .stroke(.white.opacity(night ? 0.16 : 0.24),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
-
-                // The travelled portion, orto → now, in warm light (daytime only).
-                if !night {
-                    Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: f)
-                        .stroke(
-                            LinearGradient(colors: [Palette.tempOrange, Palette.tempYellow],
-                                           startPoint: .leading, endPoint: .trailing),
-                            style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                }
-
-                // The sun: a soft glow under a solid disc. Muted and pale after dark.
-                let core = night ? Color(white: 0.82) : Palette.tempYellow
-                let glow = night ? Color(white: 0.6) : Palette.tempOrange
-                Circle().fill(glow.opacity(night ? 0.35 : 0.6))
-                    .frame(width: glyphR * 2.8, height: glyphR * 2.8)
-                    .blur(radius: size == .phone ? 7 : 4)
-                    .position(sun)
-                Circle().fill(core)
-                    .frame(width: glyphR * 2, height: glyphR * 2)
-                    .position(sun)
-            }
-        }
-        .frame(height: arcHeight)
-        // Inset by the glyph radius so the sun disc sits fully inside the card at the orto/ocaso ends
-        // (fraction 0 and 1) instead of half-clipping on the card edge.
-        .padding(.horizontal, glyphR)
-    }
-
-    // Orto on the left, ocaso on the right, each with its icon and precise, location-based time. On the
-    // phone each also carries its civil-twilight time just below — first light before orto, last light
-    // after ocaso — where it belongs beside the event it brackets.
-    private var ends: some View {
-        HStack(alignment: .top) {
-            end(icon: "sunrise.fill", label: "Orto", time: sunrise,
-                civilLabel: "Primera luz", civilTime: civilDawn)
-            Spacer()
-            end(icon: "sunset.fill", label: "Ocaso", time: sunset, trailing: true,
-                civilLabel: "Última luz", civilTime: civilDusk)
-        }
-    }
-
-    private func end(icon: String, label: String, time: Date?, trailing: Bool = false,
-                     civilLabel: String? = nil, civilTime: Date? = nil) -> some View {
-        VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: size.smallSize))
-                    .foregroundStyle(Palette.tempOrange)
-                Text(time.map(hhmm) ?? "—")
-                    .font(.system(size: size.bodySize - (size == .phone ? 2 : 3), weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            Text(label)
-                .font(.system(size: size.smallSize - 2))
-                .foregroundStyle(.white.opacity(0.6))
-            // Civil twilight (phone only): the "still bright enough to be out" edge of the day, in a small
-            // dim line under the label so it reads as a footnote to orto/ocaso, not a competing time.
-            if size == .phone, let civilLabel, let civilTime {
-                Text("\(civilLabel) \(hhmm(civilTime))")
-                    .font(.system(size: size.smallSize - 3))
-                    .foregroundStyle(.white.opacity(0.42))
-                    .lineLimit(1).minimumScaleFactor(0.7)
-            }
-        }
-    }
-
     /// Centre line: daylight remaining while the sun is up, else the countdown to the next sunrise.
     private var readout: String {
-        if isDay, let ss = sunset, let left = Self.compact(from: now, to: ss) {
+        if isDay, let ss = sunset, let left = CelestialArc.compact(from: now, to: ss) {
             return "Quedan \(left) de luz"
         }
         // After dark: the snapshot only carries today's sunrise; sun times barely move day to day, so
         // this morning's orto stands in for tomorrow's — wrap the negative interval by 24 h.
-        if let sr = sunrise, let until = Self.compact(from: now, to: sr, wrapDay: true) {
+        if let sr = sunrise, let until = CelestialArc.compact(from: now, to: sr, wrapDay: true) {
             return "Amanece en \(until)"
         }
         return ""
     }
 
     private func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
-
-    /// A quadratic-looking arc sampled as a polyline: y follows sin(π·t) so it's flat at both horizons
-    /// and highest at solar noon, matching `AuraSunPath`'s own altitude curve.
-    private static func arcPath(w: CGFloat, baseline: CGFloat, rise: CGFloat,
-                                from: CGFloat, to: CGFloat) -> Path {
-        var p = Path()
-        guard to > from else { return p }
-        let steps = 48
-        for i in 0...steps {
-            let t = from + (to - from) * CGFloat(i) / CGFloat(steps)
-            let point = CGPoint(x: t * w, y: baseline - CGFloat(sin(Double(t) * .pi)) * rise)
-            if i == 0 { p.move(to: point) } else { p.addLine(to: point) }
-        }
-        return p
-    }
-
-    /// Compact "3 h 12" / "43 min". `wrapDay` adds 24 h to a negative span (tomorrow's sunrise).
-    private static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
-        var seconds = Int(to.timeIntervalSince(from))
-        if wrapDay && seconds < 0 { seconds += 24 * 3600 }
-        guard seconds > 0 else { return nil }
-        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
-        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes)) min" : "\(minutes) min"
-    }
 }
 
 // MARK: - Moon arc
@@ -778,31 +848,43 @@ public struct AuraMoonArcCard: View {
     }
 
     public var body: some View {
-        AuraCard(size: size) {
-            if hasTimes {
-                VStack(spacing: size == .phone ? 12 : 7) {
-                    arc
-                    ends
-                    Text(readout)
-                        .font(.system(size: size.smallSize + (size == .phone ? 1 : 0), weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.82))
-                        .frame(maxWidth: .infinity, alignment: .center)
+        AuraCelestialArcCard(
+            size: size,
+            title: "Luna",
+            hasTimes: hasTimes,
+            unavailableText: "Horario lunar no disponible",
+            accessibilityValue: a11yValue,
+            fraction: fraction,
+            fullArcOpacity: 0.24,
+            // Drawn only while the moon is up; when it is down `fraction` is 0 and the travelled path is empty.
+            travelledColors: [Palette.tempBlue, Color(white: 0.95)],
+            glyph: { point, glyphR in
+                // The moon: a soft cool glow — dimming toward a new moon — under tonight's real phase disc.
+                let glow = Color(red: 0.66, green: 0.72, blue: 0.92)
+                ZStack {
+                    Circle().fill(glow.opacity(0.45 * max(illumination, 0.22)))
+                        .frame(width: glyphR * 2.8, height: glyphR * 2.8)
+                        .blur(radius: size == .phone ? 7 : 4)
+                        .position(point)
+                    PhasedMoonDisc(illumination: illumination, waxing: waxing, radius: glyphR,
+                                   litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
+                        .position(point)
                 }
-            } else {
-                Text("Horario lunar no disponible")
-                    .font(.system(size: size.bodySize - 2))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, size == .phone ? 10 : 6)
-            }
-        }
-        .auraDetail(size) { AuraMoonSheet(snapshot: snapshot, now: now) }
-        .auraSectionTitle("Luna".uppercased(), size)
-        // Same as the sun card: the drawn arc is silent, so speak the salida/puesta that bound the moon's
-        // appearance and the countdown readout as one collapsed element.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Luna")
-        .accessibilityValue(a11yValue)
+            },
+            ends: {
+                // Salida on the left (moonrise, east), puesta on the right (moonset, west).
+                HStack(alignment: .top) {
+                    CelestialArcEnd(size: size, icon: "arrow.up", iconColor: Palette.tempBlue,
+                                    label: "Salida", time: moonrise)
+                    Spacer()
+                    CelestialArcEnd(size: size, icon: "arrow.down", iconColor: Palette.tempBlue,
+                                    label: "Puesta", time: moonset, trailing: true)
+                }
+            },
+            readout: readout,
+            footer: { EmptyView() },
+            detail: { AuraMoonSheet(snapshot: snapshot, now: now) }
+        )
     }
 
     /// Spoken summary for VoiceOver: the moon's salida, its puesta and the centre readout.
@@ -812,115 +894,18 @@ public struct AuraMoonArcCard: View {
         return "Sale a las \(hhmm(r)), se pone a las \(hhmm(s))." + (line.isEmpty ? "" : " \(line).")
     }
 
-    // Horizon, the full appearance arc (faint), the travelled portion (cool moonlight, up only), and the
-    // moon glyph — wearing tonight's true phase — at its live position. When the moon is below the horizon
-    // the arc dims and the disc rests at the eastern (salida) end.
-    private var arc: some View {
-        let arcHeight: CGFloat = size == .phone ? 96 : 58
-        let glyphR: CGFloat = size == .phone ? 12 : 7.5
-        return GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            let baseline = h - 1
-            let rise = h - glyphR - 3
-            let f = fraction
-            let moon = CGPoint(x: f * w, y: baseline - sin(Double(f) * .pi) * Double(rise))
-            ZStack {
-                // Horizon.
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: baseline))
-                    p.addLine(to: CGPoint(x: w, y: baseline))
-                }
-                .stroke(.white.opacity(0.18), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-
-                // The full night arc, faint.
-                Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: 1)
-                    .stroke(.white.opacity(0.24),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
-
-                // The travelled portion, salida → now, in cool moonlight (drawn only while the moon is up).
-                Self.arcPath(w: w, baseline: baseline, rise: rise, from: 0, to: f)
-                    .stroke(
-                        LinearGradient(colors: [Palette.tempBlue, Color(white: 0.95)],
-                                       startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round))
-
-                // The moon: a soft cool glow — dimming toward a new moon — under tonight's real phase disc.
-                let glow = Color(red: 0.66, green: 0.72, blue: 0.92)
-                Circle().fill(glow.opacity(0.45 * max(illumination, 0.22)))
-                    .frame(width: glyphR * 2.8, height: glyphR * 2.8)
-                    .blur(radius: size == .phone ? 7 : 4)
-                    .position(moon)
-                PhasedMoonDisc(illumination: illumination, waxing: waxing, radius: glyphR,
-                               litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
-                    .position(moon)
-            }
-        }
-        .frame(height: arcHeight)
-        // Inset by the glyph radius so the moon disc sits fully inside the card at the ocaso/orto ends.
-        .padding(.horizontal, glyphR)
-    }
-
-    // Salida on the left (moonrise, east), puesta on the right (moonset, west) — the moon's own events.
-    private var ends: some View {
-        HStack(alignment: .top) {
-            end(icon: "arrow.up", label: "Salida", time: moonrise)
-            Spacer()
-            end(icon: "arrow.down", label: "Puesta", time: moonset, trailing: true)
-        }
-    }
-
-    private func end(icon: String, label: String, time: Date?, trailing: Bool = false) -> some View {
-        VStack(alignment: trailing ? .trailing : .leading, spacing: 1) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: size.smallSize))
-                    .foregroundStyle(Palette.tempBlue)
-                Text(time.map(hhmm) ?? "—")
-                    .font(.system(size: size.bodySize - (size == .phone ? 2 : 3), weight: .semibold))
-                    .foregroundStyle(.white)
-            }
-            Text(label)
-                .font(.system(size: size.smallSize - 2))
-                .foregroundStyle(.white.opacity(0.6))
-        }
-    }
-
     /// Centre line: the countdown to the moon's next event — its puesta while it is up, otherwise its salida.
     private var readout: String {
-        if isUp, let s = moonset, let until = Self.compact(from: now, to: s) {
+        if isUp, let s = moonset, let until = CelestialArc.compact(from: now, to: s) {
             return "Se pone en \(until)"
         }
-        if !isUp, let r = moonrise, let until = Self.compact(from: now, to: r) {
+        if !isUp, let r = moonrise, let until = CelestialArc.compact(from: now, to: r) {
             return "Sale en \(until)"
         }
         return ""
     }
 
     private func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
-
-    /// Same sin(π·t) polyline as the sun arc, so the moon's curve matches the sun's exactly.
-    private static func arcPath(w: CGFloat, baseline: CGFloat, rise: CGFloat,
-                                from: CGFloat, to: CGFloat) -> Path {
-        var p = Path()
-        guard to > from else { return p }
-        let steps = 48
-        for i in 0...steps {
-            let t = from + (to - from) * CGFloat(i) / CGFloat(steps)
-            let point = CGPoint(x: t * w, y: baseline - CGFloat(sin(Double(t) * .pi)) * rise)
-            if i == 0 { p.move(to: point) } else { p.addLine(to: point) }
-        }
-        return p
-    }
-
-    /// Compact "3 h 12 min" / "43 min". `wrapDay` adds 24 h to a negative span (tomorrow's orto).
-    private static func compact(from: Date, to: Date, wrapDay: Bool = false) -> String? {
-        var seconds = Int(to.timeIntervalSince(from))
-        if wrapDay && seconds < 0 { seconds += 24 * 3600 }
-        guard seconds > 0 else { return nil }
-        let hours = seconds / 3600, minutes = (seconds % 3600) / 60
-        return hours > 0 ? "\(hours) h \(String(format: "%02d", minutes)) min" : "\(minutes) min"
-    }
 }
 
 // MARK: - Wind
