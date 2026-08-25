@@ -32,9 +32,24 @@ public enum AuraSize: Sendable {
 
 // MARK: - Frosted card
 
+/// How dark the frosted cards' inner scrim rides, keyed to the sky behind them. Set once by
+/// `AuraForecastStack` from the snapshot; every `AuraCard` reads it, so the whole stack agrees. Defaults
+/// to the previous fixed values for any card rendered outside the stack.
+struct AuraCardScrim: Equatable { var top: Double = 0.06; var bottom: Double = 0.24 }
+private struct AuraCardScrimKey: EnvironmentKey { static let defaultValue = AuraCardScrim() }
+extension EnvironmentValues {
+    var auraCardScrim: AuraCardScrim {
+        get { self[AuraCardScrimKey.self] }
+        set { self[AuraCardScrimKey.self] = newValue }
+    }
+}
+
 private struct AuraCard<Content: View>: View {
     let size: AuraSize
     @ViewBuilder var content: Content
+    // The scrim adapts to the sky: bright skies get the full lift, skies already dark (night, rain,
+    // storm) barely any, so the cards never darken further than the scene needs (see `Palette.cardScrim`).
+    @Environment(\.auraCardScrim) private var scrim
     var body: some View {
         content
             .padding(size.cardPadding)
@@ -49,7 +64,7 @@ private struct AuraCard<Content: View>: View {
                 let shape = RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
                 shape.fill(.ultraThinMaterial.opacity(0.7))
                     .overlay(shape.fill(LinearGradient(
-                        colors: [.black.opacity(0.06), .black.opacity(0.24)],
+                        colors: [.black.opacity(scrim.top), .black.opacity(scrim.bottom)],
                         startPoint: .top, endPoint: .bottom)))
             }
             .overlay(RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
@@ -162,6 +177,18 @@ public struct AuraForecastStack: View {
                 .padding(.top, size == .phone ? 4 : 2)
         }
         .environment(\.colorScheme, .dark)   // dark frosted materials + light text over the sky
+        // Tune every card's scrim to the sky behind it: a bright clear day gets the full darkening so the
+        // temperature colours read; a night, rainy or stormy sky is already dark, so it gets next to none.
+        .environment(\.auraCardScrim, Self.cardScrim(for: snapshot, now: now))
+    }
+
+    /// The scrim for the current sky. Uses the true day/night for the hour (not just the code's `n`
+    /// suffix, which a cache-built snapshot can lack) so a nightfall with no current-sky code still reads
+    /// as night and skips the extra darkening.
+    static func cardScrim(for snapshot: WeatherSnapshot, now: Date) -> AuraCardScrim {
+        if snapshot.isNight(at: now) { return AuraCardScrim(top: 0.0, bottom: 0.08) }
+        let s = Palette.cardScrim(forCode: snapshot.currentSky)
+        return AuraCardScrim(top: s.top, bottom: s.bottom)
     }
 }
 
@@ -228,7 +255,14 @@ public struct AuraHeroCard: View {
                 }
                 .font(.system(size: size.bodySize, weight: .semibold))
                 .foregroundStyle(Palette.alert(alert.level))
-                .padding(.top, size == .phone ? 2 : 1)
+                // A dark capsule behind the level-tinted label so the amarillo levels (a yellow that
+                // vanishes over a pale dawn or hazy sky — the "Tormentas" case) stay legible on any sky,
+                // while the deeper naranja/rojo still read as their own colour. Kept small so the hero
+                // stays dissolved rather than regrowing a card.
+                .padding(.horizontal, size == .phone ? 12 : 8)
+                .padding(.vertical, size == .phone ? 6 : 4)
+                .background(.black.opacity(0.30), in: Capsule())
+                .padding(.top, size == .phone ? 4 : 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1402,50 +1436,39 @@ public struct AuraAlertCard: View {
     let size: AuraSize
     public init(alert: WeatherAlert, size: AuraSize) { self.alert = alert; self.size = size }
 
-    /// Tapped open, the card reveals the aviso's full text. Collapsed by default so the card stays a
-    /// one-line glance until the user asks for more.
-    @State private var expanded = false
-
     public var body: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
-        } label: {
-            VStack(alignment: .leading, spacing: size == .phone ? 8 : 6) {
-                HStack(spacing: size == .phone ? 9 : 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: size.iconSize))
-                    Text(alert.phenomenon ?? alert.event)
-                        .font(.system(size: size.bodySize - 1, weight: .semibold))
+        // The aviso is always shown in full — its text is short and it matters, so it no longer hides
+        // behind a tap. Header phenomenon, then AEMET's own event title (unless it's the same string),
+        // the affected zone, and the window it's valid for: everything the warning carries, at a glance.
+        let headerText = alert.phenomenon ?? alert.event
+        return VStack(alignment: .leading, spacing: size == .phone ? 8 : 6) {
+            HStack(spacing: size == .phone ? 9 : 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: size.iconSize))
+                Text(headerText)
+                    .font(.system(size: size.bodySize - 1, weight: .semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                if alert.event != headerText {
+                    Text(alert.event)
+                        .font(.system(size: size.bodySize - 2))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: size.bodySize - 3, weight: .semibold))
-                        .opacity(0.85)
                 }
-                if expanded {
-                    // The warning's full text: AEMET's own event title, the affected zone, and the window
-                    // it is valid for. That is everything the aviso itself carries.
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(alert.event)
-                            .font(.system(size: size.bodySize - 2))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        if let zone = alert.areaDesc, !zone.isEmpty {
-                            Text(zone)
-                                .font(.system(size: size.bodySize - 3, weight: .medium))
-                                .opacity(0.9)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        if let validity = validityText {
-                            Text(validity)
-                                .font(.system(size: size.bodySize - 3, weight: .medium))
-                                .opacity(0.9)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    .transition(.opacity)
+                if let zone = alert.areaDesc, !zone.isEmpty {
+                    Text(zone)
+                        .font(.system(size: size.bodySize - 3, weight: .medium))
+                        .opacity(0.9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if let validity = validityText {
+                    Text(validity)
+                        .font(.system(size: size.bodySize - 3, weight: .medium))
+                        .opacity(0.9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .buttonStyle(.plain)
         .foregroundStyle(.white)
         .padding(size.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1454,7 +1477,6 @@ public struct AuraAlertCard: View {
         .overlay(RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
             .strokeBorder(Palette.alert(alert.level).opacity(0.7), lineWidth: 0.5))
         .accessibilityElement(children: .combine)
-        .accessibilityHint(expanded ? "Toca para contraer" : "Toca para ver el aviso completo")
     }
 
     /// The aviso's validity window in plain Spanish, no dashes: "De {inicio} a {fin}", "Hasta {fin}",

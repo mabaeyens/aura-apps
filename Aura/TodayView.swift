@@ -38,6 +38,11 @@ struct TodayView: View {
     /// Compact on iPhone; regular on iPad and Mac (Designed for iPad). The sky stays full-bleed either
     /// way — only the card column is inset on the wider canvas so the cards don't stretch edge to edge.
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    /// Drives an on-screen refresh when the app returns from the background. `.task(id:)` fires only on
+    /// appear and when the location changes — not on foreground — so an overnight-suspended app would keep
+    /// showing last night's snapshot (and its stale sky) even as the widgets updated. Reloading here
+    /// re-reads the cache and advances `loadedAt`, so the sky and every time-derived label catch up.
+    @Environment(\.scenePhase) private var scenePhase
 
     /// The persisted hero-art family (landscape / cityscape). Drives which 48-asset grid the sky probes;
     /// changing it in Settings re-resolves the background on the next render.
@@ -158,6 +163,12 @@ struct TodayView: View {
             }
         }
         .task(id: store.selectedINE) { await load(force: false) }
+        // Returning from the background re-reads the cache (the throttle in `load` still skips a fetch
+        // when the on-screen data is recent), so the app catches up with the widgets instead of freezing
+        // on the state it was suspended in.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await load(force: false) } }
+        }
     }
 
     /// The full-bleed sky behind everything.

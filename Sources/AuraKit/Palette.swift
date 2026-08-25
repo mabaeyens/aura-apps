@@ -289,6 +289,25 @@ public enum Palette {
         }
     }
 
+    /// How dark the frosted cards' inner scrim should ride, by sky condition. The scrim exists only to
+    /// hold white and tinted text legible where the sky behind the card is bright; a sky that's already
+    /// dark needs almost none, and piling more on just muddies the card (worst on the tall Próximos días
+    /// card). So bright skies (clear, few clouds) get the full gradient, mid skies (clouds, fog, snow) a
+    /// moderate one, and skies that are already grey or dark (overcast, rain, storm, and any night) barely
+    /// any. Returned as the black opacity at the card's top and bottom (bottom heavier: the hero glow is
+    /// brightest at the horizon, under the lowest cards).
+    public static func cardScrim(forCode code: String?) -> (top: Double, bottom: Double) {
+        let (category, isNight) = sky(forCode: code)
+        if isNight { return (0.0, 0.08) }           // sky already dark — leave it be
+        switch category {
+        case .clear, .fewClouds: return (0.10, 0.34)   // bright — the colours need the lift
+        case .clouds, .fog, .snow: return (0.05, 0.22) // mid — a moderate scrim
+        case .overcast, .rain:   return (0.0, 0.12)    // already grey — a whisper
+        case .storm:             return (0.0, 0.10)
+        case .unknown:           return (0.06, 0.24)   // the previous fixed default
+        }
+    }
+
     /// An accent tint for a sky condition — the icon/foreground colour that reads on a neutral card.
     public static func skyAccent(forCode code: String?) -> Color {
         let (category, isNight) = sky(forCode: code)

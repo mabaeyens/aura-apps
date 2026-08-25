@@ -137,7 +137,12 @@ struct OnboardingView: View {
                             .tint(.white)
                             .padding(.horizontal, 14).padding(.vertical, 11)
                             .background(.ultraThinMaterial, in: Capsule())
-                            .onChange(of: keyInput) { _, _ in keySaved = false }
+                            // Only a fresh edit clears the confirmation. Saving blanks the field itself,
+                            // which fires this too — guarding on a non-empty value keeps that from wiping
+                            // the "Clave guardada" check the moment it appears.
+                            .onChange(of: keyInput) { _, newValue in
+                                if !newValue.isEmpty { keySaved = false }
+                            }
                         Button {
                             AuraKeychain.setAPIKey(keyInput.trimmingCharacters(in: .whitespaces))
                             keyInput = ""
