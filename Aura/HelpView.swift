@@ -167,7 +167,7 @@ struct HelpView: View {
             iconRow("mappin.and.ellipse",  "Ubicaciones", "Tus lugares guardados.")
             iconRow("gearshape",           "Ajustes", "Tu clave y las opciones.")
             iconRow("questionmark.circle", "Ayuda", "Esta pantalla.")
-            iconRow("cup.and.saucer",      "Propina", "Invítame a un café, si te apetece.")
+            iconRow("waterbottle",         "Propina", "Invítame a una tónica, si te apetece.")
             iconRow("info.circle",         "Acerca de Aura", "Versión, fuentes y créditos.")
             iconRow("location.fill",       "Tu ubicación", "El lugar que se muestra, o usar el actual.")
             iconRow("mappin.slash",        "Sin ubicación", "Aún no hay ningún lugar elegido.")

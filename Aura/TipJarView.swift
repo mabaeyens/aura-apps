@@ -70,7 +70,7 @@ struct TipJarView: View {
 
     private var header: some View {
         VStack(spacing: 14) {
-            Image(systemName: "cup.and.saucer.fill")
+            Image(systemName: "waterbottle.fill")
                 .font(.system(size: 44, weight: .regular))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.25), radius: 6, y: 1)

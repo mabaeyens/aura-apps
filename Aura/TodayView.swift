@@ -220,7 +220,7 @@ struct TodayView: View {
             Button { route = .settings }  label: { Label("Ajustes", systemImage: "gearshape") }
             Button { route = .help }      label: { Label("Ayuda", systemImage: "questionmark.circle") }
             Divider()
-            Button { route = .tip }       label: { Label("Propina", systemImage: "cup.and.saucer") }
+            Button { route = .tip }       label: { Label("Propina", systemImage: "waterbottle") }
         } label: {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 17, weight: .semibold))
