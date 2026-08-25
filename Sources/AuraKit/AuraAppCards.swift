@@ -1218,16 +1218,15 @@ private struct UVHourStrip: View {
                 }
                 Spacer(minLength: 0)
             }
-            .font(.system(size: size.smallSize - (size == .phone ? 2 : 2), weight: .semibold))
+            .font(.system(size: size.smallSize - 2, weight: .semibold))
             .lineLimit(1)
-            .minimumScaleFactor(0.8)   // the band word widens "Ahora N" — shrink before it truncates
-            .lineLimit(1).minimumScaleFactor(0.7)
+            .minimumScaleFactor(0.7)   // the band word widens "Ahora N", so shrink before it truncates
 
             // The actionable window from the same hourly series: when to actually protect yourself, i.e.
             // the stretch where the index sits at or above the WHO threshold of 3.
             if let w = protectionWindow {
                 Text("Protégete de \(w.start)h a \(w.end)h")
-                    .font(.system(size: size.smallSize - (size == .phone ? 2 : 2), weight: .semibold))
+                    .font(.system(size: size.smallSize - 2, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.7))
                     .lineLimit(1).minimumScaleFactor(0.7)
             }

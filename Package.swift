@@ -15,6 +15,7 @@ let package = Package(
         .executableTarget(name: "AuraSmoke", dependencies: ["AuraKit"]),
         .executableTarget(name: "AuraRender", dependencies: ["AuraKit"]),
         .executableTarget(name: "AuraWidgetShots", dependencies: ["AuraKit"]),
-        .testTarget(name: "AuraKitTests", dependencies: ["AuraKit"]),
+        .testTarget(name: "AuraKitTests", dependencies: ["AuraKit"],
+                    resources: [.copy("Fixtures")]),
     ]
 )
