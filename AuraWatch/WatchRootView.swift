@@ -57,32 +57,53 @@ struct WatchRootView: View {
     }
 
     var body: some View {
-        let now = displayNow
-        ZStack {
-            // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
-            // crop the mountains, tree and river off the bottom of the tall art). `heroHorizon` pins a low
-            // dawn/dusk sun above the art's skyline so it rides the sky, not the scenery in front of it.
-            AuraSky(snapshot: snapshot, now: now, heroImage: heroImage(now: now), heroAnchor: .bottom,
-                    heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
-                    heroAspect: HeroBackground.heroAspect).ignoresSafeArea()
-            if let snapshot {
-                // Hero fills the wrist screen — clean sky + landscape, system clock in its top-right
-                // corner — and the cards sit below the fold, revealed on scroll (`heroFillHeight`). The
-                // content reaches into the top safe area so the editorial text sits high, not marooned
-                // below a tall blank band; the system time still floats in its corner.
-                // `ignoresSafeArea` on the reader (not the ScrollView) so `geo` measures the full reclaimed
-                // height — the hero then fills the whole wrist screen and the cards stay below the fold.
-                GeometryReader { geo in
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            AuraForecastStack(snapshot: snapshot, size: .watch, now: now,
-                                              heroFillHeight: geo.size.height)
-                            // The location switcher lives at the foot of the scroll, below the last card
-                            // (UVI) — not pinned in the top safe area, where the taps were swallowed next
-                            // to the system clock. A frosted pill, shown only with more than one place.
-                            if locationChoices.count > 1 {
-                                Button { showingPicker = true } label: {
-                                    Label(snapshot.localidad, systemImage: "mappin.and.ellipse")
+        // Read the real top safe-area inset from this outer reader, which keeps the safe area: the band the
+        // system clock and rounded corners occupy, which differs across watch case sizes (40/41mm vs
+        // 45/49mm). The hero and card layers inside bleed past the top edge, so a reader within them would
+        // report 0. The fill height is unchanged — only the old fixed 40pt top padding is replaced by this.
+        GeometryReader { proxy in
+            let topInset = proxy.safeAreaInsets.top
+            let now = displayNow
+            ZStack {
+                // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
+                // crop the mountains, tree and river off the bottom of the tall art). `heroHorizon` pins a low
+                // dawn/dusk sun above the art's skyline so it rides the sky, not the scenery in front of it.
+                AuraSky(snapshot: snapshot, now: now, heroImage: heroImage(now: now), heroAnchor: .bottom,
+                        heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
+                        heroAspect: HeroBackground.heroAspect).ignoresSafeArea()
+                if let snapshot {
+                    // Hero fills the wrist screen — clean sky + landscape, system clock in its top-right
+                    // corner — and the cards sit below the fold, revealed on scroll (`heroFillHeight`). The
+                    // content reaches into the top safe area so the editorial text sits high, not marooned
+                    // below a tall blank band; the system time still floats in its corner.
+                    // `ignoresSafeArea` on the reader (not the ScrollView) so `geo` measures the full reclaimed
+                    // height — the hero then fills the whole wrist screen and the cards stay below the fold.
+                    GeometryReader { geo in
+                        ScrollView {
+                            VStack(spacing: 8) {
+                                AuraForecastStack(snapshot: snapshot, size: .watch, now: now,
+                                                  heroFillHeight: geo.size.height)
+                                // The location switcher lives at the foot of the scroll, below the last card
+                                // (UVI) — not pinned in the top safe area, where the taps were swallowed next
+                                // to the system clock. A frosted pill, shown only with more than one place.
+                                if locationChoices.count > 1 {
+                                    Button { showingPicker = true } label: {
+                                        Label(snapshot.localidad, systemImage: "mappin.and.ellipse")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .lineLimit(1)
+                                            .foregroundStyle(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 8)
+                                            .background(.ultraThinMaterial, in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                // The hero-art family switch (Paisaje / Ciudad), just below the location pill —
+                                // the same choice the phone offers, here on the wrist so the watch background
+                                // isn't stuck on the default. Writes the same `heroFamily` the sky reads above.
+                                Button { showingScenePicker = true } label: {
+                                    Label(HeroBackground.Family(storage: heroFamily).displayName,
+                                          systemImage: "photo")
                                         .font(.system(size: 14, weight: .semibold))
                                         .lineLimit(1)
                                         .foregroundStyle(.white)
@@ -92,30 +113,16 @@ struct WatchRootView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            // The hero-art family switch (Paisaje / Ciudad), just below the location pill —
-                            // the same choice the phone offers, here on the wrist so the watch background
-                            // isn't stuck on the default. Writes the same `heroFamily` the sky reads above.
-                            Button { showingScenePicker = true } label: {
-                                Label(HeroBackground.Family(storage: heroFamily).displayName,
-                                      systemImage: "photo")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .lineLimit(1)
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
-                                    .background(.ultraThinMaterial, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
+                            .padding(.horizontal, 4)
+                            .padding(.top, topInset)   // clear the system clock and the rounded top corners
+                            .padding(.bottom, 6)
                         }
-                        .padding(.horizontal, 4)
-                        .padding(.top, 40)   // clear the system clock and the rounded top corners
-                        .padding(.bottom, 6)
                     }
+                    .ignoresSafeArea(.container, edges: .top)
+                } else {
+                    ContentUnavailableView("Abre Aura en el iPhone", systemImage: "iphone")
+                        .environment(\.colorScheme, .dark)
                 }
-                .ignoresSafeArea(.container, edges: .top)
-            } else {
-                ContentUnavailableView("Abre Aura en el iPhone", systemImage: "iphone")
-                    .environment(\.colorScheme, .dark)
             }
         }
         .fontDesign(.rounded)   // one typeface across phone and watch (see RootView)
