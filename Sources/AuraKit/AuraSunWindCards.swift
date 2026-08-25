@@ -147,16 +147,11 @@ public struct AuraRainCorner: View {
     /// The curved bezel gauge: the current probability on the fixed 0…100 % blue ramp, 0 and 100 at the ends.
     @ViewBuilder public var cornerGauge: some View {
         if let prob {
-            Gauge(value: Double(prob), in: 0...100) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            } minimumValueLabel: {
+            BezelGauge(value: Double(prob), range: 0...100, tint: Palette.precipComplicationScale) {
                 Text("0")
-            } maximumValueLabel: {
+            } maxLabel: {
                 Text("100")
             }
-            .tint(Palette.precipComplicationScale)
         }
     }
 
@@ -281,16 +276,11 @@ public struct AuraUVCorner: View {
     @ViewBuilder public var cornerGauge: some View {
         if let v = UVNow.value(snapshot, at: now) {
             let top = UVNow.dayMax(snapshot, at: now)
-            Gauge(value: Double(min(v, top)), in: 0...Double(top)) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            } minimumValueLabel: {
+            BezelGauge(value: Double(min(v, top)), range: 0...Double(top), tint: UVNow.gradient(to: top)) {
                 Text("0")
-            } maximumValueLabel: {
+            } maxLabel: {
                 Text("\(top)")
             }
-            .tint(UVNow.gradient(to: top))
         }
     }
 
@@ -340,16 +330,12 @@ public struct AuraWindCorner: View {
                 ?? (Beaufort.scale[min(max(force, 0), Beaufort.scale.count - 1)].hi ?? v + 10)
             let hi = max(gust, v)                       // racha is always ≥ the sustained speed
             let lo = min(floor, hi - 1)                 // keep the range non-empty
-            Gauge(value: Double(v), in: Double(lo)...Double(hi)) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            } minimumValueLabel: {
+            BezelGauge(value: Double(v), range: Double(lo)...Double(hi),
+                       tint: Gradient(colors: [Palette.wind(lo), Palette.wind(hi)])) {
                 Text("\(lo)")
-            } maximumValueLabel: {
+            } maxLabel: {
                 Text("\(hi)")
             }
-            .tint(Gradient(colors: [Palette.wind(lo), Palette.wind(hi)]))
         }
     }
 

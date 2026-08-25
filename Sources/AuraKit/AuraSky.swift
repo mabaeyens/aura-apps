@@ -193,66 +193,10 @@ public struct AuraSky: View {
                                startRadius: 0,
                                endRadius: glowRadius)
 
-                // 3.5 — the light source itself: a defined sun (or moon) disc with a soft corona, sitting
-                // exactly where the glow is centred. This is "the signature" — the sun you can point at,
-                // not just an ambient wash. Static per render (position from `now`). Cloud doesn't just dim
-                // it: the same `veil` occludes it — the disc shrinks and its blur swells, so rain/storm/fog
-                // read as the sun *hidden* behind weather (a soft, low-contrast smudge) while a clear sky
-                // keeps it a pin-sharp point of light. Occlusion is alpha + radius + blur only; the disc
-                // never leaves the true solar position.
-                let occlusion = veil
-                // `discR` is computed above (device-capped, then shrunk toward the horizon). The corona and
-                // blur below follow from it, so the whole light source stays device-consistent.
-                let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
-                // The moon reads as reflected moonlight, not a second sun: markedly dimmer than the day
-                // disc and drawn with a soft base blur even on the clearest night, so its edge stays a
-                // gentle pale coin rather than a hard, sun-bright point.
-                let discAlpha = (path.isNight ? 0.62 : 1.0) * (1 - occlusion * 0.85)
-                let discBlur = discR * ((path.isNight ? 0.08 : 0.05) + occlusion * 0.9)  // sharp when clear, swollen under cloud; a touch soft for the moon so the crescent still reads
-                // Overcast, rain, storm, snow and fog never resolve into a disc you can point at — at any
-                // hour, sun or moon. The warm glow (step 3) still bleeds through the deck, but the defined
-                // core and its corona are dropped entirely; only clear/few-clouds/cloudy keep a real ball.
-                if discAlpha > 0.02 && !hidesDisc {
-                    let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: sun)
-                    let centre = CGPoint(x: discPoint.x * size.width, y: discPoint.y * size.height)
-                    // Corona — a wide soft halo around the disc; fades and tightens as the disc is occluded.
-                    // At night I let the halo do the work the hard core no longer does: a touch wider and
-                    // held up in its own right, so the moon reads as a soft pool of light against the darker
-                    // sky rather than a dim dot. Drawn `.normal` at night (screen would over-brighten the
-                    // dark), `.screen` by day.
-                    let coronaR = discR * (1 - occlusion * 0.2)
-                    // At night the halo scales with the moon's lit fraction: a new moon has essentially no
-                    // corona (it doesn't light the sky), a full moon a broad one.
-                    let coronaAlpha = (path.isNight ? 0.60 * moonIllum : 0.55) * discAlpha
-                    let coronaSpread: CGFloat = path.isNight ? 3.4 : 3.2
-                    if coronaAlpha > 0.01 {
-                        Circle()
-                            .fill(RadialGradient(colors: [disc.glow.opacity(coronaAlpha), disc.glow.opacity(0)],
-                                                 center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * coronaSpread))
-                            .frame(width: coronaR * coronaSpread * 2, height: coronaR * coronaSpread * 2)
-                            .position(centre)
-                            .blendMode(path.isNight ? .normal : .screen)
-                    }
-                    if path.isNight {
-                        // The moon — drawn at its real phase for tonight: an ashen earthshine body always
-                        // present (so a new moon is a faint disc, not nothing) with the lit limb painted on
-                        // top, waxing lit on the right. A faint cool white reads against the night sky.
-                        PhasedMoonDisc(illumination: moonIllum, waxing: moonWaxing, radius: occludedR,
-                                       litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
-                            .opacity(discAlpha)
-                            .blur(radius: discBlur)
-                            .position(centre)
-                    } else {
-                        // The sun — bright core to warm rim, lit slightly off-centre for depth.
-                        Circle()
-                            .fill(RadialGradient(colors: [disc.core.opacity(discAlpha), disc.rim.opacity(discAlpha)],
-                                                 center: UnitPoint(x: 0.42, y: 0.38),
-                                                 startRadius: 0, endRadius: occludedR))
-                            .frame(width: occludedR * 2, height: occludedR * 2)
-                            .position(centre)
-                            .blur(radius: discBlur)
-                    }
-                }
+                // 3.5 — the light source itself: the defined sun/moon disc and its corona (see `lightDisc`).
+                lightDisc(discR: discR, occlusion: veil, hidesDisc: hidesDisc, path: path,
+                          glow: sun, discPoint: discPoint, size: size,
+                          moonIllum: moonIllum, moonWaxing: moonWaxing)
 
                 // 4 — stars, night only. Skipped over an image (the art carries its own).
                 if heroImage == nil, path.isNight {
@@ -287,6 +231,67 @@ public struct AuraSky: View {
         // encode (the hour's light, the weather) is also spoken by the frosted cards in front. Hide
         // it from VoiceOver so the swipe order is the cards, not a large unlabelled image.
         .accessibilityHidden(true)
+    }
+
+    // MARK: The light source — step 3.5 of the body
+
+    /// The defined sun (or moon) disc with its soft corona, sitting exactly where the glow is centred (step
+    /// 3.5 of `body`). This is "the signature" — the light you can point at, not just the ambient wash. The
+    /// same `occlusion` (the cloud `veil`) that dims the glow shrinks the disc and swells its blur, so
+    /// rain/storm/fog read as the sun *hidden* behind weather; a clear sky keeps a pin-sharp point. Overcast,
+    /// rain, storm, snow and fog (`hidesDisc`) never resolve into a disc at all — only the glow bleeds
+    /// through. `discR` arrives already device-capped and horizon-shrunk, so the corona and blur follow it
+    /// and the whole light source stays device-consistent. Occlusion is alpha + radius + blur only; the disc
+    /// never leaves the true solar position.
+    @ViewBuilder
+    private func lightDisc(discR: CGFloat, occlusion: Double, hidesDisc: Bool, path: AuraSunPath,
+                           glow: Color, discPoint: UnitPoint, size: CGSize,
+                           moonIllum: Double, moonWaxing: Bool) -> some View {
+        let occludedR = discR * (1 - occlusion * 0.35)          // smaller under cloud, full when clear
+        // The moon reads as reflected moonlight, not a second sun: markedly dimmer than the day disc and
+        // drawn with a soft base blur even on the clearest night, so its edge stays a gentle pale coin.
+        let discAlpha = (path.isNight ? 0.62 : 1.0) * (1 - occlusion * 0.85)
+        let discBlur = discR * ((path.isNight ? 0.08 : 0.05) + occlusion * 0.9)  // sharp when clear, swollen under cloud; a touch soft for the moon so the crescent still reads
+        if discAlpha > 0.02 && !hidesDisc {
+            let disc = Self.discColors(isNight: path.isNight, altitude: path.altitude, glow: glow)
+            let centre = CGPoint(x: discPoint.x * size.width, y: discPoint.y * size.height)
+            // Corona — a wide soft halo around the disc; fades and tightens as the disc is occluded. At
+            // night I let the halo do the work the hard core no longer does: a touch wider and held up in
+            // its own right, so the moon reads as a soft pool of light rather than a dim dot. Drawn
+            // `.normal` at night (screen would over-brighten the dark), `.screen` by day.
+            let coronaR = discR * (1 - occlusion * 0.2)
+            // At night the halo scales with the moon's lit fraction: a new moon has essentially no corona
+            // (it doesn't light the sky), a full moon a broad one.
+            let coronaAlpha = (path.isNight ? 0.60 * moonIllum : 0.55) * discAlpha
+            let coronaSpread: CGFloat = path.isNight ? 3.4 : 3.2
+            if coronaAlpha > 0.01 {
+                Circle()
+                    .fill(RadialGradient(colors: [disc.glow.opacity(coronaAlpha), disc.glow.opacity(0)],
+                                         center: .center, startRadius: coronaR * 0.7, endRadius: coronaR * coronaSpread))
+                    .frame(width: coronaR * coronaSpread * 2, height: coronaR * coronaSpread * 2)
+                    .position(centre)
+                    .blendMode(path.isNight ? .normal : .screen)
+            }
+            if path.isNight {
+                // The moon — drawn at its real phase for tonight: an ashen earthshine body always present
+                // (so a new moon is a faint disc, not nothing) with the lit limb painted on top, waxing lit
+                // on the right. A faint cool white reads against the night sky.
+                PhasedMoonDisc(illumination: moonIllum, waxing: moonWaxing, radius: occludedR,
+                               litColor: Color(red: 0.94, green: 0.96, blue: 1.0))
+                    .opacity(discAlpha)
+                    .blur(radius: discBlur)
+                    .position(centre)
+            } else {
+                // The sun — bright core to warm rim, lit slightly off-centre for depth.
+                Circle()
+                    .fill(RadialGradient(colors: [disc.core.opacity(discAlpha), disc.rim.opacity(discAlpha)],
+                                         center: UnitPoint(x: 0.42, y: 0.38),
+                                         startRadius: 0, endRadius: occludedR))
+                    .frame(width: occludedR * 2, height: occludedR * 2)
+                    .position(centre)
+                    .blur(radius: discBlur)
+            }
+        }
     }
 
     // MARK: Pinning the light to the art's horizon

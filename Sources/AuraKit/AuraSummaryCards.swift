@@ -201,16 +201,11 @@ public struct AuraHumidityCorner: View {
     /// The curved bezel gauge: the current humidity on a 0…100 % scale, tinted teal, 0 and 100 at the ends.
     @ViewBuilder public var cornerGauge: some View {
         if let humidity {
-            Gauge(value: Double(humidity), in: 0...100) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            } minimumValueLabel: {
+            BezelGauge(value: Double(humidity), range: 0...100, tint: Color.teal) {
                 Text("0")
-            } maximumValueLabel: {
+            } maxLabel: {
                 Text("100")
             }
-            .tint(.teal)
         }
     }
 
@@ -219,6 +214,30 @@ public struct AuraHumidityCorner: View {
 }
 
 // MARK: - Aviso
+
+/// The calm-state aviso mark shared by every aviso complication: the warning sign struck through, in grey
+/// — the data is present, there's simply nothing active. There's no stock slashed-triangle SF Symbol, so
+/// this overlays a `line.diagonal` on `exclamationmark.triangle`. The two symbol fonts are optional: the
+/// circular and corner faces size them, the inline and rectangular faces inherit their slot's font.
+struct CalmAvisoGlyph: View {
+    var triangleFont: Font? = nil
+    var strikeFont: Font? = nil
+
+    var body: some View {
+        struck("exclamationmark.triangle", font: triangleFont)
+            .overlay { struck("line.diagonal", font: strikeFont) }
+    }
+
+    // Apply the font only when one is given: `.font(nil)` would reset to the system default rather than
+    // inherit the slot's font, which the inline and rectangular faces rely on.
+    @ViewBuilder private func struck(_ name: String, font: Font?) -> some View {
+        if let font {
+            Image(systemName: name).font(font).foregroundStyle(.secondary)
+        } else {
+            Image(systemName: name).foregroundStyle(.secondary)
+        }
+    }
+}
 
 /// `.accessoryCircular`: a severe-weather aviso mark — a warning triangle over "Aviso", tinted to the
 /// AEMET level (amarillo/naranja/rojo). The empty state when no warning is active for the location, so
@@ -243,18 +262,9 @@ public struct AuraAvisoCircular: View {
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
         } else {
-            // Calm state: the warning sign struck through, in grey — the data is present, there's simply
-            // no active aviso. No text ("Sin avisos" clips in the circular slot), and NOT the
-            // snapshot-missing "Abre Aura" state. There's no stock slashed-triangle symbol, so overlay a
-            // diagonal line over the triangle.
-            Image(systemName: "exclamationmark.triangle")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-                .overlay {
-                    Image(systemName: "line.diagonal")
-                        .font(.title)
-                        .foregroundStyle(.secondary)
-                }
+            // Calm state: the struck-through warning sign, in grey — no text ("Sin avisos" clips in the
+            // circular slot), and NOT the snapshot-missing "Abre Aura" state.
+            CalmAvisoGlyph(triangleFont: .title2, strikeFont: .title)
         }
     }
 }
@@ -278,13 +288,9 @@ public struct AuraAvisoInline: View {
                 Image(systemName: "exclamationmark.triangle.fill")
             }
         } else {
-            // Calm state, not missing data — see AuraAvisoCircular. Struck-through warning sign, grey.
-            Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(.secondary)
-                .overlay {
-                    Image(systemName: "line.diagonal")
-                        .foregroundStyle(.secondary)
-                }
+            // Calm state, not missing data — see AuraAvisoCircular. Struck-through warning sign, grey,
+            // sized to the inline slot's own font.
+            CalmAvisoGlyph()
         }
     }
 }
@@ -308,14 +314,7 @@ public struct AuraAvisoCorner: View {
                 .foregroundStyle(Palette.alert(alert.level))
         } else {
             // Calm state, not missing data — the warning sign struck through, in grey.
-            Image(systemName: "exclamationmark.triangle")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .overlay {
-                    Image(systemName: "line.diagonal")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
+            CalmAvisoGlyph(triangleFont: .title3, strikeFont: .title2)
         }
     }
 
@@ -372,10 +371,7 @@ public struct AuraAvisoRectangular: View {
         Label {
             Text("Sin avisos")
         } icon: {
-            Image(systemName: "exclamationmark.triangle")
-                .overlay {
-                    Image(systemName: "line.diagonal")
-                }
+            CalmAvisoGlyph()
         }
         .font(wide ? .subheadline : .caption)
         .foregroundStyle(.secondary)

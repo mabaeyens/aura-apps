@@ -54,6 +54,17 @@ public enum SharedCache {
         read().first { $0.ine == ine }
     }
 
+    /// The snapshot to show for a preferred location, with the app-wide fallback the Watch app and the
+    /// widgets both use: the caller's pick if it still has data, else the phone's active location, else the
+    /// first cached entry. Reads the cache once. A nil or empty `preferredINE` skips straight to the active
+    /// location (an unpinned widget, or the Watch before the user forces a place).
+    public static func resolve(preferredINE: String?) -> WeatherSnapshot? {
+        let all = read()
+        if let ine = preferredINE, !ine.isEmpty, let s = all.first(where: { $0.ine == ine }) { return s }
+        if let active = activeINE, let s = all.first(where: { $0.ine == active }) { return s }
+        return all.first
+    }
+
     /// Replace all cached snapshots.
     public static func write(_ snapshots: [WeatherSnapshot]) {
         guard let url = fileURL, let data = try? encoder.encode(snapshots) else { return }

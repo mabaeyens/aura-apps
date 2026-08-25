@@ -42,11 +42,7 @@ struct WatchRootView: View {
     /// The place to show: the user's pick if it still has data, else the phone's active location, else the
     /// first cached snapshot. Resolved from the cache on every read so a new sync or a new pick re-points it.
     private func resolvedSnapshot() -> WeatherSnapshot? {
-        let all = SharedCache.read()
-        if !selectedINE.isEmpty, let s = all.first(where: { $0.ine == selectedINE }) { return s }
-        if let active = SharedCache.groupDefaults?.string(forKey: SharedCache.activeINEKey),
-           let s = all.first(where: { $0.ine == active }) { return s }
-        return all.first
+        SharedCache.resolve(preferredINE: selectedINE)
     }
 
     /// The places the switcher offers: the favourites the phone mirrored, or (before that first sync) the

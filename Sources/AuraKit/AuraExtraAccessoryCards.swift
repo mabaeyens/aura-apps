@@ -113,16 +113,11 @@ public struct AuraAirQualityCorner: View {
     /// colours, with 1 and 6 at the ends. No `gaugeStyle` — the `.widgetLabel` context arcs it.
     @ViewBuilder public var cornerGauge: some View {
         if let air = snapshot.airQuality {
-            Gauge(value: Double(air.category), in: 1...6) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            } minimumValueLabel: {
+            BezelGauge(value: Double(air.category), range: 1...6, tint: AirQualityScale.gradient) {
                 Text("1")
-            } maximumValueLabel: {
+            } maxLabel: {
                 Text("6")
             }
-            .tint(AirQualityScale.gradient)
         }
     }
 

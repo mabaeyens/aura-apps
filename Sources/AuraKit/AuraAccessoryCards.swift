@@ -267,16 +267,12 @@ public struct AuraAccessoryCorner: View {
     @ViewBuilder public var cornerGauge: some View {
         if let lo = snapshot.tempMin, let hi = snapshot.tempMax, lo < hi {
             let value = Double(min(max(snapshot.heroTemp ?? lo, lo), hi))
-            Gauge(value: value, in: Double(lo)...Double(hi)) {
-                EmptyView()
-            } currentValueLabel: {
-                EmptyView()
-            } minimumValueLabel: {
+            BezelGauge(value: value, range: Double(lo)...Double(hi),
+                       tint: Palette.temperatureGradient(min: lo, max: hi)) {
                 Text("\(lo)°").foregroundStyle(Palette.temperature(lo))
-            } maximumValueLabel: {
+            } maxLabel: {
                 Text("\(hi)°").foregroundStyle(Palette.temperature(hi))
             }
-            .tint(Palette.temperatureGradient(min: lo, max: hi))
         }
     }
 
