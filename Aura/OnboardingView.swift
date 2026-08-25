@@ -15,6 +15,7 @@ struct OnboardingView: View {
     @State private var keyInput = ""
     @State private var keySaved = false
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The notification preference picked on the notifications page. Editable later in Ajustes; shared
     /// with the background-refresh path via `NotificationLevel.storageKey`.
@@ -74,11 +75,12 @@ struct OnboardingView: View {
                         Button("Pasar", action: onFinish)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 16).padding(.vertical, 8)
+                            .padding(.horizontal, 18).padding(.vertical, 11)
                             .background(.ultraThinMaterial, in: Capsule())
+                            .contentShape(Capsule())   // full capsule is the tap target, ~44pt tall
                     }
                 }
-                .frame(height: 40)
+                .frame(height: 44)
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
 
@@ -164,7 +166,7 @@ struct OnboardingView: View {
                             .transition(.opacity)
                     }
                 }
-                .animation(.default, value: keySaved)
+                .animation(reduceMotion ? nil : .default, value: keySaved)
             }
 
             if item.showsNotifyChoice {

@@ -31,6 +31,18 @@ public enum AuraTime {
         (use24h ? formatter24 : formatter12).string(from: date)
     }
 
+    private static let weekdayFormatter: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "EEE"; return f
+    }()
+
+    /// A short capitalised Spanish weekday for the daily strips: "Lun", "Mar", … Clamped to three
+    /// letters so a locale that appends a period ("lun.") doesn't leak it. Backed by one cached
+    /// formatter — the daily cards call this once per row, so a fresh `DateFormatter` per call was a
+    /// needless allocation on a hot render path.
+    public static func shortWeekday(_ date: Date) -> String {
+        String(weekdayFormatter.string(from: date).prefix(3)).capitalized
+    }
+
     /// A bare hour for the hourly strip: "18h" in 24-hour, "6 PM" in 12-hour. Takes the 0…23 hour
     /// directly (the strip carries the hour as an integer), so no Date round-trip is needed.
     public static func hourLabel(hour: Int) -> String {

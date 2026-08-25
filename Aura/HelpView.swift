@@ -6,6 +6,7 @@ import SwiftUI
 /// humidity, not rain). Colour *scales* aren't repeated here; each card opens its own scale on a tap, so
 /// this points there instead. Presented as a sheet, like Ajustes.
 struct HelpView: View {
+    @Environment(\.dismiss) private var dismiss
     /// AEMET's self-service page: enter an email, the key arrives by return mail.
     private let apiKeyURL = URL(string: "https://opendata.aemet.es/centrodedescargas/altaUsuario")!
 
@@ -26,6 +27,11 @@ struct HelpView: View {
             }
             .navigationTitle("Ayuda")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                }
+            }
         }
     }
 

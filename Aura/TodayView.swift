@@ -229,7 +229,12 @@ struct TodayView: View {
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay(Circle().strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.28), radius: 6, y: 1)
+                // The visible frosted circle stays 38, but the tappable area is padded out to the
+                // 44pt HIG minimum — this is the only navigation control on the screen.
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         }
+        .accessibilityLabel("Menú")
         .padding(.trailing, 16)
         .padding(.top, 4)
         .environment(\.colorScheme, .dark)

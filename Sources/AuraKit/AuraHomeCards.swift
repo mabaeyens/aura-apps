@@ -11,13 +11,8 @@ private enum HomeFormat {
 
     static func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
 
-    /// Short capitalised weekday, e.g. "Lun".
-    static func weekday(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "EEE"
-        return String(f.string(from: date).prefix(3)).capitalized
-    }
+    /// Short capitalised weekday, e.g. "Lun". Shared cached formatter (see `AuraTime`).
+    static func weekday(_ date: Date) -> String { AuraTime.shortWeekday(date) }
 }
 
 // MARK: - Shared pieces
@@ -29,8 +24,11 @@ private struct SkyText: ViewModifier {
         content
             .foregroundStyle(.white)
             // A firmer halo than a hairline shadow: white values have to stay legible over the palest
-            // part of the sky too (a near-white noon on the XL card), not just a mid-blue.
+            // part of the sky too (a near-white noon on the XL card), not just a mid-blue. A tight halo
+            // for edge definition, plus a wider soft one that builds a broader dark cushion under the
+            // text on a near-white sky — the worst contrast case — without weighing it down on dark skies.
             .shadow(color: .black.opacity(0.45), radius: 2, y: 0.5)
+            .shadow(color: .black.opacity(0.28), radius: 9, y: 1)
     }
 }
 

@@ -7,6 +7,7 @@ import SwiftUI
 /// date is always shown so the reader can see how fresh it is. Needs the API key (Ajustes).
 struct ForecastTextView: View {
     @EnvironmentObject private var store: LocationStore
+    @Environment(\.dismiss) private var dismiss
 
     @State private var bulletin: ForecastBulletin?
     @State private var isLoading = false
@@ -29,6 +30,11 @@ struct ForecastTextView: View {
             }
             .navigationTitle("Predicción")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                }
+            }
         }
         .task(id: store.selectedINE) { await load() }
     }

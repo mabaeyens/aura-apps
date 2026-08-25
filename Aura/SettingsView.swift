@@ -6,8 +6,13 @@ import WidgetKit
 struct SettingsView: View {
     @EnvironmentObject private var store: LocationStore
 
+    @Environment(\.dismiss) private var dismiss
+
     @State private var keyInput = ""
     @State private var justSaved = false
+    /// Gates the destructive Keychain wipe behind a confirmation — clearing the key silently breaks
+    /// every data fetch, so it shouldn't happen on a single stray tap.
+    @State private var confirmClearKey = false
 
     /// Clock format, shared with the widgets and the Watch through the App Group so every surface reads
     /// the same value (see `AuraTime`). True = 24-hour, false = 12-hour AM/PM. Defaults to 24-hour.
@@ -37,7 +42,7 @@ struct SettingsView: View {
                     Button("Guardar clave") { save() }
                         .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
                     if store.apiKeyPresent {
-                        Button("Borrar clave", role: .destructive) { clear() }
+                        Button("Borrar clave", role: .destructive) { confirmClearKey = true }
                     }
                 } header: {
                     Text("Clave API")
@@ -113,6 +118,17 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Ajustes")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                }
+            }
+            .confirmationDialog("¿Borrar la clave de AEMET?", isPresented: $confirmClearKey, titleVisibility: .visible) {
+                Button("Borrar clave", role: .destructive) { clear() }
+                Button("Cancelar", role: .cancel) { }
+            } message: {
+                Text("Dejarás de recibir datos hasta que vuelvas a introducir una clave.")
+            }
         }
     }
 

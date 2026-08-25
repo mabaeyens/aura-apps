@@ -62,12 +62,9 @@ public enum SunMoonMoment: Sendable, Hashable {
 }
 
 private enum SunMoonFormat {
-    static func hhmm(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
-    }
+    /// Shared cached formatter (see `AuraTime`), which also honours the 24 h / 12 h preference — this
+    /// path previously hardcoded 24 h and so ignored a user on the 12 h setting.
+    static func hhmm(_ date: Date) -> String { AuraTime.hhmm(date) }
 }
 
 // MARK: - Inline (the Lock Screen date/top slot)

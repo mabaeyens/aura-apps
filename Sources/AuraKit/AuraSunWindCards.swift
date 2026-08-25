@@ -398,6 +398,21 @@ public struct AuraWindCircular: View {
     }
 
     public var body: some View {
+        // On a bare dial (the watch-face complication) nothing beside it spells the bearing, so the dial
+        // must voice itself — the rotated needle is otherwise silent to VoiceOver. Inside a *card* the
+        // parent (`AuraWindCard`) already spells speed + direction and combines them, so leave the dial
+        // silent there to avoid speaking the wind twice.
+        if card {
+            dial
+        } else {
+            dial
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Viento")
+                .accessibilityValue(windA11yValue)
+        }
+    }
+
+    private var dial: some View {
         GeometryReader { geo in
             let d = min(geo.size.width, geo.size.height)
             ZStack {
@@ -417,6 +432,13 @@ public struct AuraWindCircular: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
+    }
+
+    /// Spoken wind for the bare dial: "25 km/h del sudoeste", or "En calma" when there's no measurable
+    /// direction — mirrors what the card spells out beside the rose.
+    private var windA11yValue: String {
+        guard let dir = snapshot.windDirection, let speed = snapshot.windSpeed, speed > 0 else { return "En calma" }
+        return "\(speed) km/h del \(dir.spanishName.lowercased())"
     }
 
     /// The heading, in the wind-intensity colour. On a `card` it's a single slender needle through the

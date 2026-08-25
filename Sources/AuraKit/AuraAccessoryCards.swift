@@ -296,17 +296,6 @@ public struct AuraAccessoryEmpty: View {
 private enum AccessoryFormat {
     static func temp(_ value: Int?) -> String { value.map { "\($0)°" } ?? "—°" }
 
-    static func range(_ s: WeatherSnapshot) -> String {
-        "\(temp(s.tempMax)) · \(temp(s.tempMin))"
-    }
-
-    /// "12 km/h SO" — current wind speed with the direction it blows from, direction omitted if unknown.
-    static func wind(_ s: WeatherSnapshot) -> String {
-        let speed = s.windSpeed.map { "\($0) km/h" } ?? "—"
-        if let dir = s.windDirection { return "\(speed) \(dir.abbreviation)" }
-        return speed
-    }
-
     /// "29° Despejado" — temp plus condition when known, temp alone otherwise.
     static func inline(_ s: WeatherSnapshot) -> String {
         let t = temp(s.heroTemp)

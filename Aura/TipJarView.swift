@@ -10,6 +10,7 @@ import SwiftUI
 struct TipJarView: View {
     @StateObject private var tipJar = TipJar()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -46,7 +47,7 @@ struct TipJarView: View {
                         pendingOverlay
                     }
                 }
-                .animation(.easeInOut(duration: 0.25), value: tipJar.purchaseState)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: tipJar.purchaseState)
             }
             .environment(\.colorScheme, .dark)     // light text over the sky, matching Hoy
             .navigationTitle("Propina")

@@ -77,14 +77,15 @@ struct AuraConditionsView: View {
                 // `.widgetCurvesContent()` (watchOS 10+) curves the corner's main content along the
                 // screen edge — the documented fix for corner content that otherwise stays horizontal
                 // and cramped. The range arcs along the outer bezel via `.widgetLabel`.
-                if AuraAccessoryCorner(snapshot: snapshot, now: entry.date).hasRange {
-                    AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                let corner = AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                if corner.hasRange {
+                    corner
                         .widgetCurvesContent()
-                        .widgetLabel { AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerGauge }
+                        .widgetLabel { corner.cornerGauge }
                 } else {
-                    AuraAccessoryCorner(snapshot: snapshot, now: entry.date)
+                    corner
                         .widgetCurvesContent()
-                        .widgetLabel(AuraAccessoryCorner(snapshot: snapshot, now: entry.date).cornerLabel)
+                        .widgetLabel(corner.cornerLabel)
                 }
             default: AuraAccessoryCircular(snapshot: snapshot, now: entry.date)
             }
@@ -117,16 +118,16 @@ struct AuraSunView: View {
         if let snapshot = entry.snapshot {
             switch family {
             case .accessoryCorner:
-                AuraSunCorner(snapshot: snapshot, now: entry.date)
-                    .widgetLabel(AuraSunCorner(snapshot: snapshot, now: entry.date).cornerLabel)
+                let corner = AuraSunCorner(snapshot: snapshot, now: entry.date)
+                corner.widgetLabel(corner.cornerLabel)
             default:
                 // The circular face shows only the icon + time so it fits; the time-until rides the
                 // curved bezel via `.widgetLabel` (was a third stacked line that overflowed).
-                if let remaining = AuraSunCircular(snapshot: snapshot, now: entry.date).remainingLabel {
-                    AuraSunCircular(snapshot: snapshot, now: entry.date)
-                        .widgetLabel(remaining)
+                let circular = AuraSunCircular(snapshot: snapshot, now: entry.date)
+                if let remaining = circular.remainingLabel {
+                    circular.widgetLabel(remaining)
                 } else {
-                    AuraSunCircular(snapshot: snapshot, now: entry.date)
+                    circular
                 }
             }
         } else {
@@ -246,11 +247,11 @@ struct AuraUVView: View {
                 }
             default:
                 // The band name ("Muy alto"…) of the current reading rides the curved bezel.
-                if let band = AuraUVCircular(snapshot: snapshot, now: entry.date).bandLabel {
-                    AuraUVCircular(snapshot: snapshot, now: entry.date)
-                        .widgetLabel(band)
+                let circular = AuraUVCircular(snapshot: snapshot, now: entry.date)
+                if let band = circular.bandLabel {
+                    circular.widgetLabel(band)
                 } else {
-                    AuraUVCircular(snapshot: snapshot, now: entry.date)
+                    circular
                 }
             }
         } else {

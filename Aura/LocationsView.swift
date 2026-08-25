@@ -5,6 +5,7 @@ import SwiftUI
 /// current GPS location, reorder, and delete.
 struct LocationsView: View {
     @EnvironmentObject private var store: LocationStore
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var locationManager = LocationManager()
     @State private var showingAdd = false
 
@@ -32,6 +33,11 @@ struct LocationsView: View {
                 }
 
                 Section("Favoritas") {
+                    if store.favorites.isEmpty {
+                        Text("Aún no has guardado ubicaciones. Usa «Usar mi ubicación» o el botón + para añadir una.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(store.favorites) { location in
                         Button {
                             store.selectedINE = location.ine
@@ -61,6 +67,10 @@ struct LocationsView: View {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingAdd = true } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Añadir ubicación")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
                 }
             }
             .sheet(isPresented: $showingAdd) {

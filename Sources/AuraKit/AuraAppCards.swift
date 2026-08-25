@@ -50,6 +50,9 @@ private struct AuraCard<Content: View>: View {
     // The scrim adapts to the sky: bright skies get the full lift, skies already dark (night, rain,
     // storm) barely any, so the cards never darken further than the scene needs (see `Palette.cardScrim`).
     @Environment(\.auraCardScrim) private var scrim
+    /// When the reader has Reduce Transparency on, the frosted material is swapped for an opaque dark
+    /// fill: the white card text then keeps its contrast without depending on the blur reading through.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
         content
             .padding(size.cardPadding)
@@ -62,10 +65,14 @@ private struct AuraCard<Content: View>: View {
             // touching the top, so the frosted look holds and the corners stay clean.
             .background {
                 let shape = RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
-                shape.fill(.ultraThinMaterial.opacity(0.7))
-                    .overlay(shape.fill(LinearGradient(
-                        colors: [.black.opacity(scrim.top), .black.opacity(scrim.bottom)],
-                        startPoint: .top, endPoint: .bottom)))
+                let scrimOverlay = shape.fill(LinearGradient(
+                    colors: [.black.opacity(scrim.top), .black.opacity(scrim.bottom)],
+                    startPoint: .top, endPoint: .bottom))
+                if reduceTransparency {
+                    shape.fill(Color(white: 0.12)).overlay(scrimOverlay)
+                } else {
+                    shape.fill(.ultraThinMaterial.opacity(0.7)).overlay(scrimOverlay)
+                }
             }
             .overlay(RoundedRectangle(cornerRadius: size.cardCorner, style: .continuous)
                 .strokeBorder(.white.opacity(0.16), lineWidth: 0.5))
@@ -319,6 +326,21 @@ public struct AuraHourlyCard: View {
             }
         }
         .auraSectionTitle("Próximas horas".uppercased(), size)
+        // The strip is a row-major grid, so VoiceOver would otherwise read a loose run of bare numbers.
+        // Collapse it into one element that speaks each hour with its temperature and rain chance.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Próximas horas")
+        .accessibilityValue(hoursA11yValue)
+    }
+
+    /// "18h, 22 grados, 30% de lluvia; 19h, 23 grados; …" — the strip read as one spoken summary.
+    private var hoursA11yValue: String {
+        hours.map { h in
+            var s = AuraTime.hourLabel(hour: h.hour)
+            if let t = h.temp { s += ", \(t) grados" }
+            if let p = h.precipProb, p > 0 { s += ", \(p)% de lluvia" }
+            return s
+        }.joined(separator: "; ")
     }
 
     /// The aligned grid: hour, icon, degree and precip each in its own horizontal band, so the rows line
@@ -417,10 +439,24 @@ public struct AuraDailyCard: View {
                     }
                     .font(.system(size: size.bodySize - 1, weight: .medium))
                     .monospacedDigit()
+                    // One element per day — otherwise VoiceOver reads the weekday, both temps and the
+                    // range bar as disconnected fragments.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Self.dayA11yLabel(d))
                 }
             }
         }
         .auraSectionTitle("Próximos días".uppercased(), size)
+    }
+
+    /// "Lunes, mínima 10 grados, máxima 20 grados, 30% de lluvia" — one day read as a spoken row.
+    private static func dayA11yLabel(_ d: DaySnapshot) -> String {
+        var parts = [weekday(d.date)]
+        if let lo = d.min, let hi = d.max { parts.append("mínima \(lo) grados, máxima \(hi) grados") }
+        else if let hi = d.max { parts.append("máxima \(hi) grados") }
+        else if let lo = d.min { parts.append("mínima \(lo) grados") }
+        if let p = d.probPrecip, p >= 10 { parts.append("\(p)% de lluvia") }
+        return parts.joined(separator: ", ")
     }
 
     /// One day's temperature range as a coloured segment inside a faint full-width track, positioned by
@@ -448,10 +484,7 @@ public struct AuraDailyCard: View {
     }
 
     private func fmt(_ v: Int?) -> String { v.map { "\($0)°" } ?? "—" }
-    private static func weekday(_ date: Date) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "EEE"
-        return f.string(from: date).capitalized
-    }
+    private static func weekday(_ date: Date) -> String { AuraTime.shortWeekday(date) }
 }
 
 // MARK: - Celestial arc (shared by the sun and moon cards)
@@ -635,8 +668,22 @@ public struct AuraSunArcCard: View {
     let snapshot: WeatherSnapshot
     let size: AuraSize
     let now: Date
+    /// Civil twilight for this place and hour, solved once in init. Both `body` (the twilight arc ends)
+    /// and the accessibility value read it, so a computed `solar` re-ran the SolarTimes solve several
+    /// times per render — the twin AuraMoonArcCard already hoists its heavier solve the same way.
+    private let civilDawn: Date?
+    private let civilDusk: Date?
+
     public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date()) {
         self.snapshot = snapshot; self.size = size; self.now = now
+        if let lat = snapshot.latitude, let lon = snapshot.longitude {
+            let solar = SolarTimes(date: now, latitude: lat, longitude: lon)
+            self.civilDawn = solar.civilDawn
+            self.civilDusk = solar.civilDusk
+        } else {
+            self.civilDawn = nil
+            self.civilDusk = nil
+        }
     }
 
     private var sunrise: Date? { snapshot.sunrise }
@@ -677,16 +724,6 @@ public struct AuraSunArcCard: View {
         }
         return line
     }
-
-    /// Today's solar solve for this location — the source of civil twilight. Recomputed at display time
-    /// from the snapshot's coordinates; nil without them. Orto/ocaso still come from the snapshot itself
-    /// (what the rest of the app uses); only the twilight times are taken from here.
-    private var solar: SolarTimes? {
-        guard let lat = snapshot.latitude, let lon = snapshot.longitude else { return nil }
-        return SolarTimes(date: now, latitude: lat, longitude: lon)
-    }
-    private var civilDawn: Date? { solar?.civilDawn }
-    private var civilDusk: Date? { solar?.civilDusk }
 
     /// Daytime: now sits between orto and ocaso.
     private var isDay: Bool {
@@ -1002,6 +1039,9 @@ public struct AuraAirQualityCard: View {
                     }
                     Spacer(minLength: 0)
                 }
+                // The swatch carries the 1–6 category by colour + number; combine it with the name and
+                // detail so VoiceOver speaks one "Regular, por O₃ · Retiro · a 1,7 km" element.
+                .accessibilityElement(children: .combine)
 
                 if showComponents { componentsRow }
             }
@@ -1064,6 +1104,8 @@ public struct AuraAirQualityCard: View {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .strokeBorder(color.opacity(isDriver && measured ? 0.9 : 0), lineWidth: 1.5)
         )
+        // Read each pollutant as one element ("O₃, 45") instead of label and value as loose fragments.
+        .accessibilityElement(children: .combine)
     }
 
     /// "por O₃ · Retiro · a 1,7 km" — the driver pollutant, the station, and its distance (Spanish
@@ -1145,6 +1187,9 @@ public struct AuraUVCard: View {
                     }
                     Spacer(minLength: 0)
                 }
+                // Swatch number + "Máx. hoy" + band + advice as one spoken element: "5, Máx. hoy, Muy
+                // alto, …" — otherwise the daily-max number reads adrift from the band it belongs to.
+                .accessibilityElement(children: .combine)
 
                 // The hourly curve, only when CAMS data is present — the swatch above is AEMET's forecast
                 // daily maximum, this is how the UV actually rises and falls through today, hour by hour.
@@ -1231,6 +1276,8 @@ private struct UVHourStrip: View {
                 }
             }
             .frame(height: barsH, alignment: .bottom)
+            // Purely visual curve; the "Ahora"/"máx"/"Protégete" lines above already carry it in words.
+            .accessibilityHidden(true)
         }
     }
 

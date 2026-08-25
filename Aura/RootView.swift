@@ -17,7 +17,10 @@ struct RootView: View {
             .fontDesign(.rounded)
             // First launch: the intro over the sky, with a Pasar (skip). Dismisses the moment the flag
             // flips true (onFinish), so it never shows again.
-            .fullScreenCover(isPresented: Binding(get: { !hasOnboarded }, set: { _ in })) {
+            .fullScreenCover(isPresented: Binding(
+                get: { !hasOnboarded },
+                set: { showing in if !showing { hasOnboarded = true } }
+            )) {
                 OnboardingView(onFinish: { hasOnboarded = true })
             }
     }

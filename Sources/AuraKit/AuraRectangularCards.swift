@@ -126,12 +126,7 @@ public struct AuraRectDays: View {
         }
     }
 
-    private static func weekday(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
-        f.dateFormat = "EEE"
-        return String(f.string(from: date).prefix(3)).capitalized
-    }
+    private static func weekday(_ date: Date) -> String { AuraTime.shortWeekday(date) }
 }
 
 // MARK: - Sun (rectangular)
