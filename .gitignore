@@ -34,3 +34,6 @@ hero_asset_creation/
 
 # Generated screenshots — regenerable via scripts/, and the App Store copies live in App Store Connect.
 screenshots/
+
+# Original hero PNG masters (kept locally for re-encoding; heroes ship as HEIC)
+_art-masters/

@@ -156,18 +156,13 @@ struct AuraHomeWidget: Widget {
 /// `heroCarriesCondition: true` because the condition (and time) are baked into the art, so AuraSky
 /// draws only the live sun/moon on top. No hero for this sky → AuraSky's procedural sky.
 struct AuraHomeBackground: View {
-    @Environment(\.widgetFamily) private var family
     let entry: AuraEntry
-
-    /// Only the extra-large iPad family takes the full-resolution base tier; everything else takes the
-    /// lighter `_w` variant, so the gallery's all-families-at-once render stays within budget.
-    private var full: Bool { family == .systemExtraLarge }
 
     var body: some View {
         ZStack {
             AuraSky(snapshot: entry.snapshot, now: entry.date,
                     heroImage: WidgetHero.base(for: entry.snapshot, now: entry.date,
-                                               scene: entry.scene, full: full),
+                                               scene: entry.scene),
                     heroCarriesCondition: true,
                     // Anchor the wide hero to the ground: on the short, wide Home families a centre crop
                     // shows mostly sky, so pin the bottom to keep the horizon and landscape in frame.

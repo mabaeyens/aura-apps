@@ -1,4 +1,12 @@
 {
-  "images" : [ { "filename" : "wide_landscape_snowy_afternoon.png", "idiom" : "universal" } ],
-  "info" : { "author" : "xcode", "version" : 1 }
+  "images": [
+    {
+      "filename": "wide_landscape_snowy_afternoon.heic",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
 }
