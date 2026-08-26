@@ -107,8 +107,32 @@ enum AEMETService {
         if Task.isCancelled { return nil }
 
         // One national observation fetch serves every location; nearest station is resolved locally.
+        // That product updates once per hour, and each record carries its own measurement time (`fint`).
+        // AEMET publishes each hourly reading 20-40 min after the hour, so we hold the last-known feed
+        // until the next reading is genuinely due — the stored `fint` plus one hour plus a 30-minute
+        // publish-lag margin — and skip the network call entirely until then. A forced or single-location
+        // (`onlyINE`) refresh always fetches; when we skip, each location reuses its last good station
+        // reading (carried forward in `WeatherSnapshot.make`) instead of blanking the observed card.
         var observations: [StationObservation] = []
-        do { observations = try await client.observacionTodas() } catch { note(error) }
+        let observationDue: Bool
+        if force || onlyINE != nil {
+            observationDue = true
+        } else if let last = SharedCache.lastObservationFint {
+            // Clamp the anchor to now so a bad, future-dated `fint` can suppress the fetch for at most the
+            // margin window, never indefinitely.
+            let anchor = min(last, Date())
+            observationDue = Date() >= anchor.addingTimeInterval(90 * 60)
+        } else {
+            observationDue = true
+        }
+        if observationDue {
+            do {
+                observations = try await client.observacionTodas()
+                if let newest = observations.compactMap({ $0.timestamp }).max() {
+                    SharedCache.lastObservationFint = newest
+                }
+            } catch { note(error) }
+        }
 
         // Air quality comes from MITECO's national ICA feed (not AEMET), also one download for every
         // location. It never throws — an empty result on a miteco outage just leaves the card hidden and
@@ -141,6 +165,9 @@ enum AEMETService {
             // Stop fetching the rest the moment the task is cancelled; whatever was already upserted still
             // reloads the widgets below, so a partial refresh isn't wasted.
             if Task.isCancelled { break }
+            // Read the still-cached snapshot once: it seeds the observation carry-forward when this cycle
+            // skipped the hourly fetch, and it's the "old" value the notification compares against below.
+            let previous = SharedCache.snapshot(forINE: location.ine)
             let daily: MunicipioForecast
             do { daily = try await client.municipioDiaria(location.ine) }
             catch { note(error); continue }
@@ -170,7 +197,8 @@ enum AEMETService {
                 .topActive(forProvince: location.provinciaCode)
             let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
             let snapshot = WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                observed: observed, alert: alert,
+                                                observed: observed, previousObserved: previous,
+                                                alert: alert,
                                                 airQuality: airQuality, uvIndex: uvIndex,
                                                 uvHourly: uvHourly,
                                                 bulletin: bulletin,
@@ -178,8 +206,7 @@ enum AEMETService {
             // Only the active location notifies. Compare against the still-cached snapshot (read before
             // the upsert below) so a genuinely new aviso or an updated forecast fires exactly once.
             if location.ine == primary?.ine {
-                NotificationManager.evaluatePrimary(old: SharedCache.snapshot(forINE: location.ine),
-                                                    new: snapshot)
+                NotificationManager.evaluatePrimary(old: previous, new: snapshot)
             }
             SharedCache.upsert(snapshot)
             didUpdate = true

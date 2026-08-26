@@ -101,7 +101,8 @@ public extension StationObservation {
             precipMm: prec)
     }
 
-    /// The reading time, parsed from `fint`.
+    /// The reading time, parsed from `fint`. (Public via this extension — the app's refresh path reads the
+    /// freshest record's measurement time to hold the hourly feed until the next reading is due.)
     var timestamp: Date? { fint.flatMap { Self.formatter.date(from: $0) } }
 
     /// Station name in title case ("Madrid Retiro"), from AEMET's all-caps `ubi`.

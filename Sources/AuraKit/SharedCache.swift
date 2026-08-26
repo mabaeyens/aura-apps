@@ -37,6 +37,19 @@ public enum SharedCache {
         set { groupDefaults?.set(newValue, forKey: watchSelectedINEKey) }
     }
 
+    /// The measurement time (`fint`) of the freshest record from the last successful national
+    /// observation fetch (`/observacion/convencional/todas`). That product updates once per hour, so
+    /// the refresh path uses this to hold the last-known feed until the next hourly reading is due
+    /// instead of re-downloading every cycle. Nil until the first successful fetch (then fetch anyway).
+    public static let lastObservationFintKey = "AuraKit.lastObservationFint"
+    public static var lastObservationFint: Date? {
+        get { groupDefaults?.object(forKey: lastObservationFintKey) as? Date }
+        set {
+            if let newValue { groupDefaults?.set(newValue, forKey: lastObservationFintKey) }
+            else { groupDefaults?.removeObject(forKey: lastObservationFintKey) }
+        }
+    }
+
     private static var fileURL: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?

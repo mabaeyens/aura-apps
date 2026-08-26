@@ -316,6 +316,7 @@ public extension WeatherSnapshot {
                      daily: MunicipioForecast,
                      hourly: MunicipioHourly?,
                      observed: StationObservation? = nil,
+                     previousObserved: WeatherSnapshot? = nil,
                      alert: WeatherAlert? = nil,
                      airQuality: AirQuality? = nil,
                      uvIndex: UVIndex? = nil,
@@ -325,6 +326,29 @@ public extension WeatherSnapshot {
                      now: Date = Date()) -> WeatherSnapshot {
         let today = daily.prediccion.dia.first
         let sun = SolarTimes(date: now, latitude: location.latitude, longitude: location.longitude)
+
+        // Observation carry-forward: when this refresh skipped the hourly observation fetch (data not yet
+        // due, or a transient error left `observed` nil), keep the last good station reading from the prior
+        // snapshot rather than blanking the observed card. All-or-nothing per station so a fresh reading's
+        // fields never mix with a stale one's.
+        let obsTemp: Int?
+        let obsStation: String?
+        let obsDistance: Double?
+        let obsMetrics: ObservedMetrics
+        let obsReading: ObservedReading?
+        if let observed {
+            obsTemp = observed.temperature
+            obsStation = observed.stationName
+            obsDistance = observed.distanceKm(from: location)
+            obsMetrics = observed.availableMetrics
+            obsReading = observed.reading
+        } else {
+            obsTemp = previousObserved?.observedTemp
+            obsStation = previousObserved?.observedStation
+            obsDistance = previousObserved?.observedStationDistanceKm
+            obsMetrics = previousObserved?.observedMetrics ?? []
+            obsReading = previousObserved?.observedReading
+        }
 
         // Resolve the hourly feed first, so today's daily row and the current humidity can follow the
         // actual current hour rather than a fixed whole-day block.
@@ -358,11 +382,11 @@ public extension WeatherSnapshot {
             tempMax: today?.temperatura?.maxima,
             humedadMax: today?.humedadRelativa?.maxima,
             currentTemp: resolved?.current?.temp,
-            observedTemp: observed?.temperature,
-            observedStation: observed?.stationName,
-            observedStationDistanceKm: observed?.distanceKm(from: location),
-            observedMetrics: observed?.availableMetrics ?? [],
-            observedReading: observed?.reading,
+            observedTemp: obsTemp,
+            observedStation: obsStation,
+            observedStationDistanceKm: obsDistance,
+            observedMetrics: obsMetrics,
+            observedReading: obsReading,
             currentSky: resolved?.current?.sky,
             currentSkyText: resolved?.currentText,
             currentHumidity: humidityNow,
