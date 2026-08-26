@@ -40,7 +40,7 @@ AEMET,España,meteorología,previsión,lluvia,UV,calidad aire,avisos,alertas,rad
 
 ---
 
-## Availability — worldwide except China (set 2026-08-26)
+## Availability — worldwide except China (DONE 2026-08-26, toggled in the ASC UI)
 
 Decision: available in all ~174 territories, China mainland excluded (avoids ICP filing / local-entity
 requirements). No new paperwork: the paid-apps agreement, tax/banking, export compliance and EU DSA
