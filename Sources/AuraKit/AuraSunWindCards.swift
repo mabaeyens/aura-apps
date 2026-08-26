@@ -425,10 +425,10 @@ public struct AuraWindCircular: View {
                         .rotationEffect(.degrees(towards))
                 }
 
-                // Centre. On the plain Watch dial (no speed shown beside it) the speed sits big and white
-                // on the bare dial. The app card prints the speed and direction beside the rose, so there
-                // the centre stays clear — just the arrow over a clean dial.
-                centre(diameter: d)
+                // Centre. On the plain Watch dial (no speed shown beside it) the speed sits white in the
+                // middle. The app card prints the speed and direction beside the rose, so there the centre
+                // stays clear — just the arrow over a clean dial.
+                centre
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
@@ -463,13 +463,16 @@ public struct AuraWindCircular: View {
 
     /// The dial centre. On a `card` the speed *and* the direction are already spelled out beside the rose
     /// ("25 km/h", "del Sudoeste"), so the centre stays clear — just the needle reads across a clean dial.
-    /// On the Watch complication (no number beside it) the speed stays big and white here.
-    @ViewBuilder private func centre(diameter d: CGFloat) -> some View {
+    /// On the Watch complication (no number beside it) the speed reads white in the centre.
+    @ViewBuilder private var centre: some View {
         if !card {
+            // The speed reads like the humidity, UV and air-quality complications' gauge value labels —
+            // a semantic `.title3`, semibold rounded, white, no shadow — so a wind dial matches the gauge
+            // faces sitting beside it, and tracks Dynamic Type the same way (rather than the old number
+            // sized to a fraction of the dial).
             Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
-                .font(.system(size: d * 0.38, weight: .semibold, design: .rounded))
+                .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
                 .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.5), radius: 1)
         }
     }
 
