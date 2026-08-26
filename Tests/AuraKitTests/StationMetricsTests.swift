@@ -49,6 +49,47 @@ final class StationMetricsTests: XCTestCase {
         XCTAssertEqual(stations[1].availableMetrics, [.temperature, .wind])
     }
 
+    // MARK: - Display reading
+
+    func testReadingConvertsAndRoundsForDisplay() throws {
+        let json = """
+        [{"idema":"3195","ubi":"MADRID RETIRO","lat":40.41,"lon":-3.68,
+          "ta":21.4,"hr":54.6,"vv":3.2,"dv":225,"pres":940.5,"prec":0.2,
+          "fint":"2026-08-25T11:00:00+0000"}]
+        """.data(using: .utf8)!
+        let reading = try JSONDecoder().decode([StationObservation].self, from: json)[0].reading
+        XCTAssertEqual(reading.temperature, 21)          // 21.4 → 21
+        XCTAssertEqual(reading.humidity, 55)             // 54.6 → 55
+        XCTAssertEqual(reading.windKmh, 12)              // 3.2 m/s × 3.6 = 11.52 → 12
+        XCTAssertEqual(reading.windDirection, .so)       // 225° → SO
+        XCTAssertEqual(reading.pressure, 941)            // 940.5 → 941
+        XCTAssertEqual(reading.precipMm, 0.2)            // mm passes through unrounded
+    }
+
+    func testReadingLeavesUnreportedMetricsNil() {
+        // A station reporting only temperature and humidity: wind/pressure/rain must stay nil so the
+        // card shows a dash rather than a fabricated 0.
+        let station = StationObservation(idema: "9999", ubi: "PARCIAL", lat: 40.0, lon: -3.0,
+                                         ta: 18.0, hr: 70, fint: "2026-08-25T11:00:00+0000")
+        let reading = station.reading
+        XCTAssertEqual(reading.temperature, 18)
+        XCTAssertEqual(reading.humidity, 70)
+        XCTAssertNil(reading.windKmh)
+        XCTAssertNil(reading.windDirection)
+        XCTAssertNil(reading.pressure)
+        XCTAssertNil(reading.precipMm)
+    }
+
+    func testReadingCodableRoundTripInSnapshot() throws {
+        // The reading rides in the App Group cache as part of the snapshot, so it must survive a Codable
+        // round trip (older snapshots without it decode as nil — covered by the field being optional).
+        let reading = ObservedReading(temperature: 24, humidity: 40, windKmh: 14,
+                                      windDirection: .n, pressure: 1013, precipMm: 0)
+        let decoded = try JSONDecoder().decode(ObservedReading.self,
+                                               from: JSONEncoder().encode(reading))
+        XCTAssertEqual(decoded, reading)
+    }
+
     func testObservedMetricsCodableRoundTrip() throws {
         let metrics: ObservedMetrics = [.temperature, .wind, .pressure]
         let data = try JSONEncoder().encode(metrics)

@@ -1026,16 +1026,19 @@ public struct AuraStationCard: View {
         self.snapshot = snapshot; self.size = size
     }
 
-    /// The canonical metric order, each with its chip icon and short label.
-    private static let metrics: [(flag: ObservedMetrics, icon: String, label: String)] = [
-        (.temperature,   "thermometer.medium", "Temp."),
-        (.wind,          "wind",               "Viento"),
-        (.humidity,      "humidity.fill",      "Humedad"),
-        (.pressure,      "gauge.medium",       "Presión"),
-        (.precipitation, "cloud.rain.fill",    "Lluvia"),
+    /// The canonical metric order: chip icon, the short label shown under the value, the full name
+    /// spoken by VoiceOver, and the unit spoken with the value. Labels are kept to ≤6 glyphs ("Humed.",
+    /// "Pres.") so every chip's label renders at the same size — a longer word would scale down on its
+    /// own and read smaller than the rest.
+    private static let metrics: [(flag: ObservedMetrics, icon: String, label: String, full: String, unit: String)] = [
+        (.temperature,   "thermometer.medium", "Temp.",  "Temperatura", "grados"),
+        (.wind,          "wind",               "Viento", "Viento",      "kilómetros por hora"),
+        (.humidity,      "humidity.fill",      "Humed.", "Humedad",     "por ciento"),
+        (.pressure,      "gauge.medium",       "Pres.",  "Presión",     "hectopascales"),
+        (.precipitation, "cloud.rain.fill",    "Lluvia", "Lluvia",      "milímetros"),
     ]
 
-    /// Full metric names for the completeness line, in the same order.
+    /// Full metric names for the completeness line, in the same order (lower-cased for mid-sentence use).
     private static let fullNames: [(flag: ObservedMetrics, name: String)] = [
         (.temperature, "temperatura"), (.wind, "viento"), (.humidity, "humedad"),
         (.pressure, "presión"), (.precipitation, "precipitación"),
@@ -1043,16 +1046,17 @@ public struct AuraStationCard: View {
 
     public var body: some View {
         let available = snapshot.observedMetrics
+        let reading = snapshot.observedReading
         return AuraCard(size: size) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(header)
                     .auraFont(size.bodySize - 1, relativeTo: .title3, weight: .semibold)
                     .foregroundStyle(.white)
                     .lineLimit(2).minimumScaleFactor(0.8)
-                HStack(alignment: .top, spacing: 6) {
+                HStack(alignment: .top, spacing: 5) {
                     ForEach(Self.metrics, id: \.icon) { metric in
-                        metricChip(icon: metric.icon, label: metric.label,
-                                   on: available.contains(metric.flag))
+                        let on = available.contains(metric.flag)
+                        metricChip(metric, value: on ? value(metric.flag, reading) : nil, on: on)
                     }
                 }
                 Text(completeness(available))
@@ -1062,6 +1066,22 @@ public struct AuraStationCard: View {
             }
         }
         .auraSectionTitle("Estación de observación".uppercased(), size)
+    }
+
+    /// The station's measured value for a metric, formatted for its chip (unit implied by the label).
+    /// Nil when the station doesn't report it, so the chip shows a dash. Spanish decimal comma for rain.
+    private func value(_ flag: ObservedMetrics, _ reading: ObservedReading?) -> String? {
+        guard let reading else { return nil }
+        switch flag {
+        case .temperature:   return reading.temperature.map { "\($0)°" }
+        case .wind:          return reading.windKmh.map { "\($0)" }
+        case .humidity:      return reading.humidity.map { "\($0)%" }
+        case .pressure:      return reading.pressure.map { "\($0)" }
+        case .precipitation: return reading.precipMm.map {
+            String(format: "%.1f", $0).replacingOccurrences(of: ".", with: ",")
+        }
+        default:             return nil
+        }
     }
 
     /// "Madrid Retiro · a 3 km" — the station and its distance (Spanish decimal comma under 10 km).
@@ -1074,26 +1094,43 @@ public struct AuraStationCard: View {
         return "\(name) · a \(dist) km"
     }
 
-    /// One metric chip: icon over short label, greyed (MITECO's grey-for-unavailable convention) when the
-    /// station doesn't report it.
-    private func metricChip(icon: String, label: String, on: Bool) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: size == .phone ? 17 : 12, weight: .medium))
+    /// One metric chip: icon, the station's measured value, then the short label. Greyed with a dash for
+    /// the value (MITECO's grey-for-unavailable convention) when the station doesn't report it. The label
+    /// sits at a fixed size (no per-chip shrink-to-fit) so all five read at the same size — the reason the
+    /// labels are pre-abbreviated to a common width.
+    private func metricChip(_ metric: (flag: ObservedMetrics, icon: String, label: String, full: String, unit: String),
+                            value: String?, on: Bool) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: metric.icon)
+                .font(.system(size: size == .phone ? 16 : 11, weight: .medium))
                 .foregroundStyle(on ? .white : .white.opacity(0.3))
-            Text(label)
-                .auraFont(size.smallSize - 1, relativeTo: .callout, weight: .medium)
+            Text(value ?? "—")
+                .auraFont(size.bodySize - (size == .phone ? 2 : 4), relativeTo: .body, weight: .semibold, design: .rounded)
+                .foregroundStyle(.white.opacity(on ? 0.95 : 0.35))
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(metric.label)
+                .auraFont(size.smallSize - (size == .phone ? 4 : 1), relativeTo: .callout, weight: .medium)
                 .foregroundStyle(.white.opacity(on ? 0.7 : 0.35))
+                .lineLimit(1).minimumScaleFactor(0.9)   // safety only; every label fits at this size
         }
         .frame(maxWidth: .infinity)
-        .lineLimit(1).minimumScaleFactor(0.6)
         .padding(.vertical, 8)
-        .padding(.horizontal, 3)
+        .padding(.horizontal, 2)
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
             .fill(Color.white.opacity(on ? 0.12 : 0.04)))
-        // Read each chip as one element ("Viento, sí" / "Presión, no").
+        // Read each chip as one element ("Viento 12 kilómetros por hora" / "Presión, no disponible").
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label), \(on ? "sí" : "no")")
+        .accessibilityLabel(accessibilityText(metric, value: value, on: on))
+    }
+
+    /// "Temperatura 24 grados" when reported, "Presión, no disponible" when the station omits it. Uses the
+    /// full metric name and unit word, not the abbreviated on-screen label.
+    private func accessibilityText(_ metric: (flag: ObservedMetrics, icon: String, label: String, full: String, unit: String),
+                                   value: String?, on: Bool) -> String {
+        guard on, let value else { return "\(metric.full), no disponible" }
+        // Strip the "°"/"%" glyphs from the spoken value; the unit word carries the meaning.
+        let spoken = value.replacingOccurrences(of: "°", with: "").replacingOccurrences(of: "%", with: "")
+        return "\(metric.full) \(spoken) \(metric.unit)"
     }
 
     /// "Mide todos los datos de superficie." or "No mide: presión y precipitación."

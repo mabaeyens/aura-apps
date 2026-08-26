@@ -26,9 +26,14 @@ enum AEMETService {
     /// to the Watch. Coalesced (see the type note) and, unless `force`, skips locations cached within
     /// the last hour to stay well under AEMET's rate limit. Returns a Spanish error message if the
     /// refresh hit a problem worth showing (e.g. rate-limited, offline), else nil.
+    /// `onlyINE`, when set, scopes the *fetch* to that one location (its forecast, hourly, avisos and, if
+    /// it's the primary, its bulletin) while still pruning and watch-syncing the whole favourites list.
+    /// Used by the app's pull-to-refresh so a manual swipe refreshes only the place on screen, not every
+    /// favourite — the shared national feeds (observations, UV, air quality) are fetched once regardless.
     @discardableResult
-    static func refreshAllForWidgets(_ locations: [Location], force: Bool = false) async -> String? {
-        await refreshGate.run { await performRefresh(locations, force: force) }
+    static func refreshAllForWidgets(_ locations: [Location], force: Bool = false,
+                                     onlyINE: String? = nil) async -> String? {
+        await refreshGate.run { await performRefresh(locations, force: force, onlyINE: onlyINE) }
     }
 
     // MARK: - Background refresh
@@ -70,7 +75,8 @@ enum AEMETService {
         }
     }
 
-    private static func performRefresh(_ locations: [Location], force: Bool) async -> String? {
+    private static func performRefresh(_ locations: [Location], force: Bool,
+                                       onlyINE: String? = nil) async -> String? {
         // Drop cached snapshots for locations the user no longer tracks (and any long-stale leftover)
         // so the App Group cache stays bounded. Runs before the early-outs below so removed favourites
         // are cleaned up even when nothing needs fetching.
@@ -80,14 +86,21 @@ enum AEMETService {
         var firstError: String?
         func note(_ error: Error) { if firstError == nil { firstError = message(for: error) } }
 
-        // Locations that need fetching: everything on `force`, otherwise those older than an hour or
-        // cached by a build before the daily sky/wind fields existed (their days decode with sky == nil,
-        // which is why every day rendered as a generic cloud until the next refresh).
-        let stale = force ? locations : locations.filter { location in
-            guard let existing = SharedCache.snapshot(forINE: location.ine) else { return true }
-            if Date().timeIntervalSince(existing.updated) >= 3600 { return true }
-            if !existing.days.isEmpty, existing.days.allSatisfy({ $0.sky == nil }) { return true }
-            return false
+        // Locations that need fetching. A pull-to-refresh on one place (`onlyINE`) fetches just that
+        // place — the whole favourites list is still pruned and watch-synced below, but their forecasts
+        // aren't refetched on a manual swipe. Otherwise: everything on `force`, else those older than an
+        // hour or cached by a build before the daily sky/wind fields existed (their days decode with
+        // sky == nil, which is why every day rendered as a generic cloud until the next refresh).
+        let stale: [Location]
+        if let onlyINE, let one = locations.first(where: { $0.ine == onlyINE }) {
+            stale = [one]
+        } else {
+            stale = force ? locations : locations.filter { location in
+                guard let existing = SharedCache.snapshot(forINE: location.ine) else { return true }
+                if Date().timeIntervalSince(existing.updated) >= 3600 { return true }
+                if !existing.days.isEmpty, existing.days.allSatisfy({ $0.sky == nil }) { return true }
+                return false
+            }
         }
         guard !stale.isEmpty else { return nil }
         // Bail before the network work if the trigger was already cancelled (app backgrounded, view gone).

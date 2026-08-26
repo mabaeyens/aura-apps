@@ -32,6 +32,8 @@ public extension WeatherSnapshot {
             currentTemp: 29, observedTemp: 30, observedStation: "Madrid Retiro",
             observedStationDistanceKm: 3.2,
             observedMetrics: [.temperature, .wind, .humidity, .pressure, .precipitation],
+            observedReading: ObservedReading(temperature: 30, humidity: 38, windKmh: 14,
+                                             windDirection: .so, pressure: 1014, precipMm: 0),
             currentSky: "11", currentSkyText: "Despejado",
             currentHumidity: 42, currentPrecipProb: 15,
             windSpeed: 25, windDirection: .so, windGust: 47,

@@ -336,15 +336,19 @@ struct TodayView: View {
         }
         isLoading = true
         errorMessage = nil
-        // The one coalesced refresh fills the shared cache (fetching every favourite once, plus a
-        // single national observations call); read this location's snapshot back out of it.
-        var refreshError = await AEMETService.refreshAllForWidgets(store.favorites, force: force)
+        // A manual pull-to-refresh (force) refreshes only the place on screen; a passive load (launch,
+        // returning to foreground) fills every stale favourite. Either way the shared national feeds are
+        // fetched once and the whole favourites list is pruned/watch-synced. Read this location's snapshot
+        // back out of the cache afterwards.
+        let onlyINE = force ? location.ine : nil
+        var refreshError = await AEMETService.refreshAllForWidgets(store.favorites, force: force, onlyINE: onlyINE)
         // A location just added (or switched to) can miss an already-running refresh that was in flight
         // before it existed: the gate coalesces this call onto that run, which never fetched it. If its
         // snapshot still isn't cached, run one more pass now that the earlier run has finished and the
         // gate is clear, so it fetches the new location without waiting for a manual pull-to-refresh.
         if SharedCache.snapshot(forINE: location.ine) == nil {
-            refreshError = await AEMETService.refreshAllForWidgets(store.favorites, force: force)
+            refreshError = await AEMETService.refreshAllForWidgets(store.favorites, force: force,
+                                                                   onlyINE: location.ine)
         }
         if let snap = SharedCache.snapshot(forINE: location.ine) {
             snapshot = snap

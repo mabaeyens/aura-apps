@@ -58,9 +58,48 @@ public struct ObservedMetrics: OptionSet, Codable, Sendable, Hashable {
     public static let precipitation = ObservedMetrics(rawValue: 1 << 4)
 }
 
+/// The actual surface values from the resolving station, for the observation card. Each field is
+/// optional because a station may report only some metrics. Wind is stored in km/h (converted from
+/// AEMET's m/s) so it matches every other wind reading in the app.
+public struct ObservedReading: Codable, Sendable, Hashable {
+    /// Air temperature, °C.
+    public let temperature: Int?
+    /// Relative humidity, %.
+    public let humidity: Int?
+    /// Wind speed, km/h.
+    public let windKmh: Int?
+    /// Wind direction, degrees (0 = N), when the station reports it.
+    public let windDirection: WindDirection?
+    /// Barometric pressure, hPa.
+    public let pressure: Int?
+    /// Precipitation over the station's accumulation period, mm.
+    public let precipMm: Double?
+
+    public init(temperature: Int?, humidity: Int?, windKmh: Int?,
+                windDirection: WindDirection?, pressure: Int?, precipMm: Double?) {
+        self.temperature = temperature
+        self.humidity = humidity
+        self.windKmh = windKmh
+        self.windDirection = windDirection
+        self.pressure = pressure
+        self.precipMm = precipMm
+    }
+}
+
 public extension StationObservation {
     /// Air temperature rounded to a whole degree, for display.
     var temperature: Int? { ta.map { Int($0.rounded()) } }
+
+    /// The station's actual surface values, in display units, for the observation card.
+    var reading: ObservedReading {
+        ObservedReading(
+            temperature: temperature,
+            humidity: hr.map { Int($0.rounded()) },
+            windKmh: vv.map { Int(($0 * 3.6).rounded()) },   // AEMET reports station wind in m/s
+            windDirection: dv.map { WindDirection(degrees: $0) },
+            pressure: pres.map { Int($0.rounded()) },
+            precipMm: prec)
+    }
 
     /// The reading time, parsed from `fint`.
     var timestamp: Date? { fint.flatMap { Self.formatter.date(from: $0) } }
