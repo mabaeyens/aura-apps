@@ -9,9 +9,15 @@ also `en-US`. Live version: **1.0.0 (Ready for Distribution)**.
 
 ---
 
-## ⚠️ Apply on the NEXT App Store version — expanded keywords
+## Expanded keywords — APPLIED on 1.1.0 (build 6), submitted 2026-08-26
 
-**Why this is parked:** keywords are *version metadata*. They can't be edited on the live 1.0.0 page
+> Status: done. Staged and submitted with build 6 on 2026-08-26 (state WAITING_FOR_REVIEW).
+> Change from the original plan: es-ES uses the Spanish set below; en-US instead got an
+> English-optimised set, since the app is now sold worldwide and English users search English words:
+> `weather,Spain,AEMET,forecast,rain,UV,air quality,warnings,alerts,radar,widget,watch,sun` (87/100).
+> The rest of this section is kept for reference.
+
+**Why this was parked (historical):** keywords are *version metadata*. They can't be edited on the live 1.0.0 page
 (that field is locked once Ready for Distribution), and keywords are **not** in the edit-without-review
 set (only promotional text is). Changing them needs a **new version + App Review**. A new iOS version
 needs a build anyway, so I fold this into the next release instead of a standalone submission — 1.0.0
@@ -33,6 +39,18 @@ AEMET,España,meteorología,previsión,lluvia,UV,calidad aire,avisos,alertas,rad
   wastes characters), `clima` and `pronóstico` (redundant with `previsión`). `luna` didn't fit under 100.
 
 ---
+
+## Availability — worldwide except China (set 2026-08-26)
+
+Decision: available in all ~174 territories, China mainland excluded (avoids ICP filing / local-entity
+requirements). No new paperwork: the paid-apps agreement, tax/banking, export compliance and EU DSA
+trader status were all cleared for the Spain launch.
+
+**Must be set in the ASC UI, not the API.** The App Store Connect API's `appAvailabilities` resource
+allows only CREATE and GET, and one already exists from the 1.0.0 setup, so it cannot be changed via
+the API (confirmed 2026-08-26: POST returns "already exists", PATCH returns 403 "does not allow UPDATE").
+Do it under App Store version > Pricing and Availability > Availability: select all, deselect China
+mainland, Save. App-level and review-free, effective immediately on the live app.
 
 ## Listing URLs — own domain, not GitHub (both pages live)
 
@@ -102,3 +120,24 @@ Then submit each CPP for its own (quick, independent) review — the `ppid` URLs
   Automatic traffic-splitting would be **Product Page Optimization**, a separate feature — not set up.
 - Everything above was done with the shared ASC API key (the `aura-release` credentials); no keyword
   or default-listing metadata on the live 1.0.0 was touched.
+
+---
+
+## 1.1.0 submission log (2026-08-26)
+
+Done via the ASC API (all on the 1.1.0 version / its editable appInfo, so nothing on live 1.0.0 changed):
+
+- Version 1.1.0 (build 6) created and build attached.
+- Keywords: es-ES Spanish 13-term set; en-US English-optimised set (see the keywords section).
+- What's New: Spanish and English, describing the 1.1.0 changes (guideline 2.3.12).
+- Marketing + Support URLs: en-US moved off GitHub to askmira.es (es-ES was already correct).
+- Privacy Policy URL: both locales moved to askmira.es/aura/privacidad (on the editable appInfo).
+- Description: added a coverage line to both locales ("Coverage: Spain, using official AEMET data.").
+- Reviewer notes: added one line explaining the app is intentionally available worldwide though coverage is Spain-only. API key left untouched.
+- Submitted for review: state WAITING_FOR_REVIEW.
+
+Still to do by hand:
+
+- Territory availability -> worldwide except China, in the ASC UI (API cannot change it; see the Availability section).
+- CPP keywords + marketing art: after 1.1.0 is approved (unchanged from the plan above).
+- Known minor typo still in the es-ES description ("un \"no pasa nada\" no hay ninguno", missing "cuando"); left as-is because 1.1.0 was already submitted. Fix in a future version.
