@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1.0 (build 6)
+
+- Dynamic Type: the app's text now scales with the system Larger Text setting, keeping the tuned look.
+- Tapping a widget now opens the exact location it shows.
+- Apple Watch: full complication coverage across every accessory family (circular, corner, rectangular and inline) for UV, rain, wind, sun, air quality and avisos, plus daily máximas and mínimas.
+- A station card with the real observed values from the nearest AEMET station.
+- Smaller download: the bundled background art is about 58% lighter.
+- Security: the AEMET key no longer persists to the disk cache, and the Keychain item is pinned to this device.
+- Available in more countries, with an English-optimised App Store listing.
+
 ## v1.0.0
 
 First release of Aura: Spain's weather, from official AEMET open data.
