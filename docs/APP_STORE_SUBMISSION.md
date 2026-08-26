@@ -140,4 +140,11 @@ Still to do by hand:
 
 - Territory availability -> worldwide except China, in the ASC UI (API cannot change it; see the Availability section).
 - CPP keywords + marketing art: after 1.1.0 is approved (unchanged from the plan above).
+- Keyword idea for the NEXT version: add "complications" (I search that term myself). The keyword
+  field is the only search-indexed lever besides the app name and subtitle; description text is NOT
+  indexed, so putting it only in the description does nothing for search. Fit check against the 100-char
+  limit: en-US has room for the singular `complication` (12 chars) at exactly 100/100 with nothing
+  dropped; the plural `complications` (13) needs one weak term dropped (e.g. `radar`). es-ES
+  `complicaciones` (14) does not fit the current 96/100 string, so swap a weaker term for it (e.g. drop
+  `meteorología` -> ~98/100). Can't be changed now (1.1.0 is locked in review); fold into the next build.
 - Known minor typo still in the es-ES description ("un \"no pasa nada\" no hay ninguno", missing "cuando"); left as-is because 1.1.0 was already submitted. Fix in a future version.
