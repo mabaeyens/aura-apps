@@ -1,4 +1,12 @@
 {
-  "images" : [ { "filename" : "wide_landscape_foggy_dawn_w.png", "idiom" : "universal" } ],
-  "info" : { "author" : "xcode", "version" : 1 }
+  "images": [
+    {
+      "filename": "wide_landscape_foggy_dawn_w.heic",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
 }
