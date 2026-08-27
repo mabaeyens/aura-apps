@@ -157,6 +157,8 @@ Build 6 was developer-rejected and 1.1.0 never went public, so the 1.1.0 version
 - Keywords swapped in both locales to add the complication term: es-ES `AEMET,España,previsión,lluvia,UV,calidad aire,avisos,alertas,radar,widget,reloj,sol,complicaciones` (98/100, dropped `meteorología`); en-US `weather,Spain,AEMET,forecast,rain,UV,air quality,warnings,alerts,radar,widget,watch,sun,complication` (100/100). This clears the "keyword idea for the NEXT version" follow-up above.
 - Description: the compliance rewrite (open-data framing, source URLs, non-official disclaimer). The es-ES "cuando no pasa nada" typo is fixed in this copy, clearing that follow-up too.
 - What's New (2.3.12): ES + EN, the four 1.1.1 fixes (Hoy current-hour, uniform values, wind-complication colour, About disclaimer).
-- NOT submitted: left in PREPARE_FOR_SUBMISSION for a manual review, then Submit for Review in the ASC UI.
+- Promotional text set on both locales (was empty): open-data framing, no "oficial"/superiority, no em-dashes. Editable anytime without review.
+- Submitted for review 2026-08-27: state WAITING_FOR_REVIEW. The submission also committed the shared appInfo Privacy Policy URL change (both locales) from the GitHub blob to https://askmira.es/aura/privacidad (verified live, HTTP 200); ASC flags it as a shared-info change that propagates to other platforms on the next version.
+- The three tip IAPs (com.mab.Aura.tip.small/medium/large, consumables) are APPROVED and unchanged, so they are not part of this version submission and stay live.
 
-Still to do by hand: submit 1.1.1 for review (after review of the staged draft); the CPP keyword ticks + marketing art still wait until an update is approved.
+Still to do by hand: the CPP keyword ticks + marketing art still wait until an update is approved.
