@@ -22,7 +22,7 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
     /// The forecast temperature for the current hour. °C.
     public let currentTemp: Int?
     /// A real observed temperature from the nearest recent station, when one is close enough. °C.
-    /// Preferred over `currentTemp` for the card's "now" hero.
+    /// Shown on the observation card; deliberately *not* folded into `heroTemp` (see there).
     public let observedTemp: Int?
     /// Name of the station `observedTemp` came from, e.g. "Madrid Retiro".
     public let observedStation: String?
@@ -161,11 +161,15 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
 }
 
 public extension WeatherSnapshot {
-    /// The card's "now" hero temperature: the current-hour forecast, falling back to today's high only
-    /// when the hourly feed is missing. °C. Deliberately *not* the observed-station reading — a warm
-    /// nearby station read the day's max hours before the forecast said it would, so the gauge looked
-    /// pinned to the high; tracking the hourly forecast keeps the hero consistent with the hours strip.
-    var heroTemp: Int? { currentTemp ?? tempMax }
+    /// The card's "now" hero temperature: the current-hour forecast. °C, or nil when no current-hour
+    /// reading is available — the card shows "—" rather than a stand-in. Deliberately *not* today's
+    /// high: falling back to `tempMax` made a momentarily-missing hourly feed read as a real "now"
+    /// temperature pinned to the day's peak (the regression this replaced). Also *not* the
+    /// observed-station reading — a warm nearby station reads the day's max hours before the forecast
+    /// says it will, pinning the gauge high; the hourly forecast keeps the hero consistent with the
+    /// hours strip. A momentarily-missing feed is instead held over from the last good snapshot in
+    /// `make(...)`, so this is nil only on a cold start with no prior reading.
+    var heroTemp: Int? { currentTemp }
 
     /// Whether the hero is a real station observation. Now always false — kept for API compatibility.
     var heroIsObserved: Bool { false }
@@ -360,7 +364,14 @@ public extension WeatherSnapshot {
         let feelsNow = hourly.flatMap { Self.currentFeelsLike($0, timeZone: timeZone, now: now) }
         let stormNow = hourly.flatMap { Self.currentStormProb($0, timeZone: timeZone, now: now) }
         let resolved = hourly.map { Self.hourly($0, timeZone: timeZone, now: now) }
-        let currentSky = resolved?.current?.sky
+
+        // Hourly carry-forward: when the hourly feed is momentarily unavailable (the fetch failed or
+        // returned nothing, leaving `hourly` nil), hold the last good current-hour reading from the prior
+        // snapshot rather than blanking every `current*` field — which would silently drop the hero to
+        // today's daily max and default the sky to a bare sun. Mirrors the observation carry-forward above;
+        // gated strictly on a wholly-absent feed so a fresh current hour never mixes with a stale one.
+        let carry: WeatherSnapshot? = hourly == nil ? previousObserved : nil
+        let currentSky = resolved?.current?.sky ?? carry?.currentSky
 
         let days = daily.prediccion.dia.prefix(7).enumerated().compactMap { (idx, dia) -> DaySnapshot? in
             guard let date = Self.parseDay(dia.fecha) else { return nil }
@@ -381,23 +392,23 @@ public extension WeatherSnapshot {
             tempMin: today?.temperatura?.minima,
             tempMax: today?.temperatura?.maxima,
             humedadMax: today?.humedadRelativa?.maxima,
-            currentTemp: resolved?.current?.temp,
+            currentTemp: resolved?.current?.temp ?? carry?.currentTemp,
             observedTemp: obsTemp,
             observedStation: obsStation,
             observedStationDistanceKm: obsDistance,
             observedMetrics: obsMetrics,
             observedReading: obsReading,
-            currentSky: resolved?.current?.sky,
-            currentSkyText: resolved?.currentText,
-            currentHumidity: humidityNow,
-            currentPrecipProb: precipNow,
-            currentPrecipMm: precipMmNow,
-            currentSnowMm: snowMmNow,
-            currentFeelsLike: feelsNow,
-            currentStormProb: stormNow,
-            windSpeed: wind?.speed ?? nil,
-            windDirection: wind?.direction ?? nil,
-            windGust: wind?.gust ?? nil,
+            currentSky: currentSky,
+            currentSkyText: resolved?.currentText ?? carry?.currentSkyText,
+            currentHumidity: humidityNow ?? carry?.currentHumidity,
+            currentPrecipProb: precipNow ?? carry?.currentPrecipProb,
+            currentPrecipMm: precipMmNow ?? carry?.currentPrecipMm,
+            currentSnowMm: snowMmNow ?? carry?.currentSnowMm,
+            currentFeelsLike: feelsNow ?? carry?.currentFeelsLike,
+            currentStormProb: stormNow ?? carry?.currentStormProb,
+            windSpeed: wind?.speed ?? carry?.windSpeed,
+            windDirection: wind?.direction ?? carry?.windDirection,
+            windGust: wind?.gust ?? carry?.windGust,
             airQuality: airQuality,
             uvIndex: uvIndex,
             uvHourly: uvHourly,
@@ -427,9 +438,12 @@ public extension WeatherSnapshot {
         let upcoming = day0 + day1
 
         let current = upcoming.first
-        // Description for the current hour, from whichever day it came from.
-        let text = dias.first.flatMap { skyText($0, hour: current?.hour) }
-            ?? (dias.count > 1 ? skyText(dias[1], hour: current?.hour) : nil)
+        // Description for the current hour, read from the *same* day the current slot came from. Once day 0's
+        // hours are all past, `current` is day 1's first hour, so its text must come from day 1 too — reading
+        // day 0's same-numbered hour would describe a different day and can disagree with the sky code (the
+        // "Nubes altas" text over a clear background). nil here is honest; a wrong-day text is not.
+        let currentDia = day0.isEmpty ? (dias.count > 1 ? dias[1] : nil) : dias.first
+        let text = currentDia.flatMap { skyText($0, hour: current?.hour) }
 
         // Keep a full day ahead so the hourly strip has real data to scroll through (five show at once).
         return (current, text, Array(upcoming.prefix(24)))

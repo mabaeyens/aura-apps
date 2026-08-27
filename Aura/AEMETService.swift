@@ -208,7 +208,15 @@ enum AEMETService {
             if location.ine == primary?.ine {
                 NotificationManager.evaluatePrimary(old: previous, new: snapshot)
             }
-            SharedCache.upsert(snapshot)
+            // Don't let a thin snapshot overwrite a good one already cached for this location. The hourly
+            // carry-forward in `make` already covers a wholly-absent feed (`hourly` nil); this catches the
+            // other thin path — a fetch that *succeeded* but returned an empty/degenerate feed with no
+            // resolvable current hour, which carry-forward (gated on `hourly` nil) skips. Matches the guard
+            // on the Watch push (`WatchSync.upsertGuarded`); a real location switch or first-ever fetch,
+            // where the existing cache is nil or itself thin, still writes.
+            if snapshot.hasCurrentHourData || !(previous?.hasCurrentHourData ?? false) {
+                SharedCache.upsert(snapshot)
+            }
             didUpdate = true
         }
 
