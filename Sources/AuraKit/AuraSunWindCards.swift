@@ -463,16 +463,19 @@ public struct AuraWindCircular: View {
 
     /// The dial centre. On a `card` the speed *and* the direction are already spelled out beside the rose
     /// ("25 km/h", "del Sudoeste"), so the centre stays clear — just the needle reads across a clean dial.
-    /// On the Watch complication (no number beside it) the speed reads white in the centre.
+    /// On the Watch complication (no number beside it) the speed reads in the centre, coloured by wind
+    /// strength.
     @ViewBuilder private var centre: some View {
         if !card {
             // The speed reads like the humidity, UV and air-quality complications' gauge value labels —
-            // a semantic `.title3`, semibold rounded, white, no shadow — so a wind dial matches the gauge
-            // faces sitting beside it, and tracks Dynamic Type the same way (rather than the old number
-            // sized to a fraction of the dial).
+            // a semantic `.title3`, semibold rounded, no shadow — so a wind dial matches the gauge faces
+            // sitting beside it and tracks Dynamic Type the same way. Its colour follows the Beaufort wind
+            // ramp (the same `Palette.wind` the vane and the corner complication use), so the number reads
+            // its own strength at a glance. On a tinted Lock Screen face the system desaturates it, like
+            // every accessory value.
             Text(snapshot.windSpeed.map { "\($0)" } ?? "—")
                 .font(.title3).fontWeight(.semibold).fontDesign(.rounded)
-                .foregroundStyle(.white)
+                .foregroundStyle(Palette.wind(snapshot.windSpeed))
         }
     }
 
