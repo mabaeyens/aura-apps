@@ -1,6 +1,8 @@
 # Aura
 
-Personal Apple-ecosystem weather app for Spain, powered by the [AEMET OpenData](https://opendata.aemet.es/) API. It fills the gaps in the official AEMET app: **a rich "Hoy" screen, Apple Watch complications, and Home & Lock Screen widgets**, all over a live, sun-tracking SwiftUI sky.
+Personal Apple-ecosystem weather app for Spain, powered by the [AEMET OpenData](https://opendata.aemet.es/) API. It presents AEMET's open data on **a rich "Hoy" screen, Apple Watch complications, and Home & Lock Screen widgets**, all over a live, sun-tracking SwiftUI sky.
+
+Aura is an independent app. It is not affiliated with, and does not represent, AEMET, MITECO, or any government entity.
 
 Targets iOS, iPadOS, macOS and watchOS from one shared Swift package, so every widget and complication renders from identical code.
 
