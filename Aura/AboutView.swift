@@ -34,8 +34,10 @@ struct AboutView: View {
                     "sola a medida que cambian los datos.\n\n" +
                     "Del latín aura: brisa, aire en movimiento, y también el halo de luz que rodea algo." +
                     "\n\n" +
-                    "Los datos son de fuentes públicas oficiales. Todo ocurre en tu dispositivo: sin " +
-                    "cuenta y sin servidores propios; solo se conecta a esas fuentes para traer los datos."
+                    "Los datos vienen de repositorios de datos abiertos con acceso público: AEMET, " +
+                    "MITECO y Copernicus. Aura es una app independiente: no está afiliada a AEMET, MITECO " +
+                    "ni a ninguna entidad gubernamental, ni las representa. Todo ocurre en tu dispositivo: " +
+                    "sin cuenta y sin servidores propios; solo se conecta a esas fuentes para traer los datos."
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
