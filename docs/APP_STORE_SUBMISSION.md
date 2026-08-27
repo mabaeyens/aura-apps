@@ -148,3 +148,15 @@ Still to do by hand:
   `complicaciones` (14) does not fit the current 96/100 string, so swap a weaker term for it (e.g. drop
   `meteorología` -> ~98/100). Can't be changed now (1.1.0 is locked in review); fold into the next build.
 - Known minor typo still in the es-ES description ("un \"no pasa nada\" no hay ninguno", missing "cuando"); left as-is because 1.1.0 was already submitted. Fix in a future version.
+
+## 1.1.1 submission staged (2026-08-27)
+
+Build 6 was developer-rejected and 1.1.0 never went public, so the 1.1.0 version record (state DEVELOPER_REJECTED) was reused as the editable slot and renamed to 1.1.1 rather than creating a second in-progress version. 1.0.0 stayed READY_FOR_SALE throughout. Done via the ASC API (draft only, nothing submitted):
+
+- Version renamed 1.1.0 -> 1.1.1; build 7 (1.1.1) archived, uploaded and attached; state PREPARE_FOR_SUBMISSION.
+- Keywords swapped in both locales to add the complication term: es-ES `AEMET,España,previsión,lluvia,UV,calidad aire,avisos,alertas,radar,widget,reloj,sol,complicaciones` (98/100, dropped `meteorología`); en-US `weather,Spain,AEMET,forecast,rain,UV,air quality,warnings,alerts,radar,widget,watch,sun,complication` (100/100). This clears the "keyword idea for the NEXT version" follow-up above.
+- Description: the compliance rewrite (open-data framing, source URLs, non-official disclaimer). The es-ES "cuando no pasa nada" typo is fixed in this copy, clearing that follow-up too.
+- What's New (2.3.12): ES + EN, the four 1.1.1 fixes (Hoy current-hour, uniform values, wind-complication colour, About disclaimer).
+- NOT submitted: left in PREPARE_FOR_SUBMISSION for a manual review, then Submit for Review in the ASC UI.
+
+Still to do by hand: submit 1.1.1 for review (after review of the staged draft); the CPP keyword ticks + marketing art still wait until an update is approved.
