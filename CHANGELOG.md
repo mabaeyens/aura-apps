@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.1 (build 7)
+
+- Fixed the current conditions on the Hoy screen sometimes showing the day's high instead of the real current temperature, with a sky description that could lag a day behind. The current hour now reads correctly, and a good reading is kept when a refresh comes back empty.
+- Station and air-quality values now render at one consistent size, so a longer number no longer looks smaller than the one next to it.
+- The Watch wind complication now colours the speed number by wind strength, on the same Beaufort scale as the vane beside it.
+- The About screen now names the open-data sources (AEMET, MITECO, Copernicus) with links, and states plainly that Aura is an independent app that does not represent any government entity.
+
 ## v1.1.0 (build 6)
 
 - Dynamic Type: the app's text now scales with the system Larger Text setting, keeping the tuned look.
