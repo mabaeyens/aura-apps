@@ -1059,6 +1059,7 @@ public struct AuraStationCard: View {
                         metricChip(metric, value: on ? value(metric.flag, reading) : nil, on: on)
                     }
                 }
+                .uniformValueScale()
                 Text(completeness(available))
                     .auraFont(size.smallSize - 1, relativeTo: .callout)
                     .foregroundStyle(.white.opacity(0.6))
@@ -1095,19 +1096,20 @@ public struct AuraStationCard: View {
     }
 
     /// One metric chip: icon, the station's measured value, then the short label. Greyed with a dash for
-    /// the value (MITECO's grey-for-unavailable convention) when the station doesn't report it. The label
-    /// sits at a fixed size (no per-chip shrink-to-fit) so all five read at the same size — the reason the
-    /// labels are pre-abbreviated to a common width.
+    /// the value (MITECO's grey-for-unavailable convention) when the station doesn't report it. The values
+    /// share one size across the row via `.uniformValueScale()` (so pressure "1013" no longer shrinks on
+    /// its own next to "24°"), and the labels sit at a fixed size, pre-abbreviated to a common width, so
+    /// all five read at the same size.
     private func metricChip(_ metric: (flag: ObservedMetrics, icon: String, label: String, full: String, unit: String),
                             value: String?, on: Bool) -> some View {
         VStack(spacing: 3) {
             Image(systemName: metric.icon)
                 .font(.system(size: size == .phone ? 16 : 11, weight: .medium))
                 .foregroundStyle(on ? .white : .white.opacity(0.3))
-            Text(value ?? "—")
-                .auraFont(size.bodySize - (size == .phone ? 2 : 4), relativeTo: .body, weight: .semibold, design: .rounded)
+            AuraMetricValue(value ?? "—",
+                            size: size.bodySize - (size == .phone ? 2 : 4),
+                            relativeTo: .body, weight: .semibold)
                 .foregroundStyle(.white.opacity(on ? 0.95 : 0.35))
-                .lineLimit(1).minimumScaleFactor(0.6)
             Text(metric.label)
                 .auraFont(size.smallSize - (size == .phone ? 4 : 1), relativeTo: .callout, weight: .medium)
                 .foregroundStyle(.white.opacity(on ? 0.7 : 0.35))
@@ -1213,6 +1215,7 @@ public struct AuraAirQualityCard: View {
                                   isDriver: token == airQuality.pollutant)
                 }
             }
+            .uniformValueScale()
             Text("µg/m³")
                 .auraFont(size.smallSize - 2, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.4))
@@ -1230,8 +1233,9 @@ public struct AuraAirQualityCard: View {
             Text(AirComponent.label(for: token))
                 .auraFont(size.smallSize - 1, relativeTo: .callout, weight: .medium)
                 .foregroundStyle(.white.opacity(measured ? 0.7 : 0.35))
-            Text(component?.valueText ?? "–")
-                .auraFont(size.bodySize - 1, relativeTo: .title3, weight: .bold, design: .rounded)
+                .lineLimit(1).minimumScaleFactor(0.75)
+            AuraMetricValue(component?.valueText ?? "–",
+                            size: size.bodySize - 1, relativeTo: .title3, weight: .bold)
                 .foregroundStyle(measured ? .white : .white.opacity(0.3))
             Capsule()
                 .fill(color)
@@ -1239,7 +1243,6 @@ public struct AuraAirQualityCard: View {
                 .opacity(measured ? 1 : 0.45)
         }
         .frame(maxWidth: .infinity)
-        .lineLimit(1).minimumScaleFactor(0.65)
         .padding(.vertical, 6)
         .padding(.horizontal, 3)
         .background(
