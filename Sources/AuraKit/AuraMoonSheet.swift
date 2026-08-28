@@ -51,11 +51,12 @@ public struct AuraMoonSheet: View {
         let phase = MoonPhaseMath.phaseName(illumination: p.illumination, waxing: p.waxing)
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Luna")
+                Text(auraString("moon.title"))
                     .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
                     .foregroundStyle(.white)
                     .padding(.trailing, 34)   // clear of the close button
-                Text("\(phase) · \(illumPct) % iluminada")
+                // `phase` is on-device lunar vocabulary (kept Spanish); only "iluminada" is chrome.
+                Text(auraString("moon.illuminated", phase, illumPct))
                     .auraFont(15, relativeTo: .body)
                     .foregroundStyle(.white.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
@@ -75,19 +76,19 @@ public struct AuraMoonSheet: View {
             .padding(.vertical, 2)
 
             VStack(spacing: 0) {
-                factRow(icon: "arrow.up", label: "Salida", value: timeText(times?.moonrise),
+                factRow(icon: "arrow.up", label: auraString("moon.rise"), value: timeText(times?.moonrise),
                         tint: Palette.tempBlue)
-                factRow(icon: "arrow.down", label: "Puesta", value: timeText(times?.moonset),
+                factRow(icon: "arrow.down", label: auraString("moon.set"), value: timeText(times?.moonset),
                         tint: Palette.tempBlue)
-                factRow(icon: "moon.fill", label: "Próxima llena",
+                factRow(icon: "moon.fill", label: auraString("moon.nextFull"),
                         value: eventText(MoonPhaseMath.nextFullMoon(from: now)),
                         tint: Color(white: 0.92))
-                factRow(icon: "moon", label: "Próxima nueva",
+                factRow(icon: "moon", label: auraString("moon.nextNew"),
                         value: eventText(MoonPhaseMath.nextNewMoon(from: now)),
                         tint: Color(white: 0.55), last: true)
             }
 
-            Text("La fase y el porcentaje se calculan a partir de la posición real del Sol y la Luna; salida y puesta, para tu ubicación. Las horas de las próximas fases son aproximadas (unas horas de margen).")
+            Text(auraString("moon.explain"))
                 .auraFont(13, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
@@ -123,13 +124,15 @@ public struct AuraMoonSheet: View {
         return AuraTime.hhmm(date)
     }
 
-    /// "28 ago · en 5 días" — the date plus a relative-day tail (hoy / mañana / en N días).
+    /// "28 ago · en 5 días" ("28 Aug · in 5 days") — the date (month name follows the UI locale) plus a
+    /// relative-day tail (hoy / mañana / en N días), the app's one grammatical plural.
     private func eventText(_ date: Date) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "d MMM"
+        let f = DateFormatter(); f.locale = .autoupdatingCurrent; f.dateFormat = "d MMM"
         let cal = Calendar(identifier: .gregorian)
         let days = cal.dateComponents([.day], from: cal.startOfDay(for: now),
                                       to: cal.startOfDay(for: date)).day ?? 0
-        let tail = days <= 0 ? "hoy" : (days == 1 ? "mañana" : "en \(days) días")
+        let tail = days <= 0 ? auraString("rel.today")
+            : (days == 1 ? auraString("rel.tomorrow") : auraString("rel.inDays", days))
         return "\(f.string(from: date)) · \(tail)"
     }
 }

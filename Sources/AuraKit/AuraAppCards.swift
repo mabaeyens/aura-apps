@@ -136,8 +136,8 @@ public struct AuraForecastStack: View {
         if hasHourlyUV { sources.append("Copernicus") }
         let list: String
         if sources.count == 1 { list = sources[0] }
-        else { list = sources.dropLast().joined(separator: ", ") + " y " + sources.last! }
-        return "Elaborado con datos de " + list
+        else { list = sources.dropLast().joined(separator: ", ") + " " + auraString("list.and") + " " + sources.last! }
+        return auraString("attribution.madeWith", list)
     }
 
     public var body: some View {
@@ -235,12 +235,12 @@ public struct AuraHeroCard: View {
     /// sun-path bucket the hero background selector uses, so the label tracks true sunrise/sunset.
     private var momentLabel: String {
         switch HeroBackground.Time(now: now, sunrise: snapshot.sunrise, sunset: snapshot.sunset) {
-        case .dawn:      return "Amanecer"
-        case .morning:   return "Mañana"
-        case .noon:      return "Mediodía"
-        case .afternoon: return "Tarde"
-        case .dusk:      return "Atardecer"
-        case .night:     return "Noche"
+        case .dawn:      return auraString("tod.dawn")
+        case .morning:   return auraString("tod.morning")
+        case .noon:      return auraString("tod.noon")
+        case .afternoon: return auraString("tod.afternoon")
+        case .dusk:      return auraString("tod.dusk")
+        case .night:     return auraString("tod.night")
         }
     }
 
@@ -346,11 +346,11 @@ public struct AuraHourlyCard: View {
                 grid(columnWidth: nil, cap: 5)   // offline preview: the first five, spread to fill
             }
         }
-        .auraSectionTitle("Próximas horas".uppercased(), size)
+        .auraSectionTitle(auraString("card.hourly.title").uppercased(), size)
         // The strip is a row-major grid, so VoiceOver would otherwise read a loose run of bare numbers.
         // Collapse it into one element that speaks each hour with its temperature and rain chance.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Próximas horas")
+        .accessibilityLabel(auraString("card.hourly.title"))
         .accessibilityValue(hoursA11yValue)
     }
 
@@ -471,16 +471,16 @@ public struct AuraDailyCard: View {
                 }
             }
         }
-        .auraSectionTitle("Próximos días".uppercased(), size)
+        .auraSectionTitle(auraString("card.daily.title").uppercased(), size)
     }
 
     /// "Lunes, mínima 10 grados, máxima 20 grados, 30% de lluvia" — one day read as a spoken row.
     private static func dayA11yLabel(_ d: DaySnapshot) -> String {
         var parts = [weekday(d.date)]
-        if let lo = d.min, let hi = d.max { parts.append("mínima \(lo) grados, máxima \(hi) grados") }
-        else if let hi = d.max { parts.append("máxima \(hi) grados") }
-        else if let lo = d.min { parts.append("mínima \(lo) grados") }
-        if let p = d.probPrecip, p >= 10 { parts.append("\(p)% de lluvia") }
+        if let lo = d.min, let hi = d.max { parts.append(auraString("a11y.day.minMax", lo, hi)) }
+        else if let hi = d.max { parts.append(auraString("a11y.day.max", hi)) }
+        else if let lo = d.min { parts.append(auraString("a11y.day.min", lo)) }
+        if let p = d.probPrecip, p >= 10 { parts.append(auraString("a11y.day.rain", p)) }
         return parts.joined(separator: ", ")
     }
 
@@ -768,9 +768,9 @@ public struct AuraSunArcCard: View {
         let night = !isDay
         return AuraCelestialArcCard(
             size: size,
-            title: "Sol",
+            title: auraString("sun.title"),
             hasTimes: hasTimes,
-            unavailableText: "Horario solar no disponible",
+            unavailableText: auraString("sun.unavailable"),
             accessibilityValue: a11yValue,
             fraction: fraction,
             // The full arc dims and the travelled portion drops out once the sun is down.
@@ -795,12 +795,12 @@ public struct AuraSunArcCard: View {
                 // (phone only) its civil-twilight line — first light before orto, last light after ocaso.
                 HStack(alignment: .top) {
                     CelestialArcEnd(size: size, icon: "sunrise.fill", iconColor: Palette.tempOrange,
-                                    label: "Orto", time: sunrise,
-                                    civilLabel: "Primera luz", civilTime: civilDawn)
+                                    label: auraString("sun.sunrise"), time: sunrise,
+                                    civilLabel: auraString("sun.firstLight"), civilTime: civilDawn)
                     Spacer()
                     CelestialArcEnd(size: size, icon: "sunset.fill", iconColor: Palette.tempOrange,
-                                    label: "Ocaso", time: sunset, trailing: true,
-                                    civilLabel: "Última luz", civilTime: civilDusk)
+                                    label: auraString("sun.sunset"), time: sunset, trailing: true,
+                                    civilLabel: auraString("sun.lastLight"), civilTime: civilDusk)
                 }
             },
             readout: readout,
@@ -809,7 +809,7 @@ public struct AuraSunArcCard: View {
                 // orto/ocaso, no new data. Noon is phone-only; the length line carries the day-over-day
                 // delta there too. Dimmer than the readout so it reads as secondary.
                 if size == .phone, let noon = solarNoon {
-                    Text("Mediodía solar \(hhmm(noon))")
+                    Text(auraString("sun.solarNoonAt", hhmm(noon)))
                         .auraFont(size.smallSize, relativeTo: .callout, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -828,12 +828,12 @@ public struct AuraSunArcCard: View {
 
     /// Spoken summary for VoiceOver: sunrise, sunset and the centre readout, or the unavailable notice.
     private var a11yValue: String {
-        guard let sr = sunrise, let ss = sunset else { return "Horario solar no disponible" }
-        var parts = ["Amanece a las \(hhmm(sr))", "anochece a las \(hhmm(ss))"]
-        if let dawn = civilDawn { parts.append("primera luz a las \(hhmm(dawn))") }
-        if let dusk = civilDusk { parts.append("última luz a las \(hhmm(dusk))") }
-        if let noon = solarNoon { parts.append("mediodía solar a las \(hhmm(noon))") }
-        if let len = CelestialArc.compact(from: sr, to: ss) { parts.append("\(len) de luz") }
+        guard let sr = sunrise, let ss = sunset else { return auraString("sun.unavailable") }
+        var parts = [auraString("sun.sunriseAt", hhmm(sr)), auraString("sun.sunsetAt", hhmm(ss))]
+        if let dawn = civilDawn { parts.append(auraString("a11y.sun.firstLightAt", hhmm(dawn))) }
+        if let dusk = civilDusk { parts.append(auraString("a11y.sun.lastLightAt", hhmm(dusk))) }
+        if let noon = solarNoon { parts.append(auraString("a11y.sun.solarNoonAt", hhmm(noon))) }
+        if let len = CelestialArc.compact(from: sr, to: ss) { parts.append(auraString("sun.daylightLength", len)) }
         var value = parts.joined(separator: ", ") + "."
         let r = readout
         if !r.isEmpty { value += " \(r)." }
@@ -843,12 +843,12 @@ public struct AuraSunArcCard: View {
     /// Centre line: daylight remaining while the sun is up, else the countdown to the next sunrise.
     private var readout: String {
         if isDay, let ss = sunset, let left = CelestialArc.compact(from: now, to: ss) {
-            return "Quedan \(left) de luz"
+            return auraString("sun.daylightLeft", left)
         }
         // After dark: the snapshot only carries today's sunrise; sun times barely move day to day, so
         // this morning's orto stands in for tomorrow's — wrap the negative interval by 24 h.
         if let sr = sunrise, let until = CelestialArc.compact(from: now, to: sr, wrapDay: true) {
-            return "Amanece en \(until)"
+            return auraString("sun.sunriseIn", until)
         }
         return ""
     }
@@ -912,9 +912,9 @@ public struct AuraMoonArcCard: View {
     public var body: some View {
         AuraCelestialArcCard(
             size: size,
-            title: "Luna",
+            title: auraString("moon.title"),
             hasTimes: hasTimes,
-            unavailableText: "Horario lunar no disponible",
+            unavailableText: auraString("moon.unavailable"),
             accessibilityValue: a11yValue,
             fraction: fraction,
             fullArcOpacity: 0.24,
@@ -937,10 +937,10 @@ public struct AuraMoonArcCard: View {
                 // Salida on the left (moonrise, east), puesta on the right (moonset, west).
                 HStack(alignment: .top) {
                     CelestialArcEnd(size: size, icon: "arrow.up", iconColor: Palette.tempBlue,
-                                    label: "Salida", time: moonrise)
+                                    label: auraString("moon.rise"), time: moonrise)
                     Spacer()
                     CelestialArcEnd(size: size, icon: "arrow.down", iconColor: Palette.tempBlue,
-                                    label: "Puesta", time: moonset, trailing: true)
+                                    label: auraString("moon.set"), time: moonset, trailing: true)
                 }
             },
             readout: readout,
@@ -951,18 +951,18 @@ public struct AuraMoonArcCard: View {
 
     /// Spoken summary for VoiceOver: the moon's salida, its puesta and the centre readout.
     private var a11yValue: String {
-        guard let r = moonrise, let s = moonset else { return "Horario lunar no disponible" }
+        guard let r = moonrise, let s = moonset else { return auraString("moon.unavailable") }
         let line = readout
-        return "Sale a las \(hhmm(r)), se pone a las \(hhmm(s))." + (line.isEmpty ? "" : " \(line).")
+        return auraString("moon.risesSets", hhmm(r), hhmm(s)) + (line.isEmpty ? "" : " \(line).")
     }
 
     /// Centre line: the countdown to the moon's next event — its puesta while it is up, otherwise its salida.
     private var readout: String {
         if isUp, let s = moonset, let until = CelestialArc.compact(from: now, to: s) {
-            return "Se pone en \(until)"
+            return auraString("moon.setsIn", until)
         }
         if !isUp, let r = moonrise, let until = CelestialArc.compact(from: now, to: r) {
-            return "Sale en \(until)"
+            return auraString("moon.risesIn", until)
         }
         return ""
     }
@@ -998,7 +998,7 @@ public struct AuraWindCard: View {
                         .foregroundStyle(.white.opacity(0.7))
                         .lineLimit(2).minimumScaleFactor(0.8)
                     if let gust = snapshot.windGust {
-                        Text("Rachas \(gust) km/h")
+                        Text(auraString("wind.gusts", gust))
                             .auraFont(size.smallSize, relativeTo: .callout, weight: .semibold)
                             .foregroundStyle(.white.opacity(0.9))
                             .lineLimit(1).minimumScaleFactor(0.7)
@@ -1008,7 +1008,7 @@ public struct AuraWindCard: View {
             }
         }
         .auraDetail(size) { AuraBeaufortSheet(snapshot: snapshot) }
-        .auraSectionTitle("Viento".uppercased(), size)
+        .auraSectionTitle(auraString("card.wind.title").uppercased(), size)
         // The rose is a decorative dial; the speed, direction and gusts beside it are real text. Read
         // them as one element so VoiceOver speaks "12 km/h, del Sudoeste · 225°, Rachas 40 km/h".
         .accessibilityElement(children: .combine)
@@ -1017,8 +1017,8 @@ public struct AuraWindCard: View {
     /// "del Sudoeste · 225°", or "En calma" when there's no measurable direction. The full name reads
     /// clearly; the numeric bearing (the reported 16-point sector, degrees) rides beside it.
     private var directionText: String {
-        guard let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 else { return "En calma" }
-        return "del \(dir.spanishName) · \(Int(dir.degrees))°"
+        guard let dir = snapshot.windDirection, (snapshot.windSpeed ?? 0) > 0 else { return auraString("wind.calm") }
+        return auraString("wind.direction", dir.spanishName, Int(dir.degrees))
     }
 }
 
@@ -1045,22 +1045,23 @@ public struct AuraStationCard: View {
         return f
     }()
 
-    /// The canonical metric order: chip icon, the short label shown under the value, the full name
-    /// spoken by VoiceOver, and the unit spoken with the value. Labels are kept to ≤6 glyphs ("Humed.",
-    /// "Pres.") so every chip's label renders at the same size — a longer word would scale down on its
-    /// own and read smaller than the rest.
-    private static let metrics: [(flag: ObservedMetrics, icon: String, label: String, full: String, unit: String)] = [
-        (.temperature,   "thermometer.medium", "Temp.",  "Temperatura", "grados"),
-        (.wind,          "wind",               "Viento", "Viento",      "kilómetros por hora"),
-        (.humidity,      "humidity.fill",      "Humed.", "Humedad",     "por ciento"),
-        (.pressure,      "gauge.medium",       "Pres.",  "Presión",     "hectopascales"),
-        (.precipitation, "cloud.rain.fill",    "Lluvia", "Lluvia",      "milímetros"),
+    /// The canonical metric order: chip icon, and the localization keys for the short label shown under
+    /// the value, the full name spoken by VoiceOver, and the unit spoken with the value. Labels are kept
+    /// to ≤6 glyphs ("Humed.", "Pres.") so every chip's label renders at the same size — a longer word
+    /// would scale down on its own and read smaller than the rest.
+    private static let metrics: [(flag: ObservedMetrics, icon: String, labelKey: String, fullKey: String, unitKey: String)] = [
+        (.temperature,   "thermometer.medium", "card.station.metric.temp.label",     "a11y.metric.temperature",   "a11y.unit.degrees"),
+        (.wind,          "wind",               "card.station.metric.wind.label",     "a11y.metric.wind",          "a11y.unit.kmh"),
+        (.humidity,      "humidity.fill",      "card.station.metric.humidity.label", "a11y.metric.humidity",      "a11y.unit.percent"),
+        (.pressure,      "gauge.medium",       "card.station.metric.pressure.label", "a11y.metric.pressure",      "a11y.unit.hpa"),
+        (.precipitation, "cloud.rain.fill",    "card.station.metric.rain.label",     "a11y.metric.precipitation", "a11y.unit.mm"),
     ]
 
-    /// Full metric names for the completeness line, in the same order (lower-cased for mid-sentence use).
-    private static let fullNames: [(flag: ObservedMetrics, name: String)] = [
-        (.temperature, "temperatura"), (.wind, "viento"), (.humidity, "humedad"),
-        (.pressure, "presión"), (.precipitation, "precipitación"),
+    /// Localization keys for the full metric names in the completeness line, in the same order
+    /// (lower-cased in the tables for mid-sentence use).
+    private static let fullNameKeys: [(flag: ObservedMetrics, key: String)] = [
+        (.temperature, "metric.temperature.full"), (.wind, "metric.wind.full"), (.humidity, "metric.humidity.full"),
+        (.pressure, "metric.pressure.full"), (.precipitation, "metric.precipitation.full"),
     ]
 
     public var body: some View {
@@ -1085,7 +1086,7 @@ public struct AuraStationCard: View {
                     .lineLimit(2).minimumScaleFactor(0.8)
             }
         }
-        .auraSectionTitle("Estación de observación".uppercased(), size)
+        .auraSectionTitle(auraString("card.station.title").uppercased(), size)
     }
 
     /// The station's measured value for a metric, formatted for its chip (unit implied by the label).
@@ -1114,10 +1115,10 @@ public struct AuraStationCard: View {
             let dist = km < 10
                 ? String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")
                 : "\(Int(km.rounded()))"
-            base = "\(name) · a \(dist) km"
+            base = "\(name) · " + auraString("card.station.distance", dist)
         }
         if let readingTime = snapshot.observationDisplayTime(now: now) {
-            base += " · a las \(Self.hhmm.string(from: readingTime))"
+            base += " · " + auraString("card.station.measuredAt", Self.hhmm.string(from: readingTime))
         }
         return base
     }
@@ -1127,7 +1128,7 @@ public struct AuraStationCard: View {
     /// share one size across the row via `.uniformValueScale()` (so pressure "1013" no longer shrinks on
     /// its own next to "24°"), and the labels sit at a fixed size, pre-abbreviated to a common width, so
     /// all five read at the same size.
-    private func metricChip(_ metric: (flag: ObservedMetrics, icon: String, label: String, full: String, unit: String),
+    private func metricChip(_ metric: (flag: ObservedMetrics, icon: String, labelKey: String, fullKey: String, unitKey: String),
                             value: String?, on: Bool) -> some View {
         VStack(spacing: 3) {
             Image(systemName: metric.icon)
@@ -1141,7 +1142,7 @@ public struct AuraStationCard: View {
                             size: size.bodySize - (size == .phone ? 2 : 4),
                             relativeTo: .body, weight: .semibold)
                 .foregroundStyle(.white.opacity(on ? 0.95 : 0.35))
-            Text(metric.label)
+            Text(auraString(metric.labelKey))
                 .auraFont(size.smallSize - (size == .phone ? 4 : 1), relativeTo: .callout, weight: .medium)
                 .foregroundStyle(.white.opacity(on ? 0.7 : 0.35))
                 .lineLimit(1).minimumScaleFactor(0.9)   // safety only; every label fits at this size
@@ -1160,22 +1161,24 @@ public struct AuraStationCard: View {
 
     /// "Temperatura 24 grados" when reported, "Presión, no disponible" when the station omits it. Uses the
     /// full metric name and unit word, not the abbreviated on-screen label.
-    private func accessibilityText(_ metric: (flag: ObservedMetrics, icon: String, label: String, full: String, unit: String),
+    private func accessibilityText(_ metric: (flag: ObservedMetrics, icon: String, labelKey: String, fullKey: String, unitKey: String),
                                    value: String?, on: Bool) -> String {
-        guard on, let value else { return "\(metric.full), no disponible" }
+        let full = auraString(metric.fullKey)
+        guard on, let value else { return auraString("a11y.value.unavailable", full) }
         // Strip the "°"/"%" glyphs from the spoken value; the unit word carries the meaning.
         let spoken = value.replacingOccurrences(of: "°", with: "").replacingOccurrences(of: "%", with: "")
-        return "\(metric.full) \(spoken) \(metric.unit)"
+        return auraString("a11y.value.reading", full, spoken, auraString(metric.unitKey))
     }
 
-    /// "Mide todos los datos de superficie." or "No mide: presión y precipitación."
+    /// "Mide todos los datos de superficie." or "No mide: presión y precipitación." (English: "Measures
+    /// all surface data." / "Does not measure: pressure and precipitation.")
     private func completeness(_ available: ObservedMetrics) -> String {
-        let missing = Self.fullNames.filter { !available.contains($0.flag) }.map(\.name)
-        guard !missing.isEmpty else { return "Mide todos los datos de superficie." }
+        let missing = Self.fullNameKeys.filter { !available.contains($0.flag) }.map { auraString($0.key) }
+        guard !missing.isEmpty else { return auraString("card.station.complete") }
         let list = missing.count > 1
-            ? missing.dropLast().joined(separator: ", ") + " y " + missing.last!
+            ? missing.dropLast().joined(separator: ", ") + " \(auraString("list.and")) " + missing.last!
             : missing[0]
-        return "No mide: \(list)."
+        return auraString("card.station.missing", list)
     }
 }
 
@@ -1228,7 +1231,7 @@ public struct AuraAirQualityCard: View {
             }
         }
         .auraDetail(size) { AuraAirQualitySheet(airQuality: airQuality) }
-        .auraSectionTitle("Calidad del aire".uppercased(), size)
+        .auraSectionTitle(auraString("card.aqi.title").uppercased(), size)
     }
 
     /// The five ICA pollutants as an even row of colour-coded chips (label, value, band bar), each tinted
@@ -1344,7 +1347,7 @@ public struct AuraUVCard: View {
                         }
                         .frame(width: swatch, height: swatch)
                         .shadow(color: color.opacity(0.6), radius: 5)
-                        Text("Máx. hoy")
+                        Text(auraString("uv.maxToday"))
                             .auraFont(size.smallSize - (size == .phone ? 2 : 3), relativeTo: .callout, weight: .semibold)
                             .foregroundStyle(.white.opacity(0.6))
                     }
@@ -1380,7 +1383,7 @@ public struct AuraUVCard: View {
             }
         }
         .auraDetail(size) { AuraUVSheet(uvIndex: uvIndex, cloudy: cloudy) }
-        .auraSectionTitle("Índice UV".uppercased(), size)
+        .auraSectionTitle(auraString("card.uv.title").uppercased(), size)
     }
 }
 
@@ -1419,12 +1422,12 @@ private struct UVHourStrip: View {
                         Image(systemName: "cloud")
                             .foregroundStyle(.white.opacity(0.85))
                     }
-                    Text("Ahora \(n.index) (\(UVIndex(value: n.index).bandName.lowercased()))")
+                    Text(auraString("uv.now", n.index, UVIndex(value: n.index).bandName.lowercased()))
                         .foregroundStyle(.white)
                     Text("·").foregroundStyle(.white.opacity(0.4))
                 }
                 if let p = peak {
-                    Text("máx \(p.index) a las \(hour(p.date))h")
+                    Text(auraString("uv.peak", p.index, hour(p.date)))
                         .foregroundStyle(.white.opacity(0.7))
                 }
                 Spacer(minLength: 0)
@@ -1436,7 +1439,7 @@ private struct UVHourStrip: View {
             // The actionable window from the same hourly series: when to actually protect yourself, i.e.
             // the stretch where the index sits at or above the WHO threshold of 3.
             if let w = protectionWindow {
-                Text("Protégete de \(w.start)h a \(w.end)h")
+                Text(auraString("uv.protectWindow", w.start, w.end))
                     .auraFont(size.smallSize - 2, relativeTo: .callout, weight: .semibold)
                     .foregroundStyle(.white.opacity(0.7))
                     .lineLimit(1).minimumScaleFactor(0.7)
@@ -1514,14 +1517,14 @@ public struct AuraRadarCard: View {
                 }
             }
         }
-        .auraSectionTitle("Radar".uppercased(), size)
+        .auraSectionTitle(auraString("card.radar.title").uppercased(), size)
     }
 
     /// "Radar de Madrid · hace 6 min", or "· ahora" for a just-fetched frame.
     private var subtitle: String {
         let mins = Int(now.timeIntervalSince(radar.time) / 60)
-        let freshness = mins <= 0 ? "ahora" : "hace \(mins) min"
-        return "Radar de \(radar.siteName) · \(freshness)"
+        let freshness = mins <= 0 ? auraString("rel.now") : auraString("rel.minsAgo", mins)
+        return auraString("radar.subtitle", radar.siteName, freshness)
     }
 
     /// The regional reflectivity frame is a fixed ~240 km-radius circle centred on the radar site — a
@@ -1531,7 +1534,7 @@ public struct AuraRadarCard: View {
     /// Ties the dBZ legend to the image ("reflectividad") and gives "Radar de {sitio}" a real reach.
     /// Short so it never truncates on a narrow phone; the subtitle above already names the radar site.
     private var rangeLine: String {
-        "Reflectividad · alcance \(Self.rangeKm) km"
+        auraString("radar.rangeLine", Self.rangeKm)
     }
 
     /// The dBZ intensity ramp AEMET burns into the frame, spelled out: green (light) → magenta (hail), with
@@ -1547,21 +1550,21 @@ public struct AuraRadarCard: View {
                                      startPoint: .leading, endPoint: .trailing))
                 .frame(height: size == .phone ? 6 : 5)
             HStack(spacing: 0) {
-                Text("Débil")
+                Text(auraString("radar.weak"))
                 Spacer(minLength: 2)
-                Text("Moderada")
+                Text(auraString("radar.moderate"))
                 Spacer(minLength: 2)
-                Text("Fuerte")
+                Text(auraString("radar.strong"))
                 Spacer(minLength: 2)
-                Text("Torrencial")
+                Text(auraString("radar.torrential"))
             }
             .auraFont(size.smallSize - 3, relativeTo: .callout, weight: .medium)
             .foregroundStyle(.white.opacity(0.55))
             .lineLimit(1).minimumScaleFactor(0.7)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Escala de intensidad")
-        .accessibilityValue("De débil (verde) a torrencial o granizo (magenta)")
+        .accessibilityLabel(auraString("radar.intensityScale"))
+        .accessibilityValue(auraString("radar.intensityValue"))
     }
 }
 
@@ -1592,7 +1595,7 @@ public struct AuraNewsCard: View {
                 }
             }
         }
-        .auraSectionTitle("Noticias".uppercased(), size)
+        .auraSectionTitle(auraString("card.news.title").uppercased(), size)
     }
 
     private func row(_ item: NewsItem) -> some View {
@@ -1634,10 +1637,10 @@ public struct AuraNewsCard: View {
     static func relative(from date: Date, now: Date) -> String {
         let seconds = max(0, Int(now.timeIntervalSince(date)))
         let minutes = seconds / 60, hours = minutes / 60, days = hours / 24
-        if days >= 1 { return "hace \(days) d" }
-        if hours >= 1 { return "hace \(hours) h" }
-        if minutes >= 5 { return "hace \(minutes) min" }
-        return "ahora"
+        if days >= 1 { return auraString("rel.daysAgo", days) }
+        if hours >= 1 { return auraString("rel.hoursAgo", hours) }
+        if minutes >= 5 { return auraString("rel.minsAgo", minutes) }
+        return auraString("rel.now")
     }
 }
 
@@ -1696,9 +1699,9 @@ public struct AuraAlertCard: View {
     private var validityText: String? {
         let f: (Date) -> String = { $0.formatted(.dateTime.weekday(.abbreviated).hour().minute()) }
         switch (alert.onset, alert.expires) {
-        case let (start?, end?): return "De \(f(start)) a \(f(end))"
-        case let (nil, end?):    return "Hasta \(f(end))"
-        case let (start?, nil):  return "Desde \(f(start))"
+        case let (start?, end?): return auraString("aviso.window.between", f(start), f(end))
+        case let (nil, end?):    return auraString("aviso.window.until", f(end))
+        case let (start?, nil):  return auraString("aviso.window.from", f(start))
         default:                 return nil
         }
     }
@@ -1730,6 +1733,6 @@ public struct AuraBulletinCard: View {
                 }
             }
         }
-        .auraSectionTitle("Predicción".uppercased(), size)
+        .auraSectionTitle(auraString("card.forecast.title").uppercased(), size)
     }
 }

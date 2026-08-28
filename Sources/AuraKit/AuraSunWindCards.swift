@@ -407,7 +407,7 @@ public struct AuraWindCircular: View {
         } else {
             dial
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Viento")
+                .accessibilityLabel(auraString("a11y.metric.wind"))
                 .accessibilityValue(windA11yValue)
         }
     }
@@ -437,8 +437,8 @@ public struct AuraWindCircular: View {
     /// Spoken wind for the bare dial: "25 km/h del sudoeste", or "En calma" when there's no measurable
     /// direction — mirrors what the card spells out beside the rose.
     private var windA11yValue: String {
-        guard let dir = snapshot.windDirection, let speed = snapshot.windSpeed, speed > 0 else { return "En calma" }
-        return "\(speed) km/h del \(dir.spanishName.lowercased())"
+        guard let dir = snapshot.windDirection, let speed = snapshot.windSpeed, speed > 0 else { return auraString("wind.calm") }
+        return auraString("wind.spoken", speed, dir.spanishName.lowercased())
     }
 
     /// The heading, in the wind-intensity colour. On a `card` it's a single slender needle through the

@@ -215,7 +215,7 @@ private struct AuraScaleRow: View {
     let name: String
     let detail: String
     let isCurrent: Bool
-    var currentLabel: String = "Ahora"
+    var currentLabel: String = auraString("scale.now")
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -283,7 +283,7 @@ private struct AirComponentScale: View {
                     .auraFont(17, relativeTo: .body, weight: .bold)
                     .foregroundStyle(.white.opacity(measured ? 1 : 0.4))
                 if isDriver, measured {
-                    Text("dominante")
+                    Text(auraString("aqi.dominant"))
                         .auraFont(11, relativeTo: .caption, weight: .heavy)
                         .foregroundStyle(.black.opacity(0.85))
                         .padding(.horizontal, 6).padding(.vertical, 2)
@@ -295,7 +295,7 @@ private struct AirComponentScale: View {
                      + Text("µg/m³").font(.system(size: unitSize, weight: .medium)))
                         .foregroundStyle(.white)
                 } else {
-                    Text("No medido en esta estación")
+                    Text(auraString("aqi.notMeasuredHere"))
                         .auraFont(13, relativeTo: .callout)
                         .foregroundStyle(.white.opacity(0.42))
                 }
@@ -326,8 +326,8 @@ private struct AirComponentScale: View {
         var parts = [station]
         if let km = c.distanceKm {
             parts.append(km < 10
-                ? "a " + String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",") + " km"
-                : "a \(Int(km.rounded())) km")
+                ? auraString("card.station.distance", String(format: "%.1f", km).replacingOccurrences(of: ".", with: ","))
+                : auraString("card.station.distance", "\(Int(km.rounded()))"))
         }
         if let when = c.measured { parts.append(AuraNewsCard.relative(from: when, now: now)) }
         return parts.joined(separator: " · ")
@@ -372,9 +372,9 @@ public struct AuraBeaufortSheet: View {
     public var body: some View {
         let current = Beaufort.force(forKmh: snapshot.windSpeed)
         AuraScaleSheet(
-            title: "Escala de Beaufort",
+            title: auraString("beaufort.title"),
             subtitle: subtitle,
-            footnote: "La fuerza se estima a partir de la velocidad media del viento; las rachas pueden ser bastante mayores. Nombres de la escala según AEMET.",
+            footnote: auraString("beaufort.footnote"),
             barColors: Beaufort.scale.map { Palette.wind($0.midKmh) },
             markerFraction: current >= 0 ? Double(current) / 12 : nil,
             markerLabel: "\(snapshot.windSpeed ?? 0) km/h",
@@ -384,18 +384,18 @@ public struct AuraBeaufortSheet: View {
                 AuraScaleRow(color: Palette.wind(step.midKmh),
                              badge: "\(step.force)",
                              name: step.name,
-                             detail: "\(step.rangeText) · \(step.effect)",
+                             detail: "\(step.rangeText) · \(auraString(step.effectKey))",
                              isCurrent: step.force == current)
             }
         }
     }
 
     private var subtitle: String {
-        guard let v = snapshot.windSpeed else { return "Ahora mismo no hay dato de viento." }
+        guard let v = snapshot.windSpeed else { return auraString("beaufort.noWind") }
         let f = Beaufort.force(forKmh: v)
         let name = Beaufort.scale.first { $0.force == f }?.name.lowercased() ?? ""
-        let dir = snapshot.windDirection.map { " del \($0.spanishName.lowercased())" } ?? ""
-        return "Ahora: \(v) km/h\(dir) — fuerza \(f), \(name)."
+        let dir = snapshot.windDirection.map { auraString("beaufort.dirSuffix", $0.spanishName.lowercased()) } ?? ""
+        return auraString("beaufort.subtitle", v, dir, f, name)
     }
 }
 
@@ -407,32 +407,33 @@ enum Beaufort {
         let name: String
         let lo: Int
         let hi: Int?          // nil = open-ended top force
-        let effect: String
+        /// Localization key for the row's short visible effect (the Spanish name stays as `name`).
+        let effectKey: String
 
         /// The band as text: "20–28 km/h", "menos de 1 km/h" for calm, "más de 118 km/h" for the top.
         var rangeText: String {
-            if force == 0 { return "menos de 1 km/h" }
-            if let hi { return "\(lo)–\(hi) km/h" }
-            return "más de \(lo) km/h"
+            if force == 0 { return auraString("beaufort.range.calm") }
+            if let hi { return auraString("beaufort.range.between", lo, hi) }
+            return auraString("beaufort.range.above", lo)
         }
         /// A representative speed for the row's colour, on `Palette.wind`'s ramp.
         var midKmh: Int { hi.map { (lo + $0) / 2 } ?? (lo + 20) }
     }
 
     static let scale: [Step] = [
-        Step(force: 0,  name: "Calma",              lo: 0,   hi: 0,   effect: "El humo sube vertical."),
-        Step(force: 1,  name: "Ventolina",          lo: 1,   hi: 5,   effect: "El humo indica la dirección del viento."),
-        Step(force: 2,  name: "Flojito",            lo: 6,   hi: 11,  effect: "Se nota en la cara; se mueven las hojas."),
-        Step(force: 3,  name: "Flojo",              lo: 12,  hi: 19,  effect: "Ondea una bandera ligera."),
-        Step(force: 4,  name: "Bonancible",         lo: 20,  hi: 28,  effect: "Levanta polvo y papeles."),
-        Step(force: 5,  name: "Fresquito",          lo: 29,  hi: 38,  effect: "Se balancean los arbustos."),
-        Step(force: 6,  name: "Fresco",             lo: 39,  hi: 49,  effect: "Silban los cables; cuesta el paraguas."),
-        Step(force: 7,  name: "Frescachón",         lo: 50,  hi: 61,  effect: "Cuesta caminar contra el viento."),
-        Step(force: 8,  name: "Temporal",           lo: 62,  hi: 74,  effect: "Se rompen ramas pequeñas."),
-        Step(force: 9,  name: "Temporal fuerte",    lo: 75,  hi: 88,  effect: "Daños leves en edificios."),
-        Step(force: 10, name: "Temporal duro",      lo: 89,  hi: 102, effect: "Arranca árboles; daños de consideración."),
-        Step(force: 11, name: "Temporal muy duro",  lo: 103, hi: 117, effect: "Destrozos generalizados."),
-        Step(force: 12, name: "Temporal huracanado", lo: 118, hi: nil, effect: "Devastación."),
+        Step(force: 0,  name: "Calma",              lo: 0,   hi: 0,   effectKey: "beaufort.effect.0"),
+        Step(force: 1,  name: "Ventolina",          lo: 1,   hi: 5,   effectKey: "beaufort.effect.1"),
+        Step(force: 2,  name: "Flojito",            lo: 6,   hi: 11,  effectKey: "beaufort.effect.2"),
+        Step(force: 3,  name: "Flojo",              lo: 12,  hi: 19,  effectKey: "beaufort.effect.3"),
+        Step(force: 4,  name: "Bonancible",         lo: 20,  hi: 28,  effectKey: "beaufort.effect.4"),
+        Step(force: 5,  name: "Fresquito",          lo: 29,  hi: 38,  effectKey: "beaufort.effect.5"),
+        Step(force: 6,  name: "Fresco",             lo: 39,  hi: 49,  effectKey: "beaufort.effect.6"),
+        Step(force: 7,  name: "Frescachón",         lo: 50,  hi: 61,  effectKey: "beaufort.effect.7"),
+        Step(force: 8,  name: "Temporal",           lo: 62,  hi: 74,  effectKey: "beaufort.effect.8"),
+        Step(force: 9,  name: "Temporal fuerte",    lo: 75,  hi: 88,  effectKey: "beaufort.effect.9"),
+        Step(force: 10, name: "Temporal duro",      lo: 89,  hi: 102, effectKey: "beaufort.effect.10"),
+        Step(force: 11, name: "Temporal muy duro",  lo: 103, hi: 117, effectKey: "beaufort.effect.11"),
+        Step(force: 12, name: "Temporal huracanado", lo: 118, hi: nil, effectKey: "beaufort.effect.12"),
     ]
 
     /// The Beaufort force for a wind speed in km/h, or -1 when there's no reading.
@@ -455,12 +456,12 @@ public struct AuraAirQualitySheet: View {
 
     public var body: some View {
         AuraScaleSheet(
-            title: "Índice de calidad del aire",
+            title: auraString("aqi.sheetTitle"),
             subtitle: subtitle,
-            footnote: "Índice ICA del Ministerio (MITECO): el peor de los contaminantes marca el nivel. Aura toma cada contaminante de la estación más cercana que lo mide (el O₃ y el SO₂ rara vez están en la más próxima) y usa las medias con las que se elabora el ICA: 8 h para el O₃, 24 h para las partículas. Por eso cada uno puede venir de una estación y una hora distintas, indicadas abajo.",
+            footnote: auraString("aqi.footnote"),
             barColors: (1...6).map { Palette.airQuality($0) },
             markerFraction: (Double(airQuality.category) - 0.5) / 6,
-            markerLabel: "Nivel \(airQuality.category)",
+            markerLabel: auraString("scale.level", airQuality.category),
             scrolls: scrolls
         ) {
             VStack(alignment: .leading, spacing: 10) {
@@ -468,7 +469,7 @@ public struct AuraAirQualitySheet: View {
                     AuraScaleRow(color: Palette.airQuality(level.category),
                                  badge: "\(level.category)",
                                  name: level.name,
-                                 detail: level.advice,
+                                 detail: auraString(level.adviceKey),
                                  isCurrent: level.category == airQuality.category)
                 }
                 componentSection
@@ -484,11 +485,11 @@ public struct AuraAirQualitySheet: View {
                                   uniquingKeysWith: { a, _ in a })
         return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("POR CONTAMINANTE")
+                Text(auraString("aqi.byPollutant"))
                     .auraFont(14, relativeTo: .callout, weight: .semibold)
                     .tracking(1.1)
                     .foregroundStyle(.white.opacity(0.72))
-                Text("Cada uno, de la estación más cercana que lo mide.")
+                Text(auraString("aqi.byPollutantNote"))
                     .auraFont(13, relativeTo: .callout)
                     .foregroundStyle(.white.opacity(0.5))
             }
@@ -503,27 +504,21 @@ public struct AuraAirQualitySheet: View {
     }
 
     private var subtitle: String {
-        let by = airQuality.pollutantLabel.map { ", por \($0)" } ?? ""
-        return "Ahora: \(airQuality.categoryName.lowercased()) (nivel \(airQuality.category))\(by), en \(airQuality.station)."
+        let by = airQuality.pollutantLabel.map { auraString("aqi.bySuffix", $0) } ?? ""
+        return auraString("aqi.subtitle", airQuality.categoryName.lowercased(), airQuality.category, by, airQuality.station)
     }
 }
 
 /// The six ICA levels with their official Spanish names and a general-population recommendation.
 enum AirICA {
-    struct Level { let category: Int; let name: String; let advice: String }
+    struct Level { let category: Int; let name: String; let adviceKey: String }
     static let levels: [Level] = [
-        Level(category: 1, name: "Buena",
-              advice: "Calidad del aire ideal para cualquier actividad al aire libre."),
-        Level(category: 2, name: "Razonablemente buena",
-              advice: "Se puede hacer vida normal al aire libre."),
-        Level(category: 3, name: "Regular",
-              advice: "Los grupos sensibles pueden notar molestias leves."),
-        Level(category: 4, name: "Desfavorable",
-              advice: "Los grupos sensibles deberían reducir el esfuerzo prolongado al aire libre."),
-        Level(category: 5, name: "Muy desfavorable",
-              advice: "Evita el ejercicio intenso al aire libre; los grupos sensibles, mejor en interiores."),
-        Level(category: 6, name: "Extremadamente desfavorable",
-              advice: "Evita la actividad física al aire libre."),
+        Level(category: 1, name: "Buena",                       adviceKey: "ica.advice.1"),
+        Level(category: 2, name: "Razonablemente buena",        adviceKey: "ica.advice.2"),
+        Level(category: 3, name: "Regular",                     adviceKey: "ica.advice.3"),
+        Level(category: 4, name: "Desfavorable",                adviceKey: "ica.advice.4"),
+        Level(category: 5, name: "Muy desfavorable",            adviceKey: "ica.advice.5"),
+        Level(category: 6, name: "Extremadamente desfavorable", adviceKey: "ica.advice.6"),
     ]
 }
 
@@ -541,13 +536,13 @@ public struct AuraUVSheet: View {
 
     public var body: some View {
         AuraScaleSheet(
-            title: "Índice ultravioleta",
-            subtitle: "Máximo de hoy: \(uvIndex.value) — \(uvIndex.bandName.lowercased()).",
-            footnote: "Índice UV de la OMS: la radiación solar máxima prevista para hoy con cielo despejado. Cuanto más alto, antes se quema la piel. Las nubes lo bajan; la nieve, el agua y la altitud lo suben.",
+            title: auraString("uv.sheetTitle"),
+            subtitle: auraString("uv.subtitle", uvIndex.value, uvIndex.bandName.lowercased()),
+            footnote: auraString("uv.footnote"),
             barColors: UVBands.bands.map { Palette.uvIndex($0.mid) },
             markerFraction: min(Double(uvIndex.value), 11) / 11,
             markerLabel: "UV \(uvIndex.value)",
-            note: cloudy ? ("cloud", "Ahora el cielo está nublado y baja el UV por debajo de este máximo.") : nil,
+            note: cloudy ? ("cloud", auraString("uv.cloudyNote")) : nil,
             scrolls: scrolls
         ) {
             ForEach(UVBands.bands, id: \.name) { band in
@@ -555,9 +550,9 @@ public struct AuraUVSheet: View {
                              badge: band.rangeText,
                              glyph: UVIndex(value: band.mid).glyph,
                              name: band.name,
-                             detail: band.advice,
+                             detail: auraString(band.adviceKey),
                              isCurrent: band.contains(uvIndex.value),
-                             currentLabel: "Máx. hoy")
+                             currentLabel: auraString("uv.maxToday"))
             }
         }
     }
@@ -569,7 +564,7 @@ enum UVBands {
         let name: String
         let lo: Int
         let hi: Int?
-        let advice: String
+        let adviceKey: String
 
         var mid: Int { hi.map { (lo + $0) / 2 } ?? (lo + 1) }
         var rangeText: String { hi.map { lo == $0 ? "\(lo)" : "\(lo)–\($0)" } ?? "\(lo)+" }
@@ -578,14 +573,14 @@ enum UVBands {
 
     static let bands: [Band] = [
         Band(name: "Bajo", lo: 0, hi: 2,
-             advice: "No hace falta protección."),
+             adviceKey: "uv.advice.0"),
         Band(name: "Moderado", lo: 3, hi: 5,
-             advice: "Gafas de sol y crema; busca la sombra al mediodía."),
+             adviceKey: "uv.advice.3"),
         Band(name: "Alto", lo: 6, hi: 7,
-             advice: "Protección necesaria: crema, gorra y sombra en las horas centrales."),
+             adviceKey: "uv.advice.6"),
         Band(name: "Muy alto", lo: 8, hi: 10,
-             advice: "Extrema la protección; evita el sol entre las 12 y las 16 h."),
+             adviceKey: "uv.advice.8"),
         Band(name: "Extremadamente alto", lo: 11, hi: nil,
-             advice: "Evita el sol; la piel sin proteger se quema en minutos."),
+             adviceKey: "uv.advice.11"),
     ]
 }

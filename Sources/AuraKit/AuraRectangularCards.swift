@@ -194,12 +194,12 @@ public struct AuraRectSun: View {
     /// orto stands in for tomorrow's — sun times barely move day to day — so wrap a past time by 24h).
     private func readout(sr: Date, ss: Date) -> String {
         if now >= sr, now < ss, let left = Self.compact(from: now, to: ss) {
-            return "Quedan \(left) de luz"
+            return auraString("sun.daylightLeft", left)
         }
         if let until = Self.compact(from: now, to: sr, wrapDay: true) {
-            return "Amanece en \(until)"
+            return auraString("sun.sunriseIn", until)
         }
-        return "Sol"
+        return auraString("sun.title")
     }
 
     private func hhmm(_ date: Date) -> String {

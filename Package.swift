@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "AuraKit",
+    defaultLocalization: "es",
     platforms: [.macOS(.v13), .iOS(.v17), .watchOS(.v10)],
     products: [
         .library(name: "AuraKit", targets: ["AuraKit"]),
@@ -11,7 +12,8 @@ let package = Package(
         .executable(name: "aura-widget-shots", targets: ["AuraWidgetShots"]),
     ],
     targets: [
-        .target(name: "AuraKit"),
+        .target(name: "AuraKit",
+                resources: [.process("Resources")]),
         .executableTarget(name: "AuraSmoke", dependencies: ["AuraKit"]),
         .executableTarget(name: "AuraRender", dependencies: ["AuraKit"]),
         .executableTarget(name: "AuraWidgetShots", dependencies: ["AuraKit"]),

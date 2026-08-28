@@ -18,11 +18,11 @@ public enum AuraTime {
     }
 
     private static let formatter24: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "HH:mm"; return f
+        let f = DateFormatter(); f.locale = .autoupdatingCurrent; f.dateFormat = "HH:mm"; return f
     }()
 
     private static let formatter12: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES")
+        let f = DateFormatter(); f.locale = .autoupdatingCurrent
         f.dateFormat = "h:mm a"; f.amSymbol = "AM"; f.pmSymbol = "PM"; return f
     }()
 
@@ -32,13 +32,13 @@ public enum AuraTime {
     }
 
     private static let weekdayFormatter: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "es_ES"); f.dateFormat = "EEE"; return f
+        let f = DateFormatter(); f.locale = .autoupdatingCurrent; f.dateFormat = "EEE"; return f
     }()
 
-    /// A short capitalised Spanish weekday for the daily strips: "Lun", "Mar", … Clamped to three
-    /// letters so a locale that appends a period ("lun.") doesn't leak it. Backed by one cached
-    /// formatter — the daily cards call this once per row, so a fresh `DateFormatter` per call was a
-    /// needless allocation on a hot render path.
+    /// A short capitalised weekday for the daily strips, in the UI language: "Lun"/"Mar" in Spanish,
+    /// "Mon"/"Tue" in English. Clamped to three letters so a locale that appends a period ("lun.")
+    /// doesn't leak it. Backed by one cached formatter — the daily cards call this once per row, so a
+    /// fresh `DateFormatter` per call was a needless allocation on a hot render path.
     public static func shortWeekday(_ date: Date) -> String {
         String(weekdayFormatter.string(from: date).prefix(3)).capitalized
     }

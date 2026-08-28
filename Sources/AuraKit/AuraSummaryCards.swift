@@ -257,7 +257,7 @@ public struct AuraAvisoCircular: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.title3)
                     .foregroundStyle(Palette.alert(alert.level))
-                Text("Aviso")
+                Text(auraString("aviso.label"))
                     .font(.caption2).fontWeight(.semibold)
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
@@ -283,7 +283,7 @@ public struct AuraAvisoInline: View {
     public var body: some View {
         if let alert = snapshot.activeAlert(at: now) {
             Label {
-                Text(alert.phenomenon ?? "Aviso")
+                Text(alert.phenomenon ?? auraString("aviso.label"))
             } icon: {
                 Image(systemName: "exclamationmark.triangle.fill")
             }
@@ -320,8 +320,8 @@ public struct AuraAvisoCorner: View {
 
     /// The curved bezel label: the phenomenon when an aviso is active, else the calm "Sin avisos".
     public var cornerLabel: String {
-        if let alert = snapshot.activeAlert(at: now) { return alert.phenomenon ?? "Aviso" }
-        return "Sin avisos"
+        if let alert = snapshot.activeAlert(at: now) { return alert.phenomenon ?? auraString("aviso.label") }
+        return auraString("aviso.none")
     }
 }
 
@@ -355,10 +355,10 @@ public struct AuraAvisoRectangular: View {
                 .font(wide ? .title : .title2)
                 .foregroundStyle(Palette.alert(alert.level))
             VStack(alignment: .leading, spacing: 1) {
-                Text(alert.phenomenon ?? "Aviso")
+                Text(alert.phenomenon ?? auraString("aviso.label"))
                     .font(wide ? .subheadline : .caption).fontWeight(.semibold)
                     .lineLimit(1).minimumScaleFactor(0.7)
-                Text("Nivel \(alert.level.rawValue)")
+                Text(auraString("aviso.level", alert.level.rawValue))
                     .font(wide ? .footnote : .caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1).minimumScaleFactor(0.7)
@@ -369,7 +369,7 @@ public struct AuraAvisoRectangular: View {
 
     private func calm(wide: Bool) -> some View {
         Label {
-            Text("Sin avisos")
+            Text(auraString("aviso.none"))
         } icon: {
             CalmAvisoGlyph()
         }

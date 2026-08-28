@@ -256,23 +256,24 @@ public enum AuraRefreshCore {
         return RefreshOutcome(events: events, didUpdate: didUpdate, errorMessage: firstError)
     }
 
-    /// Spanish message for any error surfaced while talking to AEMET.
+    /// Localized message for any error surfaced while talking to AEMET (the AEMET status `desc` is
+    /// server-returned data and is interpolated as-is).
     public static func message(for error: Error) -> String {
         switch error {
         case AEMETClient.ClientError.missingAPIKey:
-            return "Falta la clave de AEMET. Añádela en Ajustes."
+            return auraString("error.missingKey")
         case AEMETClient.ClientError.rateLimited:
-            return "AEMET ha limitado las peticiones. Inténtalo en un minuto."
+            return auraString("error.rateLimited")
         case AEMETClient.ClientError.http(let code):
-            return "Error de red (HTTP \(code))."
+            return auraString("error.network", code)
         case AEMETClient.ClientError.aemetStatus(let code, let desc):
-            return "AEMET devolvió \(code): \(desc)"
+            return auraString("error.aemetStatus", code, desc)
         case AEMETClient.ClientError.decoding:
-            return "No se pudieron leer los datos de AEMET."
+            return auraString("error.decoding")
         case let urlError as URLError where urlError.code == .notConnectedToInternet:
-            return "Sin conexión. Se muestran los últimos datos disponibles."
+            return auraString("error.offline")
         default:
-            return "No se pudo obtener la información."
+            return auraString("error.generic")
         }
     }
 }

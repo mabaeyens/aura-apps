@@ -52,11 +52,11 @@ public enum SunMoonMoment: Sendable, Hashable {
         }
     }
 
-    /// The Spanish label for the event — the noun the time belongs to.
+    /// The localized label for the event — the noun the time belongs to.
     public var label: String {
         switch self {
-        case .dawn, .night: return "Amanecer"
-        case .day:          return "Ocaso"
+        case .dawn, .night: return auraString("event.sunrise")
+        case .day:          return auraString("event.sunset")
         }
     }
 }

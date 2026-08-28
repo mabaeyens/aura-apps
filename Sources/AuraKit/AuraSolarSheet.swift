@@ -69,7 +69,7 @@ public struct AuraSolarSheet: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Sol")
+                Text(auraString("sun.title"))
                     .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
                     .foregroundStyle(.white)
                     .padding(.trailing, 34)   // clear of the close button
@@ -95,21 +95,21 @@ public struct AuraSolarSheet: View {
             .padding(.vertical, 2)
 
             VStack(spacing: 0) {
-                factRow(icon: "sunrise", label: "Primera luz", value: timeText(solar?.civilDawn),
+                factRow(icon: "sunrise", label: auraString("sun.firstLight"), value: timeText(solar?.civilDawn),
                         tint: Color(red: 0.98, green: 0.75, blue: 0.5))
-                factRow(icon: "sunrise.fill", label: "Orto", value: timeText(sunrise),
+                factRow(icon: "sunrise.fill", label: auraString("sun.sunrise"), value: timeText(sunrise),
                         tint: Color(red: 1.0, green: 0.82, blue: 0.4))
-                factRow(icon: "sun.max.fill", label: "Mediodía solar", value: timeText(solarNoon),
+                factRow(icon: "sun.max.fill", label: auraString("sun.solarNoon"), value: timeText(solarNoon),
                         tint: Color(red: 1.0, green: 0.9, blue: 0.5))
-                factRow(icon: "sunset.fill", label: "Ocaso", value: timeText(sunset),
+                factRow(icon: "sunset.fill", label: auraString("sun.sunset"), value: timeText(sunset),
                         tint: Color(red: 1.0, green: 0.6, blue: 0.35))
-                factRow(icon: "sunset", label: "Última luz", value: timeText(solar?.civilDusk),
+                factRow(icon: "sunset", label: auraString("sun.lastLight"), value: timeText(solar?.civilDusk),
                         tint: Color(red: 0.62, green: 0.55, blue: 0.75))
-                factRow(icon: "hourglass", label: "Luz del día", value: dayLengthText,
+                factRow(icon: "hourglass", label: auraString("sun.daylight"), value: dayLengthText,
                         tint: Color(white: 0.85), last: true)
             }
 
-            Text("Orto y ocaso vienen del parte de AEMET para tu municipio; la primera y la última luz (crepúsculo civil), el mediodía solar y la duración del día se calculan para tus coordenadas.")
+            Text(auraString("sun.explain"))
                 .auraFont(13, relativeTo: .callout)
                 .foregroundStyle(.white.opacity(0.55))
                 .fixedSize(horizontal: false, vertical: true)
@@ -121,12 +121,12 @@ public struct AuraSolarSheet: View {
 
     /// The headline fact: today's daylight length plus the day-over-day delta.
     private var subtitle: String {
-        guard let len = dayLength else { return "Horario solar no disponible" }
-        var s = "\(durationText(len)) de luz"
+        guard let len = dayLength else { return auraString("sun.unavailable") }
+        var s = auraString("sun.daylightLength", durationText(len))
         if let dm = dayLengthDeltaMinutes {
-            if dm > 0 { s += " · \(dm) min más que ayer" }
-            else if dm < 0 { s += " · \(-dm) min menos que ayer" }
-            else { s += " · igual que ayer" }
+            if dm > 0 { s += " · " + auraString("sun.deltaMore", dm) }
+            else if dm < 0 { s += " · " + auraString("sun.deltaLess", -dm) }
+            else { s += " · " + auraString("sun.deltaSame") }
         }
         return s
     }

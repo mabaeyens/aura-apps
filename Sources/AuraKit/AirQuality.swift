@@ -147,7 +147,7 @@ public struct AirQuality: Codable, Sendable, Hashable {
         case 4: return "Desfavorable"
         case 5: return "Muy desfavorable"
         case 6: return "Extremadamente desfavorable"
-        default: return "Sin datos"
+        default: return auraString("aqi.noData")
         }
     }
 

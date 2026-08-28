@@ -140,7 +140,7 @@ private struct AvisoPill: View {
                 .foregroundStyle(Palette.alert(level))
                 .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
         } else {
-            Label("Aviso", systemImage: "exclamationmark.triangle.fill")
+            Label(auraString("aviso.label"), systemImage: "exclamationmark.triangle.fill")
                 .font(.caption2).fontWeight(.bold)
                 .labelStyle(HomeTightLabel())
                 .foregroundStyle(.white)
@@ -581,9 +581,9 @@ public struct AuraHomeEmpty: View {
             Image(systemName: "cloud.sun.fill")
                 .symbolRenderingMode(.multicolor)
                 .font(.largeTitle)
-            Text("Abre Aura")
+            Text(auraString("home.openAura"))
                 .font(.headline).skyText()
-            Text("para ver el tiempo aquí")
+            Text(auraString("home.seeWeatherHere"))
                 .font(.caption).foregroundStyle(.white.opacity(0.8))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

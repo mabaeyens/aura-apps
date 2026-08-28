@@ -1,0 +1,229 @@
+/* AuraKit chrome — English (override). Chrome only: weather data and the on-device
+   meteorological vocabulary (UV bands, ICA categories, Beaufort names, wind
+   cardinals, moon phases, the forecast phrase) stay Spanish in every language and
+   are NOT in this table. */
+
+/* Section titles (uppercased in code) */
+"card.hourly.title"   = "Next hours";
+"card.daily.title"    = "Next days";
+"card.wind.title"     = "Wind";
+"card.station.title"  = "Observation station";
+"card.aqi.title"      = "Air quality";
+"card.uv.title"       = "UV index";
+"card.radar.title"    = "Radar";
+"card.news.title"     = "News";
+"card.forecast.title" = "Forecast";
+"card.sunmoon.title"  = "Sun & Moon";
+
+/* Observation station card — tile labels (short, under the value) */
+"card.station.metric.temp.label"     = "Temp.";
+"card.station.metric.wind.label"     = "Wind";
+"card.station.metric.humidity.label" = "Humid.";
+"card.station.metric.pressure.label" = "Press.";
+"card.station.metric.rain.label"     = "Rain";
+
+/* Observation station card — completeness line */
+"card.station.complete" = "Measures all surface data.";
+"card.station.missing"  = "Does not measure: %@.";
+"list.and"              = "and";
+
+/* Observation station card — distance to the station (the number keeps the Spanish comma in both
+   languages; only the connector word localizes) */
+"card.station.distance" = "%@ km away";
+
+/* Observation station card — measured-at prefix (the bare time is model-supplied) */
+"card.station.measuredAt" = "at %@";
+
+/* Observation station card — full metric names for the completeness list */
+"metric.temperature.full"   = "temperature";
+"metric.wind.full"          = "wind";
+"metric.humidity.full"      = "humidity";
+"metric.pressure.full"      = "pressure";
+"metric.precipitation.full" = "precipitation";
+
+/* Error / status messages surfaced while talking to AEMET (the AEMET status text is server data) */
+"error.missingKey"  = "Your AEMET key is missing. Add it in Settings.";
+"error.rateLimited" = "AEMET is rate-limiting requests. Try again in a minute.";
+"error.network"     = "Network error (HTTP %d).";
+"error.aemetStatus" = "AEMET returned %1$d: %2$@";
+"error.decoding"    = "Couldn’t read the data from AEMET.";
+"error.offline"     = "No connection. Showing the last available data.";
+"error.generic"     = "Couldn’t fetch the information.";
+
+/* Accessibility — spoken metric names and units for the station chips */
+"a11y.metric.temperature"   = "Temperature";
+"a11y.metric.wind"          = "Wind";
+"a11y.metric.humidity"      = "Humidity";
+"a11y.metric.pressure"      = "Pressure";
+"a11y.metric.precipitation" = "Rain";
+"a11y.unit.degrees"         = "degrees";
+"a11y.unit.kmh"             = "kilometers per hour";
+"a11y.unit.percent"         = "percent";
+"a11y.unit.hpa"             = "hectopascals";
+"a11y.unit.mm"              = "millimeters";
+"a11y.value.unavailable"    = "%@, not available";
+"a11y.value.reading"        = "%1$@ %2$@ %3$@";
+
+/* Moon sheet (the phase name and % come from on-device lunar vocabulary; only the frame is chrome) */
+"moon.title"       = "Moon";
+"moon.illuminated" = "%1$@ · %2$d %% illuminated";
+"moon.rise"        = "Rise";
+"moon.set"         = "Set";
+"moon.nextFull"    = "Next full";
+"moon.nextNew"     = "Next new";
+"moon.explain"     = "The phase and percentage come from the real positions of the Sun and Moon; moonrise and moonset, for your location. The times of the coming phases are approximate (a few hours either way).";
+
+/* Relative-day tail (the plural "in N days" lives in Localizable.stringsdict as rel.inDays) */
+"rel.today"    = "today";
+"rel.tomorrow" = "tomorrow";
+
+/* Sun sheet ("Orto"/"Ocaso" come from AEMET; the labels here are chrome) */
+"sun.title"          = "Sun";
+"sun.firstLight"     = "First light";
+"sun.sunrise"        = "Sunrise";
+"sun.solarNoon"      = "Solar noon";
+"sun.sunset"         = "Sunset";
+"sun.lastLight"      = "Last light";
+"sun.daylight"       = "Daylight";
+"sun.explain"        = "Sunrise and sunset come from the AEMET forecast for your municipality; first and last light (civil twilight), solar noon and the length of the day are computed for your coordinates.";
+"sun.unavailable"    = "Solar times unavailable";
+"sun.daylightLength" = "%@ of daylight";
+"sun.deltaMore"      = "%d min more than yesterday";
+"sun.deltaLess"      = "%d min less than yesterday";
+"sun.deltaSame"      = "same as yesterday";
+
+/* Avisos (the phenomenon and level values come from AEMET; these are the generic chrome labels) */
+"aviso.label" = "Warning";
+"aviso.none"  = "No warnings";
+"aviso.level" = "Level %@";
+
+/* Sun / Moon event nouns */
+"event.sunrise" = "Sunrise";
+"event.sunset"  = "Sunset";
+
+/* Home / empty states */
+"home.openAura"       = "Open Aura";
+"home.seeWeatherHere" = "to see the weather here";
+
+/* Air quality — empty category (the 1…6 ICA names stay Spanish; this is the no-data state) */
+"aqi.noData" = "No data";
+
+/* Time-of-day word after the city ("MADRID · Dusk") */
+"tod.dawn"      = "Dawn";
+"tod.morning"   = "Morning";
+"tod.noon"      = "Midday";
+"tod.afternoon" = "Afternoon";
+"tod.dusk"      = "Dusk";
+"tod.night"     = "Night";
+
+/* Source attribution (the source names stay as-is) */
+"attribution.madeWith" = "Made with data from %@";
+
+/* Relative time */
+"rel.now"      = "now";
+"rel.minsAgo"  = "%d min ago";
+"rel.hoursAgo" = "%dh ago";
+"rel.daysAgo"  = "%dd ago";
+
+/* Daily forecast — spoken row */
+"a11y.day.minMax" = "min %1$d degrees, max %2$d degrees";
+"a11y.day.max"    = "max %d degrees";
+"a11y.day.min"    = "min %d degrees";
+"a11y.day.rain"   = "%d%% chance of rain";
+
+/* Sun card / arc — interpolated readouts (times are model-supplied) */
+"sun.solarNoonAt"        = "Solar noon %@";
+"sun.sunriseAt"          = "Sunrise at %@";
+"sun.sunsetAt"           = "sunset at %@";
+"sun.daylightLeft"       = "%@ of daylight left";
+"sun.sunriseIn"          = "Sunrise in %@";
+"a11y.sun.firstLightAt"  = "first light at %@";
+"a11y.sun.lastLightAt"   = "last light at %@";
+"a11y.sun.solarNoonAt"   = "solar noon at %@";
+
+/* Moon card / arc — interpolated readouts */
+"moon.unavailable" = "Lunar times unavailable";
+"moon.risesSets"   = "Rises at %1$@, sets at %2$@.";
+"moon.setsIn"      = "Sets in %@";
+"moon.risesIn"     = "Rises in %@";
+
+/* Wind card (the direction name comes from on-device vocabulary) */
+"wind.gusts"     = "Gusts %d km/h";
+"wind.calm"      = "Calm";
+"wind.direction" = "from the %1$@ · %2$d°";
+"wind.spoken"    = "%1$d km/h from the %2$@";
+
+/* UV card — interpolated (the band name comes from on-device vocabulary) */
+"uv.maxToday"      = "Max today";
+"uv.now"           = "Now %1$d (%2$@)";
+"uv.peak"          = "max %1$d at %2$dh";
+"uv.protectWindow" = "Protect from %1$dh to %2$dh";
+
+/* Radar card (the site name comes from AEMET) */
+"radar.subtitle"       = "%1$@ radar · %2$@";
+"radar.rangeLine"      = "Reflectivity · %d km range";
+"radar.weak"           = "Light";
+"radar.moderate"       = "Moderate";
+"radar.strong"         = "Heavy";
+"radar.torrential"     = "Torrential";
+"radar.intensityScale" = "Intensity scale";
+"radar.intensityValue" = "From light (green) to torrential or hail (magenta)";
+
+/* Aviso validity window (the times are model-supplied) */
+"aviso.window.between" = "From %1$@ to %2$@";
+"aviso.window.until"   = "Until %@";
+"aviso.window.from"    = "From %@";
+
+/* Scale sheets — shared chrome */
+"scale.now"   = "Now";
+"scale.level" = "Level %d";
+
+/* Air-quality sheet (the 1…6 ICA level names stay Spanish) */
+"aqi.dominant"         = "dominant";
+"aqi.notMeasuredHere"  = "Not measured at this station";
+"aqi.sheetTitle"       = "Air quality index";
+"aqi.footnote"         = "Ministry (MITECO) ICA index: the worst pollutant sets the level. Aura takes each pollutant from the nearest station that measures it (O₃ and SO₂ are rarely at the closest one) and uses the averages the ICA is built from: 8 h for O₃, 24 h for particulates. That is why each can come from a different station and hour, shown below.";
+"aqi.byPollutant"      = "BY POLLUTANT";
+"aqi.byPollutantNote"  = "Each from the nearest station that measures it.";
+"aqi.bySuffix"         = ", by %@";
+"aqi.subtitle"         = "Now: %1$@ (level %2$d)%3$@, at %4$@.";
+"ica.advice.1" = "Air quality ideal for any outdoor activity.";
+"ica.advice.2" = "Normal outdoor life is fine.";
+"ica.advice.3" = "Sensitive groups may notice mild discomfort.";
+"ica.advice.4" = "Sensitive groups should cut back prolonged outdoor exertion.";
+"ica.advice.5" = "Avoid intense outdoor exercise; sensitive groups, better indoors.";
+"ica.advice.6" = "Avoid outdoor physical activity.";
+
+/* Beaufort sheet (the 0…12 force names stay Spanish) */
+"beaufort.title"          = "Beaufort scale";
+"beaufort.footnote"       = "The force is estimated from the mean wind speed; gusts can be quite a bit stronger. Scale names per AEMET.";
+"beaufort.noWind"         = "No wind reading right now.";
+"beaufort.dirSuffix"      = " from the %@";
+"beaufort.subtitle"       = "Now: %1$d km/h%2$@ · force %3$d, %4$@.";
+"beaufort.range.calm"     = "under 1 km/h";
+"beaufort.range.between"  = "%1$d–%2$d km/h";
+"beaufort.range.above"    = "over %d km/h";
+"beaufort.effect.0"  = "Smoke rises vertically.";
+"beaufort.effect.1"  = "Smoke shows the wind direction.";
+"beaufort.effect.2"  = "Felt on the face; leaves stir.";
+"beaufort.effect.3"  = "A light flag waves.";
+"beaufort.effect.4"  = "Raises dust and paper.";
+"beaufort.effect.5"  = "Small shrubs sway.";
+"beaufort.effect.6"  = "Wires whistle; umbrellas are hard to use.";
+"beaufort.effect.7"  = "Hard to walk against the wind.";
+"beaufort.effect.8"  = "Small branches break.";
+"beaufort.effect.9"  = "Slight damage to buildings.";
+"beaufort.effect.10" = "Uproots trees; considerable damage.";
+"beaufort.effect.11" = "Widespread destruction.";
+"beaufort.effect.12" = "Devastation.";
+
+/* UV sheet (the WHO band names stay Spanish) */
+"uv.sheetTitle"  = "Ultraviolet index";
+"uv.subtitle"    = "Today's maximum: %1$d, %2$@.";
+"uv.footnote"    = "WHO UV index: the peak solar radiation forecast for today under clear skies. The higher it is, the sooner skin burns. Clouds lower it; snow, water and altitude raise it.";
+"uv.cloudyNote"  = "The sky is overcast right now and holds the UV below this maximum.";
+"uv.advice.0"  = "No protection needed.";
+"uv.advice.3"  = "Sunglasses and sunscreen; seek shade at midday.";
+"uv.advice.6"  = "Protection needed: sunscreen, a hat and shade through the middle of the day.";
+"uv.advice.8"  = "Take extra care; avoid the sun between noon and 4 pm.";
+"uv.advice.11" = "Avoid the sun; unprotected skin burns in minutes.";

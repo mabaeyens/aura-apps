@@ -295,7 +295,7 @@ public struct AuraAccessoryEmpty: View {
     public init() {}
 
     public var body: some View {
-        Label("Abre Aura", systemImage: "cloud.sun")
+        Label(auraString("home.openAura"), systemImage: "cloud.sun")
     }
 }
 
