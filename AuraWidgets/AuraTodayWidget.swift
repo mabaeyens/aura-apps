@@ -25,14 +25,30 @@ private func resolveSnapshot(ine: String?, isPreview: Bool) -> WeatherSnapshot? 
     return SharedCache.resolve(preferredINE: ine)
 }
 
-/// The interval WidgetKit is nudged to re-read the cache over — the app is the real fetch hub.
+/// The interval WidgetKit is nudged to re-read the cache over. The app is still the main fetch hub; the
+/// widget only tops up its own device's cache when the app hasn't run recently (see `refreshIfStale`).
 private func nextRefresh(after date: Date) -> Date {
     Calendar.current.date(byAdding: .hour, value: 3, to: date) ?? date.addingTimeInterval(3 * 3600)
 }
 
-/// Reads the shared cache the app fills, for the location the widget is configured to show. The
-/// widget never calls AEMET; it just re-renders whatever the app last stored, and asks WidgetKit to
-/// refresh a few times a day. Drives the Lock Screen glances.
+/// Before rendering a timeline, refresh the shown location if the shared staleness gate says its cache is
+/// stale — so a Lock Screen glance stays current even when the app hasn't been opened in hours. Scoped to
+/// that one location (`onlyINE`) so a reload costs at most one place's fetch; gated by
+/// `AuraRefreshCore.isStale`, the exact rule the app uses, so a fresh cache is reused with no network. The
+/// whole favourites list is passed so pruning keeps every place — only the shown one is refetched. The
+/// result lands in the App Group cache, so the app and every widget on this device see it (never other
+/// devices — the cache is device-local). Skipped in previews; a no-op when there is no stored key.
+private func refreshIfStale(preferredINE: String?, isPreview: Bool) async {
+    guard !isPreview else { return }
+    let favorites = SharedLocations.read()
+    guard let targetINE = preferredINE ?? SharedCache.activeINE ?? favorites.first?.ine,
+          favorites.contains(where: { $0.ine == targetINE }),
+          AuraRefreshCore.isStale(SharedCache.snapshot(forINE: targetINE)) else { return }
+    _ = await AuraRefreshCore.refresh(locations: favorites, onlyINE: targetINE)
+}
+
+/// Reads the shared cache the app fills, for the location the widget is configured to show, topping it up
+/// first when the shared gate says it is stale (`refreshIfStale`). Drives the Lock Screen glances.
 struct AuraProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> AuraEntry {
         AuraEntry(date: Date(), snapshot: .preview)
@@ -43,6 +59,7 @@ struct AuraProvider: AppIntentTimelineProvider {
     }
 
     func timeline(for configuration: SelectLocationIntent, in context: Context) async -> Timeline<AuraEntry> {
+        await refreshIfStale(preferredINE: configuration.location?.id, isPreview: context.isPreview)
         let entry = AuraEntry(date: Date(), snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: false))
         return Timeline(entries: [entry], policy: .after(nextRefresh(after: entry.date)))
     }
@@ -62,6 +79,7 @@ struct AuraHomeProvider: AppIntentTimelineProvider {
     }
 
     func timeline(for configuration: SelectHomeIntent, in context: Context) async -> Timeline<AuraEntry> {
+        await refreshIfStale(preferredINE: configuration.location?.id, isPreview: context.isPreview)
         let entry = AuraEntry(date: Date(),
                               snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: false),
                               scene: configuration.scene.family)
