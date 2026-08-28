@@ -181,8 +181,14 @@ public extension WeatherSnapshot {
     /// strip already uses), so the hero and the strip's first column are computed the same way and can never
     /// disagree. Each field falls back to its frozen scalar when the re-anchored strip doesn't carry it (a
     /// degraded/thin snapshot, or a snapshot cached before the strip carried that field), so this is **never
-    /// worse** than the frozen value and better whenever the strip has the reading. With an empty strip there is
-    /// nothing to re-anchor, so the snapshot is returned unchanged.
+    /// worse** than the frozen value and better whenever the strip has the reading.
+    ///
+    /// The current **temperature** is special: it leads with the nearest station's measured reading
+    /// (`observedTemp`), then the hourly forecast, then nothing. The observation is a real measurement of
+    /// *now*, fetched from a light national feed that survives when the per-municipality hourly fetch is
+    /// throttled, so leading with it keeps the hero showing a real number even from a cache with an empty
+    /// hourly strip — a blank "—" now means there is genuinely neither a measurement nor a forecast. This
+    /// is why an empty strip is no longer returned unchanged: the observed-led temperature still applies.
     ///
     /// Call it once at each surface's display boundary (passing the live clock for the app and watch, the
     /// timeline entry date for widgets and complications) and render the returned snapshot; the rest of the
@@ -190,7 +196,6 @@ public extension WeatherSnapshot {
     func resolved(at now: Date = Date(),
                   timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> WeatherSnapshot {
         let strip = upcomingHours(now: now, timeZone: timeZone)
-        guard !strip.isEmpty else { return self }
         func first<T>(_ key: (HourSlot) -> T?) -> T? {
             for slot in strip { if let v = key(slot) { return v } }
             return nil
@@ -198,7 +203,7 @@ public extension WeatherSnapshot {
         return WeatherSnapshot(
             ine: ine, localidad: localidad, provincia: provincia,
             tempMin: tempMin, tempMax: tempMax, humedadMax: humedadMax,
-            currentTemp: first(\.temp) ?? currentTemp,
+            currentTemp: observedTemp ?? first(\.temp) ?? currentTemp,
             observedTemp: observedTemp, observedStation: observedStation,
             observedStationDistanceKm: observedStationDistanceKm, observedMetrics: observedMetrics,
             observedReading: observedReading,

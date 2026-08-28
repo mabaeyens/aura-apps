@@ -14,11 +14,9 @@ import WidgetKit
 /// municipal-forecast endpoint, so each location is still its own call; the national observations,
 /// though, are fetched once and sliced locally.
 enum AEMETService {
-    /// A client built from the Keychain key, or nil if no key has been entered yet.
-    static func client() -> AEMETClient? {
-        guard let key = AuraKeychain.apiKey(), !key.isEmpty else { return nil }
-        return AEMETClient(apiKey: key)
-    }
+    /// A client built from the Keychain key, or nil if no key has been entered yet. The construction
+    /// lives in `AuraRefreshCore` so the app and the widget build the client the same way.
+    static func client() -> AEMETClient? { AuraRefreshCore.makeClient() }
 
     private static let refreshGate = RefreshGate()
 
@@ -77,179 +75,31 @@ enum AEMETService {
 
     private static func performRefresh(_ locations: [Location], force: Bool,
                                        onlyINE: String? = nil) async -> String? {
-        // Drop cached snapshots for locations the user no longer tracks (and any long-stale leftover)
-        // so the App Group cache stays bounded. Runs before the early-outs below so removed favourites
-        // are cleaned up even when nothing needs fetching.
-        SharedCache.prune(keepINEs: Set(locations.map(\.ine)))
+        // The fetch → normalize → cache work lives in AuraRefreshCore so the widget can reuse this exact
+        // path. The core does the pruning and the stale-gating and returns what changed; the app owns the
+        // side effects the core can't (notifications, widget reload, Watch push).
+        let outcome = await AuraRefreshCore.refresh(locations: locations, force: force, onlyINE: onlyINE)
 
-        guard let client = client() else { return nil }
-        var firstError: String?
-        func note(_ error: Error) { if firstError == nil { firstError = message(for: error) } }
-
-        // Locations that need fetching. A pull-to-refresh on one place (`onlyINE`) fetches just that
-        // place — the whole favourites list is still pruned and watch-synced below, but their forecasts
-        // aren't refetched on a manual swipe. Otherwise: everything on `force`, else those older than an
-        // hour or cached by a build before the daily sky/wind fields existed (their days decode with
-        // sky == nil, which is why every day rendered as a generic cloud until the next refresh).
-        let stale: [Location]
-        if let onlyINE, let one = locations.first(where: { $0.ine == onlyINE }) {
-            stale = [one]
-        } else {
-            stale = force ? locations : locations.filter { location in
-                guard let existing = SharedCache.snapshot(forINE: location.ine) else { return true }
-                if Date().timeIntervalSince(existing.updated) >= 3600 { return true }
-                if !existing.days.isEmpty, existing.days.allSatisfy({ $0.sky == nil }) { return true }
-                return false
-            }
-        }
-        guard !stale.isEmpty else { return nil }
-        // Bail before the network work if the trigger was already cancelled (app backgrounded, view gone).
-        if Task.isCancelled { return nil }
-
-        // One national observation fetch serves every location; nearest station is resolved locally.
-        // That product updates once per hour, and each record carries its own measurement time (`fint`).
-        // AEMET publishes each hourly reading 20-40 min after the hour, so we hold the last-known feed
-        // until the next reading is genuinely due — the stored `fint` plus one hour plus a 30-minute
-        // publish-lag margin — and skip the network call entirely until then. A forced or single-location
-        // (`onlyINE`) refresh always fetches; when we skip, each location reuses its last good station
-        // reading (carried forward in `WeatherSnapshot.make`) instead of blanking the observed card.
-        var observations: [StationObservation] = []
-        let observationDue: Bool
-        if force || onlyINE != nil {
-            observationDue = true
-        } else if let last = SharedCache.lastObservationFint {
-            // Clamp the anchor to now so a bad, future-dated `fint` can suppress the fetch for at most the
-            // margin window, never indefinitely.
-            let anchor = min(last, Date())
-            observationDue = Date() >= anchor.addingTimeInterval(90 * 60)
-        } else {
-            observationDue = true
-        }
-        if observationDue {
-            do {
-                observations = try await client.observacionTodas()
-                if let newest = observations.compactMap({ $0.timestamp }).max() {
-                    SharedCache.lastObservationFint = newest
-                }
-            } catch { note(error) }
+        // Only the active location notifies. The core captured old-vs-new before each upsert, so a
+        // genuinely new aviso or an updated forecast fires exactly once.
+        for event in outcome.events where event.isPrimary {
+            NotificationManager.evaluatePrimary(old: event.old, new: event.new)
         }
 
-        // Air quality comes from MITECO's national ICA feed (not AEMET), also one download for every
-        // location. It never throws — an empty result on a miteco outage just leaves the card hidden and
-        // never blocks the AEMET refresh.
-        let airStations = await MitecoAirQuality.stations()
-
-        // Today's forecast max UV index — one AEMET call lists every provincial capital; resolved per
-        // location by INE. A failure just leaves the UV card hidden.
-        var uvCities: [UVIForecast.City] = []
-        do { uvCities = try await client.uviCities(dia: 0) } catch { note(error) }
-
-        // Fetch each distinct avisos area at most once, then resolve per location by province.
-        let areas = Set(stale.compactMap { AvisoArea.forProvincia($0.provinciaCode) })
-        var alertsByArea: [String: [WeatherAlert]] = [:]
-        for area in areas {
-            do { alertsByArea[area] = try await client.avisos(area: area) }
-            catch { note(error); alertsByArea[area] = [] }
-        }
-
-        // The Watch shows the primary location, so fetch its community bulletin once and attach it
-        // there (only that snapshot carries the narrative — it's what the Watch renders).
-        let primary = locations.first
-        var primaryBulletin: ForecastBulletin?
-        if let primary, stale.contains(where: { $0.ine == primary.ine }), let comunidad = primary.comunidad {
-            do { primaryBulletin = try await client.comunidadBulletin(comunidad) } catch { note(error) }
-        }
-
-        var didUpdate = false
-        for location in stale {
-            // Stop fetching the rest the moment the task is cancelled; whatever was already upserted still
-            // reloads the widgets below, so a partial refresh isn't wasted.
-            if Task.isCancelled { break }
-            // Read the still-cached snapshot once: it seeds the observation carry-forward when this cycle
-            // skipped the hourly fetch, and it's the "old" value the notification compares against below.
-            let previous = SharedCache.snapshot(forINE: location.ine)
-            let daily: MunicipioForecast
-            do { daily = try await client.municipioDiaria(location.ine) }
-            catch { note(error); continue }
-            let hourly = try? await client.municipioHoraria(location.ine)
-            let observed = StationObservation.nearest(toLatitude: location.latitude,
-                                                      longitude: location.longitude,
-                                                      in: observations)
-            // Air quality: pull each pollutant from the nearest station that measures it (O₃ and SO₂
-            // often aren't at the closest, urban-traffic station), then compose the índice from the worst
-            // pollutant — MITECO's own method — using its running means. A handful of POSTs to MITECO's
-            // backend (a separate host, outside the AEMET budget); on a miss, fall back to the single
-            // nearest station's published índice so the card still stands.
-            let breakdown = await MitecoAirQuality.breakdown(toLatitude: location.latitude,
-                                                             longitude: location.longitude, in: airStations)
-            let airQuality = MitecoAirQuality.composite(from: breakdown)
-                ?? MitecoAirQuality.nearest(toLatitude: location.latitude,
-                                            longitude: location.longitude, in: airStations)
-            let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
-            // Hourly UV from CAMS (via Open-Meteo) — the per-hour granularity AEMET doesn't publish;
-            // AEMET's daily max stays the official headline. One call/location to a separate free host
-            // (like MITECO); never throws — an empty result just hides the hourly curve. © CAMS /
-            // Copernicus + Open-Meteo (both credited).
-            let uvHourly = await OpenMeteoUV.fetch(latitude: location.latitude,
-                                                   longitude: location.longitude)
-            let alert = AvisoArea.forProvincia(location.provinciaCode)
-                .flatMap { alertsByArea[$0] }?
-                .topActive(forProvince: location.provinciaCode)
-            let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
-            let snapshot = WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
-                                                observed: observed, previousObserved: previous,
-                                                alert: alert,
-                                                airQuality: airQuality, uvIndex: uvIndex,
-                                                uvHourly: uvHourly,
-                                                bulletin: bulletin,
-                                                timeZone: location.timeZone)
-            // Only the active location notifies. Compare against the still-cached snapshot (read before
-            // the upsert below) so a genuinely new aviso or an updated forecast fires exactly once.
-            if location.ine == primary?.ine {
-                NotificationManager.evaluatePrimary(old: previous, new: snapshot)
-            }
-            // Don't let a thin snapshot overwrite a good one already cached for this location. The hourly
-            // carry-forward in `make` already covers a wholly-absent feed (`hourly` nil); this catches the
-            // other thin path — a fetch that *succeeded* but returned an empty/degenerate feed with no
-            // resolvable current hour, which carry-forward (gated on `hourly` nil) skips. Matches the guard
-            // on the Watch push (`WatchSync.upsertGuarded`); a real location switch or first-ever fetch,
-            // where the existing cache is nil or itself thin, still writes.
-            if snapshot.hasCurrentHourData || !(previous?.hasCurrentHourData ?? false) {
-                SharedCache.upsert(snapshot)
-            }
-            didUpdate = true
-        }
-
-        if didUpdate {
+        if outcome.didUpdate {
             WidgetCenter.shared.reloadAllTimelines()
             // Keep the Watch fed even if the user never opens "Hoy": push the primary location as active,
             // plus the whole favourites menu and their snapshots so the Watch can switch places on its own.
-            if let primary, let snapshot = SharedCache.snapshot(forINE: primary.ine) {
+            if let primary = locations.first, let snapshot = SharedCache.snapshot(forINE: primary.ine) {
                 WatchSync.shared.send(active: snapshot, favorites: locations)
             }
         }
-        return firstError
+        return outcome.errorMessage
     }
 
-    /// Spanish message for any error surfaced while talking to AEMET.
-    static func message(for error: Error) -> String {
-        switch error {
-        case AEMETClient.ClientError.missingAPIKey:
-            return "Falta la clave de AEMET. Añádela en Ajustes."
-        case AEMETClient.ClientError.rateLimited:
-            return "AEMET ha limitado las peticiones. Inténtalo en un minuto."
-        case AEMETClient.ClientError.http(let code):
-            return "Error de red (HTTP \(code))."
-        case AEMETClient.ClientError.aemetStatus(let code, let desc):
-            return "AEMET devolvió \(code): \(desc)"
-        case AEMETClient.ClientError.decoding:
-            return "No se pudieron leer los datos de AEMET."
-        case let urlError as URLError where urlError.code == .notConnectedToInternet:
-            return "Sin conexión. Se muestran los últimos datos disponibles."
-        default:
-            return "No se pudo obtener la información."
-        }
-    }
+    /// Spanish message for any error surfaced while talking to AEMET. Forwards to `AuraRefreshCore` so
+    /// the app and the widget map errors identically.
+    static func message(for error: Error) -> String { AuraRefreshCore.message(for: error) }
 }
 
 /// Serializes refreshes: the first caller runs the work; concurrent callers await that same run and

@@ -28,4 +28,14 @@ public struct Location: Codable, Identifiable, Hashable, Sendable {
 
     /// 2-digit INE province code, derived from the municipality code (e.g. "28" from "28079").
     public var provinciaCode: String { String(ine.prefix(2)) }
+
+    /// The location's civil time zone. The Canary Islands (INE provinces 35 and 38) run one
+    /// hour behind mainland Spain; everywhere else uses Europe/Madrid. Lives here rather than in the
+    /// app target because the widget's refresh core resolves snapshots and needs the same zone.
+    public var timeZone: TimeZone {
+        switch provinciaCode {
+        case "35", "38": return TimeZone(identifier: "Atlantic/Canary") ?? .current
+        default: return TimeZone(identifier: "Europe/Madrid") ?? .current
+        }
+    }
 }
