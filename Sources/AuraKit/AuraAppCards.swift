@@ -175,9 +175,12 @@ public struct AuraForecastStack: View {
             }
             AuraWindCard(snapshot: snapshot, size: size)
             // Which station the observed reading comes from, and whether it reports every surface metric.
-            // Phone only — the Watch keeps its stack to the essentials.
-            if size == .phone, snapshot.observedStation != nil {
-                AuraStationCard(snapshot: snapshot, size: size)
+            // Phone only — the Watch keeps its stack to the essentials. Gated on the display-time freshness
+            // gate (unified-freshness concept 3, shared with Android): a reading past 3 h old hides rather
+            // than showing a stale number as live, so a carried-forward reading self-expires here even
+            // without a fetch. Station presence is AND-ed in, matching Android's call site.
+            if size == .phone, snapshot.observedStation != nil, snapshot.observationIsFresh(now: now) {
+                AuraStationCard(snapshot: snapshot, size: size, now: now)
             }
             if let airQuality = snapshot.airQuality {
                 AuraAirQualityCard(airQuality: airQuality, size: size)
@@ -1027,9 +1030,20 @@ public struct AuraWindCard: View {
 public struct AuraStationCard: View {
     let snapshot: WeatherSnapshot
     let size: AuraSize
-    public init(snapshot: WeatherSnapshot, size: AuraSize) {
-        self.snapshot = snapshot; self.size = size
+    let now: Date
+    public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date()) {
+        self.snapshot = snapshot; self.size = size; self.now = now
     }
+
+    /// "a las HH:MM" for a reading that is not from the current clock hour, so a carried-forward value reads
+    /// as last-known rather than live (unified-freshness concept 3). Nil for a current-hour reading (no stamp).
+    private static let hhmm: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.timeZone = TimeZone(identifier: "Europe/Madrid")
+        f.dateFormat = "HH:mm"
+        return f
+    }()
 
     /// The canonical metric order: chip icon, the short label shown under the value, the full name
     /// spoken by VoiceOver, and the unit spoken with the value. Labels are kept to ≤6 glyphs ("Humed.",
@@ -1090,14 +1104,22 @@ public struct AuraStationCard: View {
         }
     }
 
-    /// "Madrid Retiro · a 3 km" — the station and its distance (Spanish decimal comma under 10 km).
+    /// "Madrid Retiro · a 3 km" — the station and its distance (Spanish decimal comma under 10 km) — with
+    /// "· a las HH:MM" appended when the reading is not from the current clock hour, so a carried-forward
+    /// value is never mistaken for live. A current-hour reading carries no stamp (it is already "now").
     private var header: String {
         let name = snapshot.observedStation ?? "—"
-        guard let km = snapshot.observedStationDistanceKm else { return name }
-        let dist = km < 10
-            ? String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")
-            : "\(Int(km.rounded()))"
-        return "\(name) · a \(dist) km"
+        var base = name
+        if let km = snapshot.observedStationDistanceKm {
+            let dist = km < 10
+                ? String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")
+                : "\(Int(km.rounded()))"
+            base = "\(name) · a \(dist) km"
+        }
+        if let readingTime = snapshot.observationDisplayTime(now: now) {
+            base += " · a las \(Self.hhmm.string(from: readingTime))"
+        }
+        return base
     }
 
     /// One metric chip: icon, the station's measured value, then the short label. Greyed with a dash for

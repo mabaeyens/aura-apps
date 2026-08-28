@@ -225,6 +225,31 @@ public extension WeatherSnapshot {
         return fint >= forecastDate   // tie to the observation
     }
 
+    /// Whether the observation is fresh enough to show on the observation card at `now`, per the
+    /// unified-freshness display gate (concept 3, shared with Android as `observationIsFresh`). True only when
+    /// the reading's measurement time (`observedAt`, AEMET's `fint`) is present, not in the future, and within
+    /// `StationObservation.observationMaxAge` (3 h) of `now` — the very age `nearest` uses to *select* a
+    /// station, so selection and display never drift. Past the gate the card hides rather than showing a stale
+    /// number as live (the card analogue of the hero's most-recent fallback); a timestampless reading (an old
+    /// cache from before `observedAt`) can't be proven fresh and never shows. Station presence is a separate
+    /// concern the caller AND-s in, matching Android's `observedStation != null && observationIsFresh(now)`.
+    func observationIsFresh(now: Date = Date()) -> Bool {
+        guard let fint = observedAt, fint <= now else { return false }
+        return now.timeIntervalSince(fint) <= StationObservation.observationMaxAge
+    }
+
+    /// The reading time to stamp on the observation card ("a las HH:MM") when the shown reading is **not** from
+    /// the current clock hour, so a carried-forward value reads as last-known, not live. Nil when the reading
+    /// is from the current hour (already "now", no stamp) or has no timestamp. Uses Europe/Madrid to match
+    /// every other on-screen time. Shared with Android as `observationDisplayTime`; iOS returns the `Date` and
+    /// formats it in the view (where iOS keeps formatting), Android returns the formatted string — same rule.
+    func observationDisplayTime(now: Date = Date(),
+                                timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> Date? {
+        guard let fint = observedAt else { return nil }
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = timeZone
+        return cal.isDate(fint, equalTo: now, toGranularity: .hour) ? nil : fint
+    }
+
     func resolved(at now: Date = Date(),
                   timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> WeatherSnapshot {
         let strip = upcomingHours(now: now, timeZone: timeZone)
@@ -447,7 +472,11 @@ public extension WeatherSnapshot {
         // Observation carry-forward: when this refresh skipped the hourly observation fetch (data not yet
         // due, or a transient error left `observed` nil), keep the last good station reading from the prior
         // snapshot rather than blanking the observed card. All-or-nothing per station so a fresh reading's
-        // fields never mix with a stale one's.
+        // fields never mix with a stale one's. Carry-forward is bounded by the same age gate the card uses
+        // (`observationIsFresh`, `StationObservation.observationMaxAge`): a previous reading is carried only
+        // while it is within 3 h of `now`, and dropped past it, so a stale or out-of-radius reading can't be
+        // pinned forever. The display layer re-checks the gate against the live `now`, so a reading that ages
+        // out between refreshes still disappears; this bound stops the cache itself from hoarding it.
         let obsTemp: Int?
         let obsStation: String?
         let obsDistance: Double?
@@ -461,13 +490,20 @@ public extension WeatherSnapshot {
             obsMetrics = observed.availableMetrics
             obsReading = observed.reading
             obsAt = observed.timestamp   // AEMET `fint`: the reading's measurement hour, for the hero's most-recent rule
+        } else if let previousObserved, previousObserved.observationIsFresh(now: now) {
+            obsTemp = previousObserved.observedTemp
+            obsStation = previousObserved.observedStation
+            obsDistance = previousObserved.observedStationDistanceKm
+            obsMetrics = previousObserved.observedMetrics
+            obsReading = previousObserved.observedReading
+            obsAt = previousObserved.observedAt
         } else {
-            obsTemp = previousObserved?.observedTemp
-            obsStation = previousObserved?.observedStation
-            obsDistance = previousObserved?.observedStationDistanceKm
-            obsMetrics = previousObserved?.observedMetrics ?? []
-            obsReading = previousObserved?.observedReading
-            obsAt = previousObserved?.observedAt
+            obsTemp = nil
+            obsStation = nil
+            obsDistance = nil
+            obsMetrics = []
+            obsReading = nil
+            obsAt = nil
         }
 
         // Resolve the hourly feed first, so today's daily row and the current humidity can follow the

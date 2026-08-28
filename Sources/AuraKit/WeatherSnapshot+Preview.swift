@@ -34,6 +34,9 @@ public extension WeatherSnapshot {
             observedMetrics: [.temperature, .wind, .humidity, .pressure, .precipitation],
             observedReading: ObservedReading(temperature: 30, humidity: 38, windKmh: 14,
                                              windDirection: .so, pressure: 1014, precipMm: 0),
+            // Stamp the reading at the top of the current hour so it passes the observation card's display
+            // freshness gate (a current-hour reading, so no "a las HH:MM" stamp) in previews and aura-render.
+            observedAt: cal.date(bySettingHour: startHour, minute: 0, second: 0, of: base),
             currentSky: "11", currentSkyText: "Despejado",
             currentHumidity: 42, currentPrecipProb: 15,
             windSpeed: 25, windDirection: .so, windGust: 47,
@@ -83,6 +86,8 @@ public extension WeatherSnapshot {
             currentTemp: 21, observedTemp: 21, observedStation: "Madrid Retiro",
             observedStationDistanceKm: 3.2,
             observedMetrics: [.temperature, .wind, .humidity],
+            // Current-hour stamp so the observation card clears its display freshness gate in previews.
+            observedAt: cal.date(bySettingHour: startHour, minute: 0, second: 0, of: base),
             currentSky: "24", currentSkyText: "Muy nuboso con lluvia escasa",
             currentHumidity: 58, currentPrecipProb: 75,
             windSpeed: 19, windDirection: .so, windGust: 34,

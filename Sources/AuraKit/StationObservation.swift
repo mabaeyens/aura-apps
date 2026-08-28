@@ -138,10 +138,17 @@ public extension StationObservation {
     /// with no station within this radius fall back to the forecast and hide the observation card.
     static let nearestStationKm: Double = 20
 
+    /// The maximum age of an observation reading, shared by station *selection* (`nearest`, below) and the
+    /// observation card's display-time *freshness* gate (`WeatherSnapshot.observationIsFresh`,
+    /// unified-freshness concept 3, shared with Android as `OBSERVATION_MAX_AGE`). Past this a reading is too
+    /// old to represent the station's current value: `nearest` won't select it, and the card hides rather than
+    /// showing a stale number as live. One named constant so selection-age and display-age can never drift.
+    static let observationMaxAge: TimeInterval = 3 * 3600
+
     static func nearest(toLatitude latitude: Double, longitude: Double,
                         in observations: [StationObservation],
                         now: Date = Date(),
-                        maxAge: TimeInterval = 3 * 3600,
+                        maxAge: TimeInterval = StationObservation.observationMaxAge,
                         maxDistanceKm: Double = StationObservation.nearestStationKm) -> StationObservation? {
         var latest: [String: StationObservation] = [:]
         for obs in observations where obs.ta != nil && obs.lat != nil && obs.lon != nil {

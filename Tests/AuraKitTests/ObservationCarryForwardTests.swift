@@ -32,9 +32,13 @@ final class ObservationCarryForwardTests: XCTestCase {
         XCTAssertEqual(previous.observedTemp, 21)
         XCTAssertNotNil(previous.observedReading)
 
-        // No fresh observation this cycle (fetch skipped), but a prior snapshot exists.
+        // No fresh observation this cycle (fetch skipped), but a prior snapshot exists. `now` is within the
+        // carry-forward age gate of the fixture's fint (2026-08-25T11:00Z) so the reading is still carried.
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Europe/Madrid")!
+        let now = try XCTUnwrap(cal.date(from: DateComponents(year: 2026, month: 8, day: 25, hour: 14)))  // 12:00Z, 1 h after the reading
         let rebuilt = WeatherSnapshot.make(location: madrid, daily: try dailyFixture(), hourly: nil,
-                                           observed: nil, previousObserved: previous)
+                                           observed: nil, previousObserved: previous, now: now)
 
         XCTAssertEqual(rebuilt.observedTemp, previous.observedTemp)
         XCTAssertEqual(rebuilt.observedStation, previous.observedStation)
