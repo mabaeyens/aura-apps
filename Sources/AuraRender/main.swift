@@ -55,6 +55,32 @@ dump("circular",    size: CGSize(width: 76,  height: 76)) { AuraAccessoryCircula
 dump("wind",        size: CGSize(width: 84,  height: 84)) { AuraWindCircular(snapshot: snap) }
 dump("sun",         size: CGSize(width: 60,  height: 60)) { AuraSunCircular(snapshot: snap) }
 dump("corner",      size: CGSize(width: 44,  height: 44)) { AuraAccessoryCorner(snapshot: snap) }
+
+// ---- Staleness badge (specs/widget-self-refresh-and-staleness.md, pass 1) ------------------------
+// The dim note for roomy faces at each freshness, the tight-face glyph, and the wired surfaces in
+// context. The note snapshots carry only `updated`; the in-context ones offset `now` so `.preview`
+// reads as recent / stale (a far-future `now` also flips the sky to night — cosmetic here).
+func stampSnap(_ updated: Date) -> WeatherSnapshot {
+    WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                    tempMin: 18, tempMax: 34, humedadMax: 50,
+                    sunrise: nil, sunset: nil, updated: updated)
+}
+let recentNow = Date().addingTimeInterval(3 * 3600)   // ~3 h after the preview's `updated`
+let staleNow  = Date().addingTimeInterval(26 * 3600)  // ~26 h after — past the horizon
+dump("stale-note-recent", size: CGSize(width: 170, height: 26)) {
+    AuraStalenessNote(snapshot: stampSnap(Date().addingTimeInterval(-3 * 3600)))
+}
+dump("stale-note-stale", size: CGSize(width: 170, height: 26)) {
+    AuraStalenessNote(snapshot: stampSnap(Date().addingTimeInterval(-26 * 3600)))
+}
+dump("stale-glyph", size: CGSize(width: 44, height: 44)) {
+    AuraStalenessGlyph(snapshot: stampSnap(Date().addingTimeInterval(-26 * 3600)))
+}
+dump("rect-wide-recent",   size: CGSize(width: 320, height: 150)) { AuraAccessoryRectangular(snapshot: .preview, now: recentNow) }
+dump("rect-wide-stale",    size: CGSize(width: 320, height: 150)) { AuraAccessoryRectangular(snapshot: .preview, now: staleNow) }
+dump("rect-compact-stale", size: CGSize(width: 160, height: 72))  { AuraAccessoryRectangular(snapshot: .preview, now: staleNow) }
+dump("home-medium-recent", size: CGSize(width: 340, height: 158)) { AuraHomeMedium(snapshot: .preview, now: recentNow) }
+dump("home-medium-stale",  size: CGSize(width: 340, height: 158)) { AuraHomeMedium(snapshot: .preview, now: staleNow) }
 // New per-metric complication faces filling out the WIDGETS.md catalog: UV + wind corner content
 // (the bezel arc is drawn by WidgetKit on a real face, so these show the corner *content* only), and
 // the rectangular sun combo for the Modular centre slot.

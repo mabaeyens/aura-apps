@@ -124,6 +124,11 @@ public struct AuraAccessoryRectangular: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                } else if snapshot.freshness(at: now) == .stale {
+                    // No room for a timestamp on this ~160pt slot, and no aviso holding the corner: mark a
+                    // day-old cache with the bare offline glyph so it isn't read as current.
+                    Spacer(minLength: 3)
+                    AuraStalenessGlyph(snapshot: snapshot, now: now)
                 }
             }
             // Row 2: today's high and low, then the rain chance and humidity — one Text so the whole line
@@ -185,6 +190,9 @@ public struct AuraAccessoryRectangular: View {
                 .labelStyle(TightLabelStyle())
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                // The roomy iPad slot has space to admit an old cache in words — nothing while fresh.
+                AuraStalenessNote(snapshot: snapshot, now: now)
+                    .labelStyle(TightLabelStyle())
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 

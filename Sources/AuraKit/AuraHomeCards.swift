@@ -452,6 +452,7 @@ public struct AuraHomeMedium: View {
                 HomeHourStrip(snapshot: snapshot, count: 4)
             }
             .frame(maxHeight: .infinity)
+            AuraStalenessNote(snapshot: snapshot, now: now)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
