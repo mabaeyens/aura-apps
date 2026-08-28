@@ -138,10 +138,10 @@ struct AuraTodayEntryView: View {
     let entry: AuraEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
-            case .accessoryCircular: AuraAccessoryCircular(snapshot: snapshot)
-            case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot)
+            case .accessoryCircular: AuraAccessoryCircular(snapshot: snapshot, now: entry.date)
+            case .accessoryRectangular: AuraAccessoryRectangular(snapshot: snapshot, now: entry.date)
             default: AuraAccessoryInline(snapshot: snapshot)
             }
         } else {

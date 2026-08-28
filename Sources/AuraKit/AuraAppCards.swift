@@ -141,7 +141,12 @@ public struct AuraForecastStack: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: size.stackSpacing) {
+        // Re-anchor the whole snapshot to the real `now` once, at the display boundary: every card below
+        // then reads display-time `current*` values (hero temp, sky, wind, humidity…) straight from the
+        // ordinary properties, so a snapshot served from cache after a day change still shows *today* and
+        // the hero can never disagree with the strip. See `WeatherSnapshot.resolved(at:)`.
+        let snapshot = snapshot.resolved(at: now)
+        return VStack(alignment: .leading, spacing: size.stackSpacing) {
             AuraHeroCard(snapshot: snapshot, size: size, now: now)
                 // Push the cards below the fold: on a real screen the hero fills the first viewport so the
                 // clean sky + landscape read on their own; 0 (aura-render) keeps the hero its natural height.

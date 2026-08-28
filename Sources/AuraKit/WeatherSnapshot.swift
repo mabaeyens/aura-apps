@@ -171,6 +171,56 @@ public extension WeatherSnapshot {
     /// `make(...)`, so this is nil only on a cold start with no prior reading.
     var heroTemp: Int? { currentTemp }
 
+    /// The snapshot re-anchored to `now` for **display** — the fix for the whole current-conditions family
+    /// (temperature, sky, humidity, wind, precip…) freezing at fetch time and going stale at the next day
+    /// change. A snapshot built and cached yesterday froze every `current*` scalar to yesterday's hour; served
+    /// from cache today it would render those stale values (a blank `--`, yesterday's sky, yesterday's wind).
+    ///
+    /// This is the single display-time mechanism every surface uses: it re-derives each `current*` field from
+    /// the timestamped hours strip re-anchored to the real `now` (`upcomingHours(now:)`, the exact mechanism the
+    /// strip already uses), so the hero and the strip's first column are computed the same way and can never
+    /// disagree. Each field falls back to its frozen scalar when the re-anchored strip doesn't carry it (a
+    /// degraded/thin snapshot, or a snapshot cached before the strip carried that field), so this is **never
+    /// worse** than the frozen value and better whenever the strip has the reading. With an empty strip there is
+    /// nothing to re-anchor, so the snapshot is returned unchanged.
+    ///
+    /// Call it once at each surface's display boundary (passing the live clock for the app and watch, the
+    /// timeline entry date for widgets and complications) and render the returned snapshot; the rest of the
+    /// view tree reads the ordinary `current*` properties and gets display-time values for free.
+    func resolved(at now: Date = Date(),
+                  timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> WeatherSnapshot {
+        let strip = upcomingHours(now: now, timeZone: timeZone)
+        guard !strip.isEmpty else { return self }
+        func first<T>(_ key: (HourSlot) -> T?) -> T? {
+            for slot in strip { if let v = key(slot) { return v } }
+            return nil
+        }
+        return WeatherSnapshot(
+            ine: ine, localidad: localidad, provincia: provincia,
+            tempMin: tempMin, tempMax: tempMax, humedadMax: humedadMax,
+            currentTemp: first(\.temp) ?? currentTemp,
+            observedTemp: observedTemp, observedStation: observedStation,
+            observedStationDistanceKm: observedStationDistanceKm, observedMetrics: observedMetrics,
+            observedReading: observedReading,
+            currentSky: first(\.sky) ?? currentSky,
+            currentSkyText: first(\.skyText) ?? currentSkyText,
+            currentHumidity: first(\.humidity) ?? currentHumidity,
+            currentPrecipProb: first(\.precipProb) ?? currentPrecipProb,
+            currentPrecipMm: first(\.precipMm) ?? currentPrecipMm,
+            currentSnowMm: first(\.snowMm) ?? currentSnowMm,
+            currentFeelsLike: first(\.feelsLike) ?? currentFeelsLike,
+            currentStormProb: first(\.stormProb) ?? currentStormProb,
+            windSpeed: first(\.windSpeed) ?? windSpeed,
+            windDirection: first(\.windDirection) ?? windDirection,
+            windGust: first(\.windGust) ?? windGust,
+            airQuality: airQuality, uvIndex: uvIndex, uvHourly: uvHourly,
+            sunrise: sunrise, sunset: sunset,
+            latitude: latitude, longitude: longitude,
+            days: days, hours: hours, alert: alert,
+            bulletin: bulletin, bulletinPhenomenon: bulletinPhenomenon,
+            updated: updated)
+    }
+
     /// Whether the hero is a real station observation. Now always false — kept for API compatibility.
     var heroIsObserved: Bool { false }
 
@@ -267,11 +317,25 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
     /// hour at display time — a snapshot built at 20:00 and served from cache at 09:55 the next day
     /// must still start at 09h, not 20h. Optional: snapshots cached before this field decode it as nil.
     public let date: Date?
+    // The rest of the current-hour payload, so the re-anchored strip's slot carries *everything* the hero
+    // needs and `resolved(at:)` can re-derive the whole `current*` family at display time — not just temp.
+    // All optional so a snapshot cached before these fields decode them as nil (and fall back to the frozen
+    // scalar). See `WeatherSnapshot.resolved(at:)`.
+    public let skyText: String?       // AEMET estadoCielo description, e.g. "Despejado"
+    public let humidity: Int?         // relative humidity, %
+    public let precipMm: Double?      // rain amount, mm ("Ip" trace → 0)
+    public let snowMm: Double?        // snow amount, mm
+    public let feelsLike: Int?        // sensación térmica, °C
+    public let stormProb: Int?        // storm probability, % (coarse block covering the hour)
+    public let windDirection: WindDirection?  // whence the wind blows, or nil when calm/unknown
 
     public var id: Int { hour }
 
     public init(hour: Int, temp: Int?, sky: String?, precipProb: Int?, windSpeed: Int? = nil,
-                windGust: Int? = nil, date: Date? = nil) {
+                windGust: Int? = nil, date: Date? = nil,
+                skyText: String? = nil, humidity: Int? = nil, precipMm: Double? = nil,
+                snowMm: Double? = nil, feelsLike: Int? = nil, stormProb: Int? = nil,
+                windDirection: WindDirection? = nil) {
         self.hour = hour
         self.temp = temp
         self.sky = sky
@@ -279,6 +343,13 @@ public struct HourSlot: Codable, Sendable, Hashable, Identifiable {
         self.windSpeed = windSpeed
         self.windGust = windGust
         self.date = date
+        self.skyText = skyText
+        self.humidity = humidity
+        self.precipMm = precipMm
+        self.snowMm = snowMm
+        self.feelsLike = feelsLike
+        self.stormProb = stormProb
+        self.windDirection = windDirection
     }
 }
 
@@ -373,6 +444,18 @@ public extension WeatherSnapshot {
         let carry: WeatherSnapshot? = hourly == nil ? previousObserved : nil
         let currentSky = resolved?.current?.sky ?? carry?.currentSky
 
+        // Hero temperature: the first upcoming hour that actually carries a reading, not simply the first
+        // upcoming slot. AEMET's rolling tail can list a sky for an hour with no matching temperature, so
+        // taking that hour's (absent) temp blanked the hero to "—" even though the next hour has one.
+        let heroTemp = resolved?.heroTemp
+
+        // Hourly strip carry-forward. When the hourly fetch fails (`hourly` nil) or returns a degenerate feed
+        // with no resolvable hours, `resolved?.strip` is empty — which would blank the next-hours card and
+        // widget row. Hold the last good strip instead (the display layer re-anchors a stale strip to now),
+        // mirroring the current* carry-forward. Only a genuine cold start with nothing cached leaves it empty.
+        let stripNow = resolved?.strip ?? []
+        let hoursStrip = stripNow.isEmpty ? (previousObserved?.hours ?? []) : stripNow
+
         let days = daily.prediccion.dia.prefix(7).enumerated().compactMap { (idx, dia) -> DaySnapshot? in
             guard let date = Self.parseDay(dia.fecha) else { return nil }
             // Today (idx 0) follows the current hour: a clear morning shows a sun even when the
@@ -392,7 +475,11 @@ public extension WeatherSnapshot {
             tempMin: today?.temperatura?.minima,
             tempMax: today?.temperatura?.maxima,
             humedadMax: today?.humedadRelativa?.maxima,
-            currentTemp: resolved?.current?.temp ?? carry?.currentTemp,
+            // Carry the last good temperature forward not only when the feed is wholly absent (`carry`), but
+            // also when it arrives present-but-temperature-less (a 200 whose current day has a sky yet no
+            // `temperatura`): `previousObserved` still holds the prior reading, so the hero shows it rather
+            // than blanking. nil only on a genuine cold start with nothing to fall back on.
+            currentTemp: heroTemp ?? carry?.currentTemp ?? previousObserved?.currentTemp,
             observedTemp: obsTemp,
             observedStation: obsStation,
             observedStationDistanceKm: obsDistance,
@@ -417,7 +504,7 @@ public extension WeatherSnapshot {
             latitude: location.latitude,
             longitude: location.longitude,
             days: days,
-            hours: resolved?.strip ?? [],
+            hours: hoursStrip,
             alert: alert,
             bulletin: bulletin?.texto,
             bulletinPhenomenon: bulletin?.fenomenoSignificativo,
@@ -425,19 +512,45 @@ public extension WeatherSnapshot {
         )
     }
 
+    /// AEMET's hourly feed can briefly lead with a stale *past* day: for part of the morning its first
+    /// `dia` is still yesterday, carrying only a handful of tail hours. Every current-hour reader below
+    /// assumes `dia[0]` is today and filters by bare hour-of-day, so a yesterday-evening hour (e.g. 20:00)
+    /// whose number is still ≥ the current morning hour survives the filter and is read as "now" — pinning
+    /// the hero to a slot that can carry a sky but no temperature, which blanked it. Drop any day before the
+    /// current calendar day so resolution always anchors on today; fall back to the raw list if that would
+    /// leave nothing (a wholly stale feed), so behaviour is never worse than before.
+    private static func futureDays(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date) -> [MunicipioHourly.Dia] {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = timeZone
+        let today = cal.startOfDay(for: now)
+        // Keep only days on or after today, order-independently — a `filter`, not a `drop(while:)` that would
+        // stop at the first kept day and let a malformed or out-of-order leading `dia` survive as the
+        // "current" anchor. An unparseable date is dropped too, for the same reason. Fall back to the raw list
+        // only if that leaves nothing (a wholly stale or wholly unparseable feed), so behaviour is never worse
+        // than before.
+        let kept = forecast.prediccion.dia.filter { dia in
+            guard let midnight = dayMidnight(dia.fecha, timeZone: timeZone) else { return false }
+            return midnight >= today
+        }
+        return kept.isEmpty ? forecast.prediccion.dia : kept
+    }
+
     /// Resolve the current hour and the next few hours from the hourly forecast.
     private static func hourly(_ forecast: MunicipioHourly, timeZone: TimeZone, now: Date)
-        -> (current: HourSlot?, currentText: String?, strip: [HourSlot]) {
+        -> (current: HourSlot?, currentText: String?, heroTemp: Int?, strip: [HourSlot]) {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
         let currentHour = cal.component(.hour, from: now)
 
-        let dias = forecast.prediccion.dia
+        let dias = futureDays(forecast, timeZone: timeZone, now: now)
         let day0 = dias.first.map { slots(for: $0, timeZone: timeZone).filter { $0.hour >= currentHour } } ?? []
         let day1 = dias.count > 1 ? slots(for: dias[1], timeZone: timeZone) : []
         let upcoming = day0 + day1
 
         let current = upcoming.first
+        // The hero reads the first upcoming hour that actually carries a temperature — searched across the
+        // whole upcoming window, not the 24-slot display strip, so a today made entirely of sky-only hours
+        // still reaches tomorrow's first reading rather than blanking.
+        let heroTemp = upcoming.first(where: { $0.temp != nil })?.temp
         // Description for the current hour, read from the *same* day the current slot came from. Once day 0's
         // hours are all past, `current` is day 1's first hour, so its text must come from day 1 too — reading
         // day 0's same-numbered hour would describe a different day and can disagree with the sky code (the
@@ -446,7 +559,7 @@ public extension WeatherSnapshot {
         let text = currentDia.flatMap { skyText($0, hour: current?.hour) }
 
         // Keep a full day ahead so the hourly strip has real data to scroll through (five show at once).
-        return (current, text, Array(upcoming.prefix(24)))
+        return (current, text, heroTemp, Array(upcoming.prefix(24)))
     }
 
     /// The wind for the current hour (or the next available reading): speed km/h, direction, and peak gust.
@@ -477,7 +590,7 @@ public extension WeatherSnapshot {
             return (readings.first { $0.hour >= from } ?? readings.first)?.gust
         }
 
-        let dias = forecast.prediccion.dia
+        let dias = futureDays(forecast, timeZone: timeZone, now: now)
         if let day0 = dias.first, let w = wind(in: day0, from: currentHour) {
             return (w.0, w.1, gust(in: day0, from: currentHour))
         }
@@ -494,7 +607,7 @@ public extension WeatherSnapshot {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
         let currentHour = cal.component(.hour, from: now)
-        let dias = forecast.prediccion.dia
+        let dias = futureDays(forecast, timeZone: timeZone, now: now)
         if let day0 = dias.first, let v = pick(day0, currentHour) { return v }
         if dias.count > 1, let v = pick(dias[1], 0) { return v }
         return nil
@@ -595,7 +708,36 @@ public extension WeatherSnapshot {
             guard let h = Int(s.periodo) else { return nil }
             return (h, s.value)
         }, uniquingKeysWith: { a, _ in a })
+        // Sky description, humidity, feels-like, rain and snow amounts — each keyed by hour, so the slot
+        // carries the same current-hour payload the fetch-time `current*` helpers read. Storm probability,
+        // like precip, is a coarse block covering the hour.
+        let skyTexts = Dictionary(dia.estadoCielo.compactMap { s -> (Int, String)? in
+            guard let h = Int(s.periodo), let d = s.descripcion, !d.isEmpty else { return nil }
+            return (h, d)
+        }, uniquingKeysWith: { a, _ in a })
+        let humidities = Dictionary(dia.humedadRelativa.compactMap { hv -> (Int, Int)? in
+            guard let h = Int(hv.periodo), let v = Int(hv.value) else { return nil }
+            return (h, v)
+        }, uniquingKeysWith: { a, _ in a })
+        let feels = Dictionary((dia.sensTermica ?? []).compactMap { hv -> (Int, Int)? in
+            guard let h = Int(hv.periodo), let v = Int(hv.value) else { return nil }
+            return (h, v)
+        }, uniquingKeysWith: { a, _ in a })
+        let rains = Dictionary((dia.precipitacion ?? []).compactMap { hv -> (Int, Double)? in
+            guard let h = Int(hv.periodo), let v = precipAmount(hv.value) else { return nil }
+            return (h, v)
+        }, uniquingKeysWith: { a, _ in a })
+        let snows = Dictionary((dia.nieve ?? []).compactMap { hv -> (Int, Double)? in
+            guard let h = Int(hv.periodo), let v = precipAmount(hv.value) else { return nil }
+            return (h, v)
+        }, uniquingKeysWith: { a, _ in a })
+        let dirs = Dictionary((dia.vientoAndRachaMax ?? []).compactMap { w -> (Int, WindDirection)? in
+            guard let h = Int(w.periodo), let first = w.direccion?.first,
+                  let d = WindDirection(aemet: first) else { return nil }
+            return (h, d)
+        }, uniquingKeysWith: { a, _ in a })
         let precipBlocks = blocks(dia.probPrecipitacion)
+        let stormBlocks = blocks(dia.probTormenta ?? [])
 
         // Per-hour wind speed, from the mixed wind/gust array (wind entries carry `velocidad`).
         let winds = Dictionary((dia.vientoAndRachaMax ?? []).compactMap { w -> (Int, Int)? in
@@ -616,9 +758,13 @@ public extension WeatherSnapshot {
         let hours = Set(temps.keys).union(skies.keys).sorted()
         return hours.map { hour in
             let prob = precipBlocks.first { $0.start <= hour && hour < $0.end }?.value
+            let storm = stormBlocks.first { $0.start <= hour && hour < $0.end }?.value
             let date = dayStart.flatMap { cal.date(byAdding: .hour, value: hour, to: $0) }
             return HourSlot(hour: hour, temp: temps[hour], sky: skies[hour], precipProb: prob,
-                            windSpeed: winds[hour], windGust: gusts[hour], date: date)
+                            windSpeed: winds[hour], windGust: gusts[hour], date: date,
+                            skyText: skyTexts[hour], humidity: humidities[hour], precipMm: rains[hour],
+                            snowMm: snows[hour], feelsLike: feels[hour], stormProb: storm,
+                            windDirection: dirs[hour])
         }
     }
 

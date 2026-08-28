@@ -70,7 +70,7 @@ struct AuraConditionsView: View {
     let entry: AuraComplicationEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .accessoryInline: AuraAccessoryInline(snapshot: snapshot)
             case .accessoryCorner:
@@ -157,7 +157,7 @@ struct AuraWindView: View {
     let entry: AuraComplicationEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .accessoryCorner:
                 let corner = AuraWindCorner(snapshot: snapshot)
@@ -196,7 +196,7 @@ struct AuraRainView: View {
     let entry: AuraComplicationEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .accessoryCorner:
                 let corner = AuraRainCorner(snapshot: snapshot)

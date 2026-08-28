@@ -9,6 +9,7 @@
 # Xcode (app targets land in later phases)
 xcuserdata/
 DerivedData/
+/build/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
 

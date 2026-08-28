@@ -59,7 +59,7 @@ struct AuraSummaryWidget: Widget {
                                intent: SelectLocationIntent.self,
                                provider: AuraProvider()) { entry in
             Group {
-                if let snapshot = entry.snapshot {
+                if let snapshot = entry.snapshot?.resolved(at: entry.date) {
                     AuraSummaryInline(snapshot: snapshot, now: entry.date)
                 } else {
                     AuraAccessoryEmpty()
@@ -184,7 +184,7 @@ struct AuraHomeEntryView: View {
     let entry: AuraEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .systemSmall:      AuraHomeSmall(snapshot: snapshot, now: entry.date)
             case .systemLarge:      AuraHomeLarge(snapshot: snapshot, now: entry.date)
