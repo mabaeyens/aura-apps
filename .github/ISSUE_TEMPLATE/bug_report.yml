@@ -1,0 +1,81 @@
+name: Bug report
+description: Report something broken or wrong in Aura on iPhone, iPad, Mac or Apple Watch.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more precise you are about what you saw and where, the faster I can track it down. If a screenshot shows the problem, it helps a lot.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what did you expect to see instead?
+      placeholder: The hourly strip kept showing yesterday's temperatures until mid-morning, instead of today's.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do, step by step, right before it happened?
+      placeholder: |
+        1. Open the app on the Hoy screen
+        2. Switch the active location to Valencia
+        3. Look at the current conditions card
+    validations:
+      required: false
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen
+      description: Which part of Aura was showing the problem?
+      options:
+        - iPhone app
+        - iPad app
+        - Mac app
+        - Apple Watch app
+        - Apple Watch complication
+        - Home Screen widget
+        - Lock Screen widget
+        - Not sure / more than one
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Location affected
+      description: Which municipality was selected when it happened? Some issues only show up for a specific place.
+      placeholder: Madrid
+    validations:
+      required: false
+  - type: input
+    id: app-version
+    attributes:
+      label: App version and build
+      description: Find it on the About screen (reached from Ajustes). If it came from TestFlight, the build number is on the TestFlight screen.
+      placeholder: 1.1.1 (build 7)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS version
+      description: The device and the version of iOS, iPadOS, macOS or watchOS it is running.
+      placeholder: iPhone 15 Pro, iOS 18.1
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag any screenshots or a screen recording here. For a widget or complication issue, a shot of the Home or Lock Screen helps.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Anything else worth knowing, for example whether the phone had no signal, or the Watch was away from the phone.
+    validations:
+      required: false
