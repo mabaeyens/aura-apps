@@ -1,0 +1,83 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Choose the widget's location and background style." : {
+      "comment" : "SelectHomeIntent description shown in the Home Screen widget's configuration editor",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige la ubicación y el estilo de fondo del widget."
+          }
+        }
+      }
+    },
+    "Choose which location the widget shows." : {
+      "comment" : "SelectLocationIntent description shown in the Lock Screen widget's configuration editor",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige qué ubicación muestra el widget."
+          }
+        }
+      }
+    },
+    "City" : {
+      "comment" : "Cityscape background scene name in the widget's scene picker (mirrors HeroBackground.Family.displayName)",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciudad"
+          }
+        }
+      }
+    },
+    "Landscape" : {
+      "comment" : "Bare-landscape background scene name in the widget's scene picker (mirrors HeroBackground.Family.displayName)",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paisaje"
+          }
+        }
+      }
+    },
+    "Location" : {
+      "comment" : "Location type name / intent title / location parameter title in the widget configuration editor",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ubicación"
+          }
+        }
+      }
+    },
+    "Location and scene" : {
+      "comment" : "SelectHomeIntent title in the Home Screen widget's configuration editor",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ubicación y escena"
+          }
+        }
+      }
+    },
+    "Scene" : {
+      "comment" : "Scene type name / scene parameter title in the widget configuration editor",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escena"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

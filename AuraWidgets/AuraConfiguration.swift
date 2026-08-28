@@ -10,7 +10,7 @@ struct LocationEntity: AppEntity {
     let nombre: String
     let provincia: String
 
-    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Ubicación" }
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Location" }
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(title: "\(nombre)", subtitle: "\(provincia)")
@@ -39,22 +39,24 @@ struct LocationQuery: EntityQuery {
 /// The widget's editable configuration: a single location parameter. Used by the Lock Screen glances,
 /// which have no background art to choose.
 struct SelectLocationIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "Ubicación" }
-    static var description: IntentDescription { IntentDescription("Elige qué ubicación muestra el widget.") }
+    static var title: LocalizedStringResource { "Location" }
+    static var description: IntentDescription { IntentDescription("Choose which location the widget shows.") }
 
-    @Parameter(title: "Ubicación")
+    @Parameter(title: "Location")
     var location: LocationEntity?
 }
 
 /// The background scene the Home Screen widget draws behind the live sky — the two wide base families.
-/// "Naturaleza" is the bare landscape set; "Ciudad" is the cityscape set.
+/// `.naturaleza` is the bare landscape set; `.ciudad` is the cityscape set. The two visible labels match
+/// AuraKit's `HeroBackground.Family.displayName` so the widget picker and the in-app one read alike; the
+/// raw case names stay as-is because they are persisted `@AppStorage` keys, not shown text.
 enum SceneStyle: String, AppEnum {
     case naturaleza
     case ciudad
 
-    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Escena" }
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Scene" }
     static var caseDisplayRepresentations: [SceneStyle: DisplayRepresentation] {
-        [.naturaleza: "Naturaleza", .ciudad: "Ciudad"]
+        [.naturaleza: "Landscape", .ciudad: "City"]
     }
 
     /// The AuraKit family this style maps to for base-image resolution.
@@ -64,15 +66,15 @@ enum SceneStyle: String, AppEnum {
 /// The Home Screen widget's configuration: a location **and** a background scene. Kept separate from
 /// `SelectLocationIntent` so the Lock Screen glances don't show a scene picker they can't use.
 struct SelectHomeIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource { "Ubicación y escena" }
+    static var title: LocalizedStringResource { "Location and scene" }
     static var description: IntentDescription {
-        IntentDescription("Elige la ubicación y el estilo de fondo del widget.")
+        IntentDescription("Choose the widget's location and background style.")
     }
 
-    @Parameter(title: "Ubicación")
+    @Parameter(title: "Location")
     var location: LocationEntity?
 
-    @Parameter(title: "Escena", default: .naturaleza)
+    @Parameter(title: "Scene", default: .naturaleza)
     var scene: SceneStyle
 
     // A configuration intent with more than one parameter needs an explicit summary for every

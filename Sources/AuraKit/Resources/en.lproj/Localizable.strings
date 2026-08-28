@@ -293,6 +293,9 @@
 "settings.apiKey.footer"         = "If the forecast stops updating, request another free key at opendata.aemet.es and paste it here.";
 "settings.background.section"    = "Appearance";
 "settings.background.picker"     = "Background";
+/* Background scene family names — shared by the in-app/watch picker and the widget's own scene chooser */
+"scene.landscape"                = "Landscape";
+"scene.city"                     = "City";
 "settings.background.footer"     = "Choose the landscape behind the sky. The Sun and Moon are always drawn in their real positions, whatever the background.";
 "settings.timeFormat.picker"     = "Time format";
 "settings.timeFormat.24h"        = "24 h";

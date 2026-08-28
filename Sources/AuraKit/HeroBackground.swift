@@ -87,8 +87,9 @@ public enum HeroBackground {
         /// Prepended to the `condition_time` token so both families coexist in one flat asset catalog.
         var assetPrefix: String { self == .cityscape ? "city_" : "" }
 
-        /// Spanish label for the settings switch.
-        public var displayName: String { self == .cityscape ? "Ciudad" : "Paisaje" }
+        /// Localized label for the settings switch. Chrome, so it follows the device language; the widget's
+        /// own scene picker (`SceneStyle`) mirrors these same two words through its String Catalog.
+        public var displayName: String { self == .cityscape ? auraString("scene.city") : auraString("scene.landscape") }
 
         /// Decode the persisted `@AppStorage` string; any unknown value falls back to `.landscape`.
         public init(storage: String?) { self = Family(rawValue: storage ?? "") ?? .landscape }
