@@ -235,7 +235,7 @@ struct AuraUVView: View {
     let entry: AuraComplicationEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .accessoryCorner:
                 // The index + glyph curve the corner; the 0…peak graded arc rides the outer bezel.
@@ -387,7 +387,7 @@ struct AuraNowComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "AuraNow", provider: AuraComplicationProvider()) { entry in
             Group {
-                if let snapshot = entry.snapshot {
+                if let snapshot = entry.snapshot?.resolved(at: entry.date) {
                     AuraAccessoryRectangular(snapshot: snapshot, now: entry.date)
                 } else {
                     AuraAccessoryEmpty()

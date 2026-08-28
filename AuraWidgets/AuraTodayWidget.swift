@@ -113,7 +113,7 @@ struct AuraRainWidget: Widget {
                                intent: SelectLocationIntent.self,
                                provider: AuraProvider()) { entry in
             Group {
-                if let snapshot = entry.snapshot {
+                if let snapshot = entry.snapshot?.resolved(at: entry.date) {
                     AuraRainCircular(snapshot: snapshot)
                 } else {
                     AuraAccessoryEmpty()
@@ -135,7 +135,7 @@ struct AuraUVWidget: Widget {
                                intent: SelectLocationIntent.self,
                                provider: AuraProvider()) { entry in
             Group {
-                if let snapshot = entry.snapshot {
+                if let snapshot = entry.snapshot?.resolved(at: entry.date) {
                     AuraUVCircular(snapshot: snapshot, now: entry.date)
                 } else {
                     AuraAccessoryEmpty()

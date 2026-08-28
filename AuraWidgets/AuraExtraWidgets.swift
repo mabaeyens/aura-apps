@@ -81,7 +81,7 @@ struct AuraHumidityWidget: Widget {
                                intent: SelectLocationIntent.self,
                                provider: AuraProvider()) { entry in
             Group {
-                if let snapshot = entry.snapshot {
+                if let snapshot = entry.snapshot?.resolved(at: entry.date) {
                     AuraHumidityCircular(snapshot: snapshot)
                 } else {
                     AuraAccessoryEmpty()
@@ -159,9 +159,13 @@ struct AuraHomeBackground: View {
     let entry: AuraEntry
 
     var body: some View {
+        // Re-anchor to the timeline entry's clock so the backdrop's condition (and the per-condition hero
+        // art it picks) tracks the *displayed* hour, matching the resolved foreground in `AuraHomeEntryView`
+        // rather than the frozen fetch-hour sky. See `WeatherSnapshot.resolved(at:)`.
+        let snapshot = entry.snapshot?.resolved(at: entry.date)
         ZStack {
-            AuraSky(snapshot: entry.snapshot, now: entry.date,
-                    heroImage: WidgetHero.base(for: entry.snapshot, now: entry.date,
+            AuraSky(snapshot: snapshot, now: entry.date,
+                    heroImage: WidgetHero.base(for: snapshot, now: entry.date,
                                                scene: entry.scene),
                     heroCarriesCondition: true,
                     // Anchor the wide hero to the ground: on the short, wide Home families a centre crop

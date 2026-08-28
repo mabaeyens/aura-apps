@@ -68,8 +68,11 @@ enum ScreenshotOverride {
 
 extension WeatherSnapshot {
     /// A copy with the current sky code (and a matching Spanish label) replaced, via a Codable round-trip
-    /// so it stays correct as fields are added or removed. DEBUG/screenshot use only — the daily/hourly
-    /// arrays keep their real codes, which is fine for the hero-led store shots.
+    /// so it stays correct as fields are added or removed. DEBUG/screenshot use only. Rewrites the hourly
+    /// strip's sky codes too, not just the `currentSky` scalar: every surface now derives its shown sky
+    /// through `resolved(at:)`, which re-reads the sky from the upcoming hours strip, so an override that
+    /// touched only the scalar would be discarded the moment the hero, backdrop or a widget resolved. The
+    /// daily array keeps its real codes (the days card is per-day, not a "now" reading).
     func overridingSky(_ code: String) -> WeatherSnapshot {
         guard let data = try? JSONEncoder().encode(self),
               var dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
@@ -77,7 +80,17 @@ extension WeatherSnapshot {
         }
         dict["currentSky"] = code
         let base = code.hasSuffix("n") ? String(code.dropLast()) : code
-        if let label = Self.screenshotSkyLabel[base] { dict["currentSkyText"] = label }
+        let label = Self.screenshotSkyLabel[base]
+        if let label { dict["currentSkyText"] = label }
+        // Stamp the fake sky onto every hour of the strip so `resolved(at:)` picks it up whichever slot is
+        // the upcoming one at the screenshot's `now`, keeping the backdrop, hero and widgets on one sky.
+        if var hours = dict["hours"] as? [[String: Any]] {
+            for i in hours.indices {
+                hours[i]["sky"] = code
+                if let label { hours[i]["skyText"] = label }
+            }
+            dict["hours"] = hours
+        }
         guard let patched = try? JSONSerialization.data(withJSONObject: dict),
               let copy = try? JSONDecoder().decode(WeatherSnapshot.self, from: patched) else {
             return self

@@ -34,7 +34,10 @@ struct WatchRootView: View {
 
     /// The sunless hero art for the current sky+time, or `nil` to fall back to the procedural sky.
     private func heroImage(now: Date) -> Image? {
-        HeroBackground.heroImage(for: snapshot, now: now,
+        // Resolve to `now` so the per-condition hero art tracks the displayed hour's sky, matching the
+        // resolved hero card in `AuraForecastStack` rather than the frozen fetch-hour sky. See
+        // `WeatherSnapshot.resolved(at:)`.
+        HeroBackground.heroImage(for: snapshot?.resolved(at: now), now: now,
                                  family: HeroBackground.Family(storage: heroFamily),
                                  exists: { UIImage(named: $0) != nil })
     }
@@ -67,7 +70,7 @@ struct WatchRootView: View {
                 // `.bottom` keeps the landscape in frame on the near-square wrist screen (a centred fill would
                 // crop the mountains, tree and river off the bottom of the tall art). `heroHorizon` pins a low
                 // dawn/dusk sun above the art's skyline so it rides the sky, not the scenery in front of it.
-                AuraSky(snapshot: snapshot, now: now, heroImage: heroImage(now: now), heroAnchor: .bottom,
+                AuraSky(snapshot: snapshot?.resolved(at: now), now: now, heroImage: heroImage(now: now), heroAnchor: .bottom,
                         heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
                         heroAspect: HeroBackground.heroAspect).ignoresSafeArea()
                 if let snapshot {

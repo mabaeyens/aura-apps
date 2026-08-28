@@ -75,7 +75,7 @@ struct TodayView: View {
     /// Uses `displayNow`/`displaySnapshot` so a DEBUG screenshot run's fake time and sky pick the matching
     /// art, not the wall-clock's.
     private var heroImage: Image? {
-        HeroBackground.heroImage(for: displaySnapshot, now: displayNow,
+        HeroBackground.heroImage(for: resolvedDisplaySnapshot, now: displayNow,
                                  family: HeroBackground.Family(storage: heroFamily),
                                  exists: { UIImage(named: $0) != nil })
     }
@@ -91,7 +91,7 @@ struct TodayView: View {
     /// condition and time of day are baked into the art and `AuraSky` draws only the live sun/moon on top.
     /// Nil for an unknown sky (or before the art ships) → the procedural sky fills in.
     private var wideHeroImage: Image? {
-        HeroBackground.wideImage(for: displaySnapshot, now: displayNow,
+        HeroBackground.wideImage(for: resolvedDisplaySnapshot, now: displayNow,
                                  family: HeroBackground.Family(storage: heroFamily),
                                  exists: { UIImage(named: $0) != nil })
     }
@@ -120,6 +120,15 @@ struct TodayView: View {
         }
         #endif
         return snapshot
+    }
+
+    /// `displaySnapshot` re-anchored to `displayNow`, so the full-bleed sky backdrop and the per-condition
+    /// hero art it picks track the *displayed* hour's sky — the same transform `AuraForecastStack` applies
+    /// before drawing the hero card. Without it the backdrop stayed on the frozen fetch-hour sky and could
+    /// depict a different condition than the hero icon sitting on top after a day change. See
+    /// `WeatherSnapshot.resolved(at:)`.
+    private var resolvedDisplaySnapshot: WeatherSnapshot? {
+        displaySnapshot?.resolved(at: displayNow)
     }
 
     /// The active aviso to surface at the top of the screen, if any. Reads from `displaySnapshot` so a
@@ -179,7 +188,7 @@ struct TodayView: View {
     ///   before the art ships) `wideHeroImage` is nil and the fully procedural `AuraSky` fills the canvas.
     @ViewBuilder private var skyBackground: some View {
         if hSizeClass == .regular {
-            AuraSky(snapshot: displaySnapshot, now: displayNow,
+            AuraSky(snapshot: resolvedDisplaySnapshot, now: displayNow,
                     heroImage: wideHeroImage, heroCarriesCondition: true,
                     heroHorizon: HeroBackground.wideBaseHorizon(HeroBackground.Family(storage: heroFamily)),
                     heroAspect: HeroBackground.wideBaseAspect)
@@ -188,7 +197,7 @@ struct TodayView: View {
             // `.bottom` anchor + `heroHorizon` pin a low dawn/dusk sun just above the portrait art's
             // skyline (mountain peak / tallest rooftop) so it sits in the calm sky, not on the scenery —
             // the same fix the Watch and the wide iPad canvas already get.
-            AuraSky(snapshot: displaySnapshot, now: displayNow, heroImage: heroImage,
+            AuraSky(snapshot: resolvedDisplaySnapshot, now: displayNow, heroImage: heroImage,
                     heroAnchor: .bottom,
                     heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
                     heroAspect: HeroBackground.heroAspect)

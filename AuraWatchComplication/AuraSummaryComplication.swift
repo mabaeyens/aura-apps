@@ -25,7 +25,7 @@ struct AuraSummaryComplicationView: View {
     let entry: AuraComplicationEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .accessoryInline:      AuraSummaryInline(snapshot: snapshot, now: entry.date)
             case .accessoryRectangular: AuraSummaryRectangular(snapshot: snapshot, now: entry.date)
@@ -59,7 +59,7 @@ struct AuraHumidityView: View {
     let entry: AuraComplicationEntry
 
     var body: some View {
-        if let snapshot = entry.snapshot {
+        if let snapshot = entry.snapshot?.resolved(at: entry.date) {
             switch family {
             case .accessoryCorner:
                 let corner = AuraHumidityCorner(snapshot: snapshot)
