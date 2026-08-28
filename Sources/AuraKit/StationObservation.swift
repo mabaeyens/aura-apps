@@ -132,11 +132,17 @@ public extension StationObservation {
     /// enough. `observations` is the raw list (many records per station): keep each station's
     /// latest reading with a temperature, drop readings older than `maxAge`, and return the nearest
     /// within `maxDistanceKm` (beyond which a reading isn't representative of the location).
+    /// The tightened station radius (unified-freshness spec, shared with Android): beyond this a reading
+    /// isn't representative of the location. Down from 35 km — altitude is the real culprit (a valley town
+    /// vs a sierra station), but the record carries no elevation, so distance is the only lever. Locations
+    /// with no station within this radius fall back to the forecast and hide the observation card.
+    static let nearestStationKm: Double = 20
+
     static func nearest(toLatitude latitude: Double, longitude: Double,
                         in observations: [StationObservation],
                         now: Date = Date(),
                         maxAge: TimeInterval = 3 * 3600,
-                        maxDistanceKm: Double = 35) -> StationObservation? {
+                        maxDistanceKm: Double = StationObservation.nearestStationKm) -> StationObservation? {
         var latest: [String: StationObservation] = [:]
         for obs in observations where obs.ta != nil && obs.lat != nil && obs.lon != nil {
             if let prev = latest[obs.idema],
