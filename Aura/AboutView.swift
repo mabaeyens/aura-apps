@@ -20,25 +20,14 @@ struct AboutView: View {
 
                 Text("Aura")
                     .font(.title2.weight(.semibold))
-                Text("Versión \(version)")
+                Text(auraString("about.versionLabel", version))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 4)
 
                 Spacer().frame(height: 28)
 
-                Text(
-                    "Aura es una app del tiempo para iPhone y Apple Watch. Toma tu ubicación más " +
-                    "cercana y te muestra la previsión de AEMET a todo color: en la propia app, en los " +
-                    "widgets y en las complicaciones de la pantalla de bloqueo y del reloj. Se actualiza " +
-                    "sola a medida que cambian los datos.\n\n" +
-                    "Del latín aura: brisa, aire en movimiento, y también el halo de luz que rodea algo." +
-                    "\n\n" +
-                    "Los datos vienen de repositorios de datos abiertos con acceso público: AEMET, " +
-                    "MITECO y Copernicus. Aura es una app independiente: no está afiliada a AEMET, MITECO " +
-                    "ni a ninguna entidad gubernamental, ni las representa. Todo ocurre en tu dispositivo: " +
-                    "sin cuenta y sin servidores propios; solo se conecta a esas fuentes para traer los datos."
-                )
+                Text(auraString("about.body"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -51,23 +40,23 @@ struct AboutView: View {
 
                 Spacer().frame(height: 28)
 
-                Text("Créditos")
+                Text(auraString("about.credits.title"))
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 12)
 
                 VStack(spacing: 12) {
-                    creditRow("AEMET", "Previsión, avisos, radar y UV máximo (OpenData)",
+                    creditRow("AEMET", auraString("about.credit.aemet"),
                               "https://opendata.aemet.es")
-                    creditRow("MITECO", "Índice de calidad del aire (ICA · CC-BY 4.0)",
+                    creditRow("MITECO", auraString("about.credit.miteco"),
                               "https://www.miteco.gob.es/es/calidad-y-evaluacion-ambiental/temas/atmosfera-y-calidad-del-aire/visualizacion-datos-calidad-del-aire/ica.html")
-                    creditRow("Copernicus (CAMS)", "Índice UV por hora, vía Open-Meteo (CC-BY 4.0)",
+                    creditRow("Copernicus (CAMS)", auraString("about.credit.copernicus"),
                               "https://atmosphere.copernicus.eu")
-                    creditRow("RTVE", "El Tiempo, el parte diario",
+                    creditRow("RTVE", auraString("about.credit.rtve"),
                               "https://www.rtve.es")
-                    creditRow("Meteored", "Noticias y divulgación (tiempo.com)",
+                    creditRow("Meteored", auraString("about.credit.meteored"),
                               "https://www.tiempo.com")
-                    creditRow("AEMET Blog", "Divulgación de sus meteorólogos",
+                    creditRow("AEMET Blog", auraString("about.credit.aemetblog"),
                               "https://aemetblog.es")
                 }
                 .frame(maxWidth: 360)
@@ -75,11 +64,11 @@ struct AboutView: View {
                 Spacer().frame(height: 20)
 
                 if let repo = URL(string: "https://github.com/mabaeyens/aura-apps") {
-                    Link("Código en GitHub", destination: repo)
+                    Link(auraString("about.githubLink"), destination: repo)
                         .font(.footnote)
                 }
 
-                Text("Sin cuenta · sin servidores · solo fuentes públicas")
+                Text(auraString("about.tagline"))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 8)
@@ -89,7 +78,7 @@ struct AboutView: View {
             .padding(.horizontal, 32)
             .frame(maxWidth: .infinity)
         }
-        .navigationTitle("Acerca de")
+        .navigationTitle(auraString("about.title"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -97,13 +86,13 @@ struct AboutView: View {
     /// dedication is not an attribution. First person, warm and plain. The lines live in one array so
     /// I can add my brothers and sisters by name later without touching the layout.
     private let dedicationLines = [
-        "A mi padre, que me enseñó a mirar al cielo y a las estrellas, y me introdujo en el fabuloso mundo de la tecnología que tanto disfruto hoy.",
-        "A mi madre, que me descubrió otros mundos que no se podían ver con los ojos, a través de los libros y en los que encuentro gran dicha.",
+        auraString("about.dedication.line1"),
+        auraString("about.dedication.line2"),
     ]
 
     @ViewBuilder
     private var dedication: some View {
-        Text("Dedicatoria")
+        Text(auraString("about.dedication.title"))
             .font(.footnote.weight(.semibold))
             .foregroundStyle(.secondary)
             .padding(.bottom, 10)

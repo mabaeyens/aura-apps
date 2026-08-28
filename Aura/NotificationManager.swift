@@ -14,12 +14,12 @@ enum NotificationLevel: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// Spanish label for the pickers.
+    /// Localized label for the pickers.
     var label: String {
         switch self {
-        case .off: return "Ninguna"
-        case .avisos: return "Solo avisos"
-        case .avisosAndForecasts: return "Avisos y predicciones"
+        case .off: return auraString("notif.level.off")
+        case .avisos: return auraString("notif.level.avisos")
+        case .avisosAndForecasts: return auraString("notif.level.both")
         }
     }
 
@@ -87,7 +87,7 @@ enum NotificationManager {
         guard isNew else { return }
 
         post(id: "aviso-\(ine)",
-             title: "Aviso \(new.level.rawValue) · \(localidad)",
+             title: auraString("notif.aviso.title", new.level.rawValue, localidad),
              body: new.phenomenon ?? new.event)
     }
 
@@ -97,9 +97,9 @@ enum NotificationManager {
                                          localidad: String, ine: String) {
         guard let new, !new.isEmpty, let old, !old.isEmpty, old != new else { return }
 
-        let body = phenomenon.map { "AEMET ha actualizado la predicción. \($0)." }
-            ?? "AEMET ha actualizado la predicción de tu zona."
-        post(id: "prediccion-\(ine)", title: "Nueva predicción · \(localidad)", body: body)
+        let body = phenomenon.map { auraString("notif.forecast.bodyWithPhenomenon", $0) }
+            ?? auraString("notif.forecast.body")
+        post(id: "prediccion-\(ine)", title: auraString("notif.forecast.title", localidad), body: body)
     }
 
     private static func post(id: String, title: String, body: String) {

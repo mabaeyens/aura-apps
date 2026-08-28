@@ -59,8 +59,8 @@ struct AuraConditionsComplication: Widget {
             AuraConditionsView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("El tiempo")
-        .description("La temperatura y los avisos de tu ubicación.")
+        .configurationDisplayName(auraString("watch.complication.conditions.name"))
+        .description(auraString("watch.complication.conditions.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner])
     }
 }
@@ -104,8 +104,8 @@ struct AuraSunComplication: Widget {
             AuraSunView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Amanecer/Ocaso")
-        .description("La próxima salida o puesta de sol.")
+        .configurationDisplayName(auraString("watch.complication.sun.name"))
+        .description(auraString("watch.complication.sun.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -146,8 +146,8 @@ struct AuraWindNeedleComplication: Widget {
             AuraWindView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Viento")
-        .description("Velocidad y dirección del viento.")
+        .configurationDisplayName(auraString("card.wind.title"))
+        .description(auraString("watch.complication.wind.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -185,8 +185,8 @@ struct AuraRainComplication: Widget {
             AuraRainView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Lluvia")
-        .description("La probabilidad de precipitación de la hora actual.")
+        .configurationDisplayName(auraString("watch.complication.rain.name"))
+        .description(auraString("watch.complication.rain.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -224,8 +224,8 @@ struct AuraUVComplication: Widget {
             AuraUVView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("UV ahora")
-        .description("El índice UV de la hora, sobre el máximo del día.")
+        .configurationDisplayName(auraString("watch.complication.uv.name"))
+        .description(auraString("watch.complication.uv.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -270,8 +270,8 @@ struct AuraMinMaxComplication: Widget {
             AuraMinMaxView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Máx/Mín")
-        .description("La máxima y la mínima de hoy.")
+        .configurationDisplayName(auraString("watch.complication.minmax.name"))
+        .description(auraString("watch.complication.minmax.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -306,8 +306,8 @@ struct AuraAirQualityComplication: Widget {
             AuraAirQualityView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Calidad del aire")
-        .description("El índice de calidad del aire (ICA) de MITECO.")
+        .configurationDisplayName(auraString("card.aqi.title"))
+        .description(auraString("watch.complication.aqi.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
     }
 }
@@ -352,8 +352,8 @@ struct AuraHoursComplication: Widget {
             }
             .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Próximas horas")
-        .description("La previsión de las próximas horas.")
+        .configurationDisplayName(auraString("card.hourly.title"))
+        .description(auraString("watch.complication.hours.desc"))
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -373,8 +373,8 @@ struct AuraDaysComplication: Widget {
             }
             .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Próximos días")
-        .description("La previsión de los próximos días.")
+        .configurationDisplayName(auraString("card.daily.title"))
+        .description(auraString("watch.complication.days.desc"))
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -395,8 +395,8 @@ struct AuraNowComplication: Widget {
             }
             .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Ahora")
-        .description("El tiempo actual: condición, temperatura y rango del día.")
+        .configurationDisplayName(auraString("watch.complication.now.name"))
+        .description(auraString("watch.complication.now.desc"))
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -417,8 +417,8 @@ struct AuraSunRectComplication: Widget {
             }
             .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Sol del día")
-        .description("Amanecer, atardecer y las horas de luz que quedan.")
+        .configurationDisplayName(auraString("watch.complication.sunrect.name"))
+        .description(auraString("watch.complication.sunrect.desc"))
         .supportedFamilies([.accessoryRectangular])
     }
 }

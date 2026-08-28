@@ -227,3 +227,256 @@
 "uv.advice.6"  = "Protection needed: sunscreen, a hat and shade through the middle of the day.";
 "uv.advice.8"  = "Take extra care; avoid the sun between noon and 4 pm.";
 "uv.advice.11" = "Avoid the sun; unprotected skin burns in minutes.";
+
+
+/* ======================================================================
+   App-target chrome (Aura, Watch, Widgets, Complication).
+   Resolved through the same auraString / Bundle.module path as the cards
+   above, so every target follows the device language with no per-target
+   wiring. Data and vocabulary stay Spanish here too. English override.
+   ====================================================================== */
+
+/* Shared buttons and states reused across screens */
+"common.done"    = "Done";
+"common.cancel"  = "Cancel";
+"common.save"    = "Save";
+"common.close"   = "Close";
+"common.ok"      = "OK";
+"common.retry"   = "Try again";
+"common.loading" = "Loading…";
+
+/* Locations list + add-location sheet */
+"locations.title"            = "Locations";
+"locations.add.title"        = "Add location";
+"locations.search.prompt"    = "Search for a municipality";
+"locations.useMyLocation"    = "Use my location";
+"locations.permissionDenied" = "Location access denied. Turn it on in system Settings.";
+"locations.favorites"        = "Favorites";
+"locations.empty"            = "You haven’t saved any locations yet. Use “Use my location” or the + button to add one.";
+
+/* Notifications (the aviso level and the phenomenon come from AEMET and stay Spanish) */
+"notif.level.off"                  = "None";
+"notif.level.avisos"               = "Warnings only";
+"notif.level.both"                 = "Warnings and forecasts";
+"notif.aviso.title"                = "Warning %1$@ · %2$@";
+"notif.forecast.title"             = "New forecast · %@";
+"notif.forecast.body"              = "AEMET has updated the forecast for your area.";
+"notif.forecast.bodyWithPhenomenon" = "AEMET has updated the forecast. %@.";
+
+/* Written forecast sheet (the bulletin text and its date come from AEMET) */
+"forecast.empty.body" = "Add a location in the Locations tab.";
+"forecast.updatedAt"  = "Updated %@";
+
+/* Screen titles reached from the Today menu (defined once here, reused by their own screens) */
+"settings.title" = "Settings";
+"help.title"     = "Help";
+"tip.title"      = "Tip";
+
+/* Today screen (the phenomenon in the scroll hint comes from AEMET and stays Spanish) */
+"today.empty.title"          = "No locations";
+"today.empty.body"           = "Open the menu (top right) and add a location.";
+"today.menu.a11y"            = "Menu";
+"today.more"                 = "MORE";
+"today.scroll.a11yWithAlert" = "Swipe to see more, including a warning about %@";
+"today.scroll.a11y"          = "Swipe to see more";
+"today.needKey"              = "Add your AEMET key in Settings to see the data.";
+"today.loadError"            = "Couldn’t fetch the data.";
+
+/* Settings screen (opendata.aemet.es is a URL; the aviso level colours in the footer are prose) */
+"settings.apiKey.placeholder"    = "AEMET key";
+"settings.saveKey"               = "Save key";
+"settings.deleteKey"             = "Delete key";
+"settings.apiKey.section"        = "API key";
+"settings.keyStored"             = "Key saved in the Keychain.";
+"settings.keyNotStored"          = "No key saved.";
+"settings.keyUpdated"            = "Key updated.";
+"settings.apiKey.footer"         = "If the forecast stops updating, request another free key at opendata.aemet.es and paste it here.";
+"settings.background.section"    = "Appearance";
+"settings.background.picker"     = "Background";
+"settings.background.footer"     = "Choose the landscape behind the sky. The Sun and Moon are always drawn in their real positions, whatever the background.";
+"settings.timeFormat.picker"     = "Time format";
+"settings.timeFormat.24h"        = "24 h";
+"settings.timeFormat.12h"        = "12 h";
+"settings.timeFormat.section"    = "Time format";
+"settings.timeFormat.footer"     = "Choose between 24-hour (14:30) and 12-hour with AM/PM (2:30 PM). It applies across the app, the widgets and the watch.";
+"settings.notifications.picker"  = "Notifications";
+"settings.notifications.section" = "Notifications";
+"settings.notifications.footer"  = "Warnings only notify at orange or red level for your active location. Forecasts notify when AEMET updates the bulletin. It needs notification permission and background refresh turned on in system Settings.";
+"settings.aboutRow"              = "About Aura";
+"settings.versionLabel"          = "Version";
+"settings.deleteKey.confirmTitle" = "Delete the AEMET key?";
+"settings.deleteKey.confirmBody" = "You’ll stop receiving data until you enter a key again.";
+
+/* Tip jar (the StoreKit product name and price in the a11y label come from the store) */
+"tip.error.failed"   = "The tip didn’t go through. Please try again.";
+"tip.alert.title"    = "Oops";
+"tip.heading"        = "Buy me a tonic";
+"tip.body"           = "Aura is free, with no ads and no accounts. If it keeps you company every morning and you feel like saying thanks, you can buy me a tonic. It unlocks nothing: it’s just a gesture, and it makes my day.";
+"tip.buy.a11yLabel"  = "Buy %1$@, %2$@";
+"tip.buy.a11yHint"   = "A tip for the developer";
+"tip.loadError"      = "Couldn’t load the tips.";
+"tip.thanks.title"   = "Thank you!";
+"tip.thanks.body"    = "Here’s to your tonic. Enjoy yours too.";
+"tip.pending.title"  = "Awaiting approval";
+"tip.pending.body"   = "The purchase is waiting for approval. Thanks all the same.";
+"tip.footnote"       = "Tips can be repeated and unlock no features.";
+
+/* About screen (source names, licences and URLs stay as-is; the personal dedication is my own voice) */
+"about.versionLabel"     = "Version %@";
+"about.body"             = "Aura is a weather app for iPhone and Apple Watch. It takes your nearest location and shows you the AEMET forecast in full color: in the app itself, in the widgets and in the Lock Screen and watch complications. It updates on its own as the data changes.\n\nFrom the Latin aura: a breeze, air in motion, and also the halo of light around something.\n\nThe data comes from open-data repositories with public access: AEMET, MITECO and Copernicus. Aura is an independent app: it isn’t affiliated with AEMET, MITECO or any government body, and doesn’t represent them. Everything happens on your device: no account and no servers of my own; it only connects to those sources to bring in the data.";
+"about.credits.title"    = "Credits";
+"about.credit.aemet"     = "Forecast, warnings, radar and peak UV (OpenData)";
+"about.credit.miteco"    = "Air quality index (ICA · CC-BY 4.0)";
+"about.credit.copernicus" = "Hourly UV index, via Open-Meteo (CC-BY 4.0)";
+"about.credit.rtve"      = "El Tiempo, the daily bulletin";
+"about.credit.meteored"  = "News and outreach (tiempo.com)";
+"about.credit.aemetblog" = "Outreach from its meteorologists";
+"about.githubLink"       = "Code on GitHub";
+"about.tagline"          = "No account · no servers · public sources only";
+"about.title"            = "About";
+"about.dedication.title" = "Dedication";
+"about.dedication.line1" = "To my father, who taught me to look up at the sky and the stars, and led me into the wonderful world of technology I enjoy so much today.";
+"about.dedication.line2" = "To my mother, who revealed to me other worlds that couldn’t be seen with the eyes, through books, and in which I find great joy.";
+
+/* Onboarding pages (the aviso colours in the notify page are prose) */
+"onboarding.welcome.title"   = "Welcome to Aura";
+"onboarding.welcome.body"    = "The AEMET forecast over a living sky, with the Sun and Moon exactly where they are at every hour of your location.";
+"onboarding.key.title"       = "Your AEMET key";
+"onboarding.key.body"        = "AEMET is public and free, but you need your own key, also free. Request it with the button and paste it right here. You can change it whenever you like in Settings.";
+"onboarding.everywhere.title" = "All over your screen";
+"onboarding.everywhere.body" = "Widgets for the Home and Lock Screens, and complications for the Apple Watch: the weather at a glance, without opening the app.";
+"onboarding.notify.title"    = "Shall I let you know?";
+"onboarding.notify.body"     = "I can notify you of the orange and red warnings for your location, and if you like, when AEMET updates the forecast too. Change it whenever you like in Settings.";
+"onboarding.done.title"      = "All set";
+"onboarding.done.body"       = "Add your location and Aura does the rest. You can read this again in Help whenever you like.";
+"onboarding.skip"            = "Skip";
+"onboarding.requestKey"      = "Request my free key";
+"onboarding.keyPlaceholder"  = "Paste your key here";
+"onboarding.keySaved"        = "Key saved";
+"onboarding.start"           = "Get started";
+
+/* Help sheet. The sky-condition names in the legend are AEMET data and stay Spanish (kept as
+   literals in the view). The UV band names also stay Spanish to mirror the on-device vocabulary;
+   only the advice beside them localizes. Settings → API key and blue→red keep their arrows. */
+"help.apiKey.intro"      = "Aura shows the AEMET forecast, which is public and free. To use it you need your own key, also free and personal.";
+"help.step1"             = "Open the AEMET page (button below).";
+"help.step2"             = "Enter your email and accept the terms.";
+"help.step3"             = "AEMET sends you the key by email (check spam too).";
+"help.step4"             = "Paste it in Settings → API key.";
+"help.requestKey"        = "Request my key from AEMET";
+"help.yourKey.title"     = "Your AEMET key";
+"help.yourKey.body"      = "If the forecast stops updating, request another key the same way and paste it in again.";
+"help.sky.title"         = "Sky conditions";
+"help.sky.body"          = "At night, the sun in these icons becomes a moon.";
+"help.tempMax.title"     = "Maximum temperature";
+"help.tempMax.body"      = "The highest forecast for the day.";
+"help.tempMin.title"     = "Minimum temperature";
+"help.tempMin.body"      = "The lowest forecast for the day.";
+"help.temp.title"        = "Temperature";
+"help.temp.body"         = "Degrees are colored on a continuous scale from blue (cold) to red (hot), the same one across the cards, the range bars and the widgets.";
+"help.rain.title"        = "Chance of rain";
+"help.rain.body"         = "The probability that it rains. This is rain.";
+"help.rainWatch.title"   = "Chance of rain (watch)";
+"help.rainWatch.body"    = "The plain drop in the rain gauge on the watch.";
+"help.humidity.title"    = "Relative humidity";
+"help.humidity.body"     = "The water in the air, as a %. It isn’t rain.";
+"help.rainHumidity.title" = "Rain and humidity";
+"help.rainHumidity.body" = "The wavy drop (humidity) and the umbrella or plain drop (rain) are different things on purpose.";
+"help.wind.speed.title"  = "Wind speed";
+"help.wind.speed.body"   = "In km/h, the unit AEMET provides.";
+"help.windrose.title"    = "Compass rose";
+"help.windrose.body"     = "The arrow points to the wind direction, and its color, the strength.";
+"help.wind.body"         = "Tap the wind card to see the full Beaufort scale.";
+"help.sunrise.title"     = "Sunrise";
+"help.sunrise.body"      = "The sun coming up.";
+"help.sunset.title"      = "Sunset";
+"help.sunset.body"       = "The sun going down.";
+"help.moonUp.body"       = "The moon is above the horizon: it’s night.";
+"help.sunmoon.title"     = "Sun and moon";
+"help.uv.low.advice"      = "No protection needed.";
+"help.uv.moderate.advice" = "Sunglasses and sunscreen.";
+"help.uv.high.advice"     = "Protect yourself from the sun.";
+"help.uv.veryHigh.advice" = "Avoid the midday sun.";
+"help.uv.extreme.advice"  = "Avoid sun exposure.";
+"help.uv.clouds.advice"   = "An overcast sky lowers the current UV below the forecast maximum.";
+"help.uv.body"           = "The UV is the day’s forecast maximum under clear skies. Tap the card to see each level.";
+"help.aqi.iconTitle"     = "Air quality (ICA)";
+"help.aqi.iconBody"      = "MITECO’s Air Quality Index.";
+"help.aqi.body"          = "Tap the card to see the full scale and each pollutant separately.";
+"help.aviso.iconTitle"   = "Weather warning";
+"help.aviso.iconBody"    = "AEMET has an active warning for the area.";
+"help.avisos.title"      = "Warnings";
+"help.avisos.body"       = "The warning color shows the level: yellow, orange or red, from least to most dangerous.";
+"help.icon.menu.title"       = "Menu";
+"help.icon.menu.body"        = "Opens the app’s sections.";
+"help.icon.forecast.body"    = "The written bulletin for the day.";
+"help.icon.locations.body"   = "Your saved places.";
+"help.icon.settings.body"    = "Your key and the options.";
+"help.icon.help.body"        = "This screen.";
+"help.icon.tip.body"         = "Buy me a tonic, if you feel like it.";
+"help.icon.about.body"       = "Version, sources and credits.";
+"help.icon.myLocation.title" = "Your location";
+"help.icon.myLocation.body"  = "The place shown, or use the current one.";
+"help.icon.noLocation.title" = "No location";
+"help.icon.noLocation.body"  = "No place has been chosen yet.";
+"help.icon.missingKey.title" = "Key missing";
+"help.icon.missingKey.body"  = "Add your AEMET key in Settings.";
+"help.icon.keySaved.body"    = "Your AEMET key is saved in the Keychain.";
+"help.icon.add.title"        = "Add";
+"help.icon.add.body"         = "Saves a new location.";
+"help.icon.selected.title"   = "Selected";
+"help.icon.selected.body"    = "The location being shown.";
+"help.icon.expand.title"     = "Expand";
+"help.icon.expand.body"      = "Shows more detail.";
+"help.icon.close.body"       = "Closes the open card or scale.";
+"help.inApp.title"       = "In the app";
+"help.scales.intro"      = "Many cards can be tapped to open their color scale, with your current value marked: Wind (Beaufort), Air quality (ICA) and UV.";
+"help.scales.title"      = "Color scales";
+"help.scales.body"       = "Temperature uses the same blue→red scale across the app: cards, bars and widgets.";
+
+/* Watch app chrome */
+"watch.openOnPhone"      = "Open Aura on iPhone";
+"watch.background.title" = "Background";
+"watch.followPhone"      = "Follow the iPhone";
+"watch.location.title"   = "Location";
+
+/* Watch complication gallery (name + description shown in the watch-face editor) */
+"watch.complication.conditions.name" = "Weather";
+"watch.complication.conditions.desc" = "The temperature and warnings for your location.";
+"watch.complication.sun.name"        = "Sunrise/Sunset";
+"watch.complication.sun.desc"        = "The next sunrise or sunset.";
+"watch.complication.wind.desc"       = "Wind speed and direction.";
+"watch.complication.rain.name"       = "Rain";
+"watch.complication.rain.desc"       = "The chance of precipitation for the current hour.";
+"watch.complication.uv.name"         = "UV now";
+"watch.complication.uv.desc"         = "The hour’s UV index, against the day’s maximum.";
+"watch.complication.minmax.name"     = "Max/Min";
+"watch.complication.minmax.desc"     = "Today’s high and low.";
+"watch.complication.aqi.desc"        = "MITECO’s air quality index (ICA).";
+"watch.complication.hours.desc"      = "The forecast for the next hours.";
+"watch.complication.days.desc"       = "The forecast for the next days.";
+"watch.complication.now.name"        = "Now";
+"watch.complication.now.desc"        = "The current weather: condition, temperature and the day’s range.";
+"watch.complication.sunrect.name"    = "Day’s sun";
+"watch.complication.sunrect.desc"    = "Sunrise, sunset and the daylight left.";
+"watch.complication.sunmoon.desc"    = "The next sunrise, sunset or moonrise.";
+"watch.complication.summary.name"    = "Summary";
+"watch.complication.summary.desc"    = "The weather at a glance: condition, temperature, rain and humidity.";
+"watch.complication.humidity.name"   = "Humidity";
+"watch.complication.humidity.desc"   = "The current relative humidity.";
+"watch.complication.aviso.desc"      = "The active weather warning, if any.";
+
+/* Widget gallery (name + description shown in the widget picker) */
+"widget.sunmoon.desc"    = "The next sunrise, sunset or moonrise.";
+"widget.summary.name"    = "Summary";
+"widget.summary.desc"    = "Temperature, rain and humidity on one line.";
+"widget.humidity.name"   = "Humidity";
+"widget.humidity.desc"   = "The current relative humidity.";
+"widget.aviso.desc"      = "The active weather warning, if any.";
+"widget.home.desc"       = "Your location’s weather on the Home Screen.";
+"widget.today.name"      = "Weather";
+"widget.today.desc"      = "Today’s forecast for your location.";
+"widget.rain.name"       = "Rain";
+"widget.rain.desc"       = "The chance of precipitation for the current hour.";
+"widget.uv.name"         = "UV now";
+"widget.uv.desc"         = "The hour’s UV index, against the day’s maximum.";

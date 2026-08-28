@@ -1,5 +1,6 @@
 import Foundation
 import StoreKit
+import AuraKit
 
 /// The tip jar's StoreKit 2 store. Loads the three consumable "tónica" tips, runs a purchase,
 /// verifies and finishes the transaction, and publishes a small state machine the sheet reads.
@@ -94,7 +95,7 @@ final class TipJar: ObservableObject {
                 purchaseState = .ready
             }
         } catch {
-            purchaseState = .failed("No se pudo completar la propina. Inténtalo de nuevo.")
+            purchaseState = .failed(auraString("tip.error.failed"))
         }
     }
 

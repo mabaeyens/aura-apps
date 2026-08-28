@@ -1,0 +1,7 @@
+/* English override for the bundle-level strings. Shipping this en.lproj also makes iOS
+   treat Aura as English-capable, so system controls follow the device language. The app
+   name stays "Aura" in every language. */
+"CFBundleDisplayName" = "Aura";
+
+/* Location permission prompt shown on English devices. */
+"NSLocationWhenInUseUsageDescription" = "Aura uses your location to show the weather for your municipality.";

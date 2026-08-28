@@ -136,9 +136,9 @@ struct TodayView: View {
                         content(for: location)
                     } else {
                         ContentUnavailableView(
-                            "Sin ubicaciones",
+                            auraString("today.empty.title"),
                             systemImage: "mappin.slash",
-                            description: Text("Abre el menú (arriba a la derecha) y añade una ubicación.")
+                            description: Text(auraString("today.empty.body"))
                         )
                     }
                 }
@@ -208,19 +208,19 @@ struct TodayView: View {
             // Switch the hero-art family right from the menu (mirrors the Settings control), so the theme is
             // one tap from the hero itself. Only offered once cityscape art ships (`hasCityscapeArt`).
             if hasCityscapeArt {
-                Picker("Fondo del cielo", selection: $heroFamily) {
+                Picker(auraString("settings.background.section"), selection: $heroFamily) {
                     ForEach(HeroBackground.Family.allCases, id: \.rawValue) { family in
                         Text(family.displayName).tag(family.rawValue)
                     }
                 }
                 Divider()
             }
-            Button { route = .forecast }  label: { Label("Predicción", systemImage: "text.alignleft") }
-            Button { route = .locations } label: { Label("Ubicaciones", systemImage: "mappin.and.ellipse") }
-            Button { route = .settings }  label: { Label("Ajustes", systemImage: "gearshape") }
-            Button { route = .help }      label: { Label("Ayuda", systemImage: "questionmark.circle") }
+            Button { route = .forecast }  label: { Label(auraString("card.forecast.title"), systemImage: "text.alignleft") }
+            Button { route = .locations } label: { Label(auraString("locations.title"), systemImage: "mappin.and.ellipse") }
+            Button { route = .settings }  label: { Label(auraString("settings.title"), systemImage: "gearshape") }
+            Button { route = .help }      label: { Label(auraString("help.title"), systemImage: "questionmark.circle") }
             Divider()
-            Button { route = .tip }       label: { Label("Propina", systemImage: "waterbottle") }
+            Button { route = .tip }       label: { Label(auraString("tip.title"), systemImage: "waterbottle") }
         } label: {
             Image(systemName: "line.3.horizontal")
                 .auraFont(17, relativeTo: .body, weight: .semibold)
@@ -234,7 +234,7 @@ struct TodayView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
-        .accessibilityLabel("Menú")
+        .accessibilityLabel(auraString("today.menu.a11y"))
         .padding(.trailing, 16)
         .padding(.top, 4)
         .environment(\.colorScheme, .dark)
@@ -256,7 +256,7 @@ struct TodayView: View {
                             .auraFont(12, relativeTo: .caption, weight: .bold)
                             .foregroundStyle(Palette.alert(alert.level))
                     }
-                    Text("MÁS")
+                    Text(auraString("today.more"))
                         .auraFont(11, relativeTo: .caption, weight: .bold).tracking(2)
                         .foregroundStyle(.white.opacity(0.85))
                 }
@@ -269,7 +269,7 @@ struct TodayView: View {
             .opacity(atTop ? 1 : 0)
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(activeAlert.map { "Desliza para ver más, incluido un aviso de \($0.phenomenon ?? $0.event)" } ?? "Desliza para ver más")
+            .accessibilityLabel(activeAlert.map { auraString("today.scroll.a11yWithAlert", $0.phenomenon ?? $0.event) } ?? auraString("today.scroll.a11y"))
             .environment(\.colorScheme, .dark)
         }
     }
@@ -287,7 +287,7 @@ struct TodayView: View {
                         AuraForecastStack(snapshot: snap, size: .phone, now: displayNow,
                                           radar: radar, news: news, heroFillHeight: geo.size.height)
                     } else if isLoading {
-                        notice { HStack(spacing: 8) { ProgressView().tint(.white); Text("Cargando…") } }
+                        notice { HStack(spacing: 8) { ProgressView().tint(.white); Text(auraString("common.loading")) } }
                     } else if let errorMessage {
                         notice { Label(errorMessage, systemImage: "exclamationmark.triangle") }
                     }
@@ -319,7 +319,7 @@ struct TodayView: View {
     }
 
     private var keyBanner: some View {
-        notice { Label("Añade tu clave de AEMET en Ajustes para ver los datos.", systemImage: "key") }
+        notice { Label(auraString("today.needKey"), systemImage: "key") }
     }
 
     private func load(force: Bool) async {
@@ -366,7 +366,7 @@ struct TodayView: View {
             news = await NewsService.latest(force: force)
         } else {
             // Nothing cached yet and the refresh couldn't fill it — surface why, if we know.
-            errorMessage = refreshError ?? "No se pudieron obtener los datos."
+            errorMessage = refreshError ?? auraString("today.loadError")
         }
         isLoading = false
     }

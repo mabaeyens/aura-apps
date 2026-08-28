@@ -14,8 +14,8 @@ struct AuraSummaryComplication: Widget {
             AuraSummaryComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Resumen")
-        .description("El tiempo de un vistazo: estado, temperatura, lluvia y humedad.")
+        .configurationDisplayName(auraString("watch.complication.summary.name"))
+        .description(auraString("watch.complication.summary.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner, .accessoryRectangular])
     }
 }
@@ -48,8 +48,8 @@ struct AuraHumidityComplication: Widget {
             AuraHumidityView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Humedad")
-        .description("La humedad relativa actual.")
+        .configurationDisplayName(auraString("watch.complication.humidity.name"))
+        .description(auraString("watch.complication.humidity.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryCorner])
     }
 }
@@ -84,8 +84,8 @@ struct AuraAvisoComplication: Widget {
             AuraAvisoComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Aviso")
-        .description("El aviso meteorológico activo, si lo hay.")
+        .configurationDisplayName(auraString("aviso.label"))
+        .description(auraString("watch.complication.aviso.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryCorner, .accessoryRectangular])
     }
 }

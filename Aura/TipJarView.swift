@@ -50,18 +50,18 @@ struct TipJarView: View {
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: tipJar.purchaseState)
             }
             .environment(\.colorScheme, .dark)     // light text over the sky, matching Hoy
-            .navigationTitle("Propina")
+            .navigationTitle(auraString("tip.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { dismiss() }
+                    Button(auraString("common.done")) { dismiss() }
                 }
             }
         }
         .task { await tipJar.loadProducts() }
         // Surface a purchase failure as an alert; dismissing returns the store to `ready`.
-        .alert("Vaya", isPresented: failureBinding) {
-            Button("Vale", role: .cancel) { tipJar.resetPurchaseState() }
+        .alert(auraString("tip.alert.title"), isPresented: failureBinding) {
+            Button(auraString("common.ok"), role: .cancel) { tipJar.resetPurchaseState() }
         } message: {
             Text(failureMessage)
         }
@@ -77,15 +77,11 @@ struct TipJarView: View {
                 .shadow(color: .black.opacity(0.25), radius: 6, y: 1)
                 .accessibilityHidden(true)
 
-            Text("Invítame a una tónica")
+            Text(auraString("tip.heading"))
                 .font(.title2.weight(.semibold))
                 .multilineTextAlignment(.center)
 
-            Text(
-                "Aura es gratis, sin anuncios y sin cuentas. Si te acompaña cada mañana y te " +
-                "apetece darme las gracias, puedes invitarme a una tónica. No desbloquea nada: " +
-                "es solo un gesto, y me alegra el día."
-            )
+            Text(auraString("tip.body"))
             .font(.subheadline)
             .foregroundStyle(.white.opacity(0.85))
             .multilineTextAlignment(.center)
@@ -142,9 +138,9 @@ struct TipJarView: View {
         .disabled(isAnyPurchaseInFlight)
         // One clear spoken label per tip: the gesture plus the price.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Invitar a \(product.displayName), \(product.displayPrice)"))
+        .accessibilityLabel(Text(auraString("tip.buy.a11yLabel", product.displayName, product.displayPrice)))
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(Text("Propina para el desarrollador"))
+        .accessibilityHint(Text(auraString("tip.buy.a11yHint")))
     }
 
     // MARK: - Load states
@@ -153,7 +149,7 @@ struct TipJarView: View {
         card {
             HStack(spacing: 10) {
                 ProgressView().tint(.white)
-                Text("Cargando…").foregroundStyle(.white.opacity(0.9))
+                Text(auraString("common.loading")).foregroundStyle(.white.opacity(0.9))
             }
         }
     }
@@ -161,10 +157,10 @@ struct TipJarView: View {
     private var failedCard: some View {
         card {
             VStack(spacing: 12) {
-                Label("No se pudieron cargar las propinas.", systemImage: "wifi.exclamationmark")
+                Label(auraString("tip.loadError"), systemImage: "wifi.exclamationmark")
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
-                Button("Reintentar") {
+                Button(auraString("common.retry")) {
                     Task { await tipJar.loadProducts() }
                 }
                 .font(.headline)
@@ -181,8 +177,8 @@ struct TipJarView: View {
     private var successOverlay: some View {
         confirmation(
             icon: "checkmark.circle.fill",
-            title: "¡Gracias!",
-            message: "Va por tu tónica. Que la disfrutes tú también."
+            title: auraString("tip.thanks.title"),
+            message: auraString("tip.thanks.body")
         ) {
             tipJar.resetPurchaseState()
         }
@@ -191,8 +187,8 @@ struct TipJarView: View {
     private var pendingOverlay: some View {
         confirmation(
             icon: "hourglass.circle.fill",
-            title: "Pendiente de aprobar",
-            message: "La compra está a la espera de aprobación. Gracias de todos modos."
+            title: auraString("tip.pending.title"),
+            message: auraString("tip.pending.body")
         ) {
             tipJar.resetPurchaseState()
         }
@@ -216,7 +212,7 @@ struct TipJarView: View {
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
-                Button("Cerrar", action: onDismiss)
+                Button(auraString("common.close"), action: onDismiss)
                     .font(.headline)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 24)
@@ -241,7 +237,7 @@ struct TipJarView: View {
     // MARK: - Bits
 
     private var footnote: some View {
-        Text("Las propinas se pueden repetir y no desbloquean funciones.")
+        Text(auraString("tip.footnote"))
             .font(.caption)
             .foregroundStyle(.white.opacity(0.7))
             .multilineTextAlignment(.center)

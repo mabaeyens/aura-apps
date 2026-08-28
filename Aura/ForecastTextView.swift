@@ -20,19 +20,19 @@ struct ForecastTextView: View {
             Group {
                 if comunidad == nil {
                     ContentUnavailableView(
-                        "Sin ubicaciones",
+                        auraString("today.empty.title"),
                         systemImage: "mappin.slash",
-                        description: Text("Añade una ubicación en la pestaña Ubicaciones.")
+                        description: Text(auraString("forecast.empty.body"))
                     )
                 } else {
                     scroll
                 }
             }
-            .navigationTitle("Predicción")
+            .navigationTitle(auraString("card.forecast.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { dismiss() }
+                    Button(auraString("common.done")) { dismiss() }
                 }
             }
         }
@@ -49,7 +49,7 @@ struct ForecastTextView: View {
 
                 if let bulletin {
                     if let elaborado = bulletin.elaborado {
-                        Text("Actualizado \(Self.dateText(elaborado))")
+                        Text(auraString("forecast.updatedAt", Self.dateText(elaborado)))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -75,13 +75,13 @@ struct ForecastTextView: View {
                         }
                     }
                 } else if isLoading {
-                    HStack { ProgressView(); Text("Cargando…").foregroundStyle(.secondary) }
+                    HStack { ProgressView(); Text(auraString("common.loading")).foregroundStyle(.secondary) }
                 } else if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.secondary)
                 }
 
-                Text("Elaborado con datos de AEMET")
+                Text(auraString("attribution.madeWith", "AEMET"))
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
             }
@@ -95,7 +95,7 @@ struct ForecastTextView: View {
         guard let comunidad else { return }
         guard let client = AEMETService.client() else {
             bulletin = nil
-            errorMessage = "Falta la clave de AEMET. Añádela en Ajustes."
+            errorMessage = auraString("error.missingKey")
             return
         }
         isLoading = true
@@ -110,9 +110,12 @@ struct ForecastTextView: View {
 
     private static func dateText(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "es_ES")
+        // The bulletin timestamp follows the device language (Spanish "1 de septiembre de 2026,
+        // 14:30"; English "September 1, 2026 at 14:30"), but the clock stays on Madrid time since
+        // that is where the forecast is issued.
+        f.locale = .current
         f.timeZone = TimeZone(identifier: "Europe/Madrid") ?? .current
-        f.dateFormat = "d 'de' MMMM 'de' y, HH:mm"
+        f.setLocalizedDateFormatFromTemplate("d MMMM y HH:mm")
         return f.string(from: date)
     }
 }

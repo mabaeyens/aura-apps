@@ -35,27 +35,22 @@ struct OnboardingView: View {
 
     private let pages: [Page] = [
         Page(icon: "sun.max.fill",
-             title: "Bienvenido a Aura",
-             body: "El tiempo de AEMET sobre un cielo vivo, con el sol y la luna donde de verdad están a "
-                 + "cada hora de tu ubicación."),
+             title: auraString("onboarding.welcome.title"),
+             body: auraString("onboarding.welcome.body")),
         Page(icon: "key.fill",
-             title: "Tu clave de AEMET",
-             body: "AEMET es pública y gratuita, pero necesitas tu propia clave, también gratis. Pídela con "
-                 + "el botón y pégala aquí mismo. Podrás cambiarla cuando quieras en Ajustes.",
+             title: auraString("onboarding.key.title"),
+             body: auraString("onboarding.key.body"),
              showsKeyButton: true),
         Page(icon: "square.grid.2x2.fill",
-             title: "En toda la pantalla",
-             body: "Widgets para la pantalla de inicio y la de bloqueo, y complicaciones para el Apple "
-                 + "Watch: el tiempo de un vistazo, sin abrir la app."),
+             title: auraString("onboarding.everywhere.title"),
+             body: auraString("onboarding.everywhere.body")),
         Page(icon: "bell.badge.fill",
-             title: "¿Te aviso?",
-             body: "Puedo notificarte los avisos naranja y rojo de tu ubicación, y si quieres también "
-                 + "cuando AEMET actualice la predicción. Cámbialo cuando quieras en Ajustes.",
+             title: auraString("onboarding.notify.title"),
+             body: auraString("onboarding.notify.body"),
              showsNotifyChoice: true),
         Page(icon: "hand.thumbsup.fill",
-             title: "Todo listo",
-             body: "Añade tu ubicación y Aura hará el resto. Puedes volver a leer esto en Ayuda cuando "
-                 + "quieras."),
+             title: auraString("onboarding.done.title"),
+             body: auraString("onboarding.done.body")),
     ]
 
     var body: some View {
@@ -72,7 +67,7 @@ struct OnboardingView: View {
                 HStack {
                     Spacer()
                     if page < pages.count - 1 {
-                        Button("Pasar", action: onFinish)
+                        Button(auraString("onboarding.skip"), action: onFinish)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 18).padding(.vertical, 11)
@@ -123,7 +118,7 @@ struct OnboardingView: View {
                     Button {
                         openURL(apiKeyURL)
                     } label: {
-                        Label("Solicitar mi clave gratis", systemImage: "arrow.up.right.square")
+                        Label(auraString("onboarding.requestKey"), systemImage: "arrow.up.right.square")
                             .font(.callout.weight(.semibold))
                             .padding(.horizontal, 18).padding(.vertical, 10)
                             .background(.ultraThinMaterial, in: Capsule())
@@ -132,7 +127,7 @@ struct OnboardingView: View {
 
                     // Paste-and-save right here: no trip to Ajustes to finish setup.
                     HStack(spacing: 8) {
-                        SecureField("Pega aquí tu clave", text: $keyInput)
+                        SecureField(auraString("onboarding.keyPlaceholder"), text: $keyInput)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .foregroundStyle(.white)
@@ -150,7 +145,7 @@ struct OnboardingView: View {
                             keyInput = ""
                             keySaved = true
                         } label: {
-                            Text("Guardar")
+                            Text(auraString("common.save"))
                                 .font(.callout.weight(.semibold))
                                 .padding(.horizontal, 16).padding(.vertical, 11)
                                 .background(.white, in: Capsule())
@@ -160,7 +155,7 @@ struct OnboardingView: View {
                     }
 
                     if keySaved {
-                        Label("Clave guardada", systemImage: "checkmark.seal.fill")
+                        Label(auraString("onboarding.keySaved"), systemImage: "checkmark.seal.fill")
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(.white)
                             .transition(.opacity)
@@ -197,7 +192,7 @@ struct OnboardingView: View {
 
             if isLast {
                 Button(action: onFinish) {
-                    Text("Empezar")
+                    Text(auraString("onboarding.start"))
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)

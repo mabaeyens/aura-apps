@@ -14,8 +14,8 @@ struct AuraSunMoonComplication: Widget {
             AuraSunMoonComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Sol y Luna")
-        .description("El próximo amanecer, ocaso o salida de la luna.")
+        .configurationDisplayName(auraString("card.sunmoon.title"))
+        .description(auraString("watch.complication.sunmoon.desc"))
         .supportedFamilies([.accessoryInline, .accessoryCircular, .accessoryCorner])
     }
 }

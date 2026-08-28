@@ -99,8 +99,8 @@ struct AuraTodayWidget: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
                 .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("El tiempo")
-        .description("La predicción de hoy para tu ubicación.")
+        .configurationDisplayName(auraString("widget.today.name"))
+        .description(auraString("widget.today.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -122,8 +122,8 @@ struct AuraRainWidget: Widget {
             .containerBackground(.fill.tertiary, for: .widget)
             .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("Lluvia")
-        .description("La probabilidad de precipitación de la hora actual.")
+        .configurationDisplayName(auraString("widget.rain.name"))
+        .description(auraString("widget.rain.desc"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -144,8 +144,8 @@ struct AuraUVWidget: Widget {
             .containerBackground(.fill.tertiary, for: .widget)
             .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("UV ahora")
-        .description("El índice UV de la hora, sobre el máximo del día.")
+        .configurationDisplayName(auraString("widget.uv.name"))
+        .description(auraString("widget.uv.desc"))
         .supportedFamilies([.accessoryCircular])
     }
 }

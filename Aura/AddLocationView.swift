@@ -36,12 +36,12 @@ struct AddLocationView: View {
                 }
                 .tint(.primary)
             }
-            .searchable(text: $query, prompt: "Buscar municipio")
-            .navigationTitle("Añadir ubicación")
+            .searchable(text: $query, prompt: auraString("locations.search.prompt"))
+            .navigationTitle(auraString("locations.add.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+                    Button(auraString("common.cancel")) { dismiss() }
                 }
             }
         }

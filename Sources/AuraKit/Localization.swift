@@ -1,10 +1,12 @@
 import Foundation
 
-// Chrome localization for AuraKit.
+// Chrome localization for AuraKit and the app targets that link it.
 //
 // AuraKit is a Swift package, so its `.strings` tables live in `Bundle.module`; a lookup that forgets
 // the module bundle silently returns the key. These helpers are the single lookup path, so that can't
-// happen by accident. Chrome only: weather data (AEMET/MITECO condition text, bulletins, aviso event
+// happen by accident. They are `public` so the app, watch, widgets and complication targets resolve
+// their own chrome through the same tables and the same process-language rule, with no per-target
+// `.strings` wiring. Chrome only: weather data (AEMET/MITECO condition text, bulletins, aviso event
 // text, place/station/pollutant names) and the on-device meteorological vocabulary (UV bands, ICA
 // categories, Beaufort names, wind cardinals, moon phases, the forecast phrase) stay Spanish in every
 // language and never pass through here.
@@ -18,13 +20,13 @@ import Foundation
 let auraKitBundle: Bundle = .module
 
 /// The localized chrome string for `key`, from AuraKit's own tables. Returns the key itself if missing.
-func auraString(_ key: String) -> String {
+public func auraString(_ key: String) -> String {
     auraKitBundle.localizedString(forKey: key, value: key, table: "Localizable")
 }
 
 /// The localized chrome format string for `key`, filled with `args`. Placeholders are `%@` / `%1$@`
 /// (string substitution only), so this never touches number or decimal formatting — those keep their
 /// own explicit rules (e.g. the forced Spanish decimal comma).
-func auraString(_ key: String, _ args: CVarArg...) -> String {
+public func auraString(_ key: String, _ args: CVarArg...) -> String {
     String(format: auraString(key), locale: Locale.current, arguments: args)
 }

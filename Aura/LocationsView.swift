@@ -19,22 +19,22 @@ struct LocationsView: View {
                         }
                     } label: {
                         HStack {
-                            Label("Usar mi ubicación", systemImage: "location.fill")
+                            Label(auraString("locations.useMyLocation"), systemImage: "location.fill")
                             if locationManager.isResolving {
                                 Spacer(); ProgressView()
                             }
                         }
                     }
                     if locationManager.authorizationDenied {
-                        Text("Permiso de ubicación denegado. Actívalo en Ajustes del sistema.")
+                        Text(auraString("locations.permissionDenied"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Favoritas") {
+                Section(auraString("locations.favorites")) {
                     if store.favorites.isEmpty {
-                        Text("Aún no has guardado ubicaciones. Usa «Usar mi ubicación» o el botón + para añadir una.")
+                        Text(auraString("locations.empty"))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -62,15 +62,15 @@ struct LocationsView: View {
                     .onMove { store.move(fromOffsets: $0, toOffset: $1) }
                 }
             }
-            .navigationTitle("Ubicaciones")
+            .navigationTitle(auraString("locations.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingAdd = true } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Añadir ubicación")
+                        .accessibilityLabel(auraString("locations.add.title"))
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { dismiss() }
+                    Button(auraString("common.done")) { dismiss() }
                 }
             }
             .sheet(isPresented: $showingAdd) {

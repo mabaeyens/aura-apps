@@ -1,3 +1,7 @@
-/* Aura is a Spanish-only app; this marks Spanish as its localization so system
-   controls (Edit/Done, search, etc.) render in Spanish. */
+/* Spanish base for the bundle-level strings. Spanish is the base language; the
+   English override lives in en.lproj/InfoPlist.strings and wins on English devices,
+   so system controls (Edit/Done, search) and the permission prompt follow the OS. */
 "CFBundleDisplayName" = "Aura";
+
+/* Location permission prompt (also set as a build setting; this is the Spanish value). */
+"NSLocationWhenInUseUsageDescription" = "Aura usa tu ubicación para mostrar el tiempo de tu municipio.";

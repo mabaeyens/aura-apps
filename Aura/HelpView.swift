@@ -25,11 +25,11 @@ struct HelpView: View {
                 appSection
                 scalesSection
             }
-            .navigationTitle("Ayuda")
+            .navigationTitle(auraString("help.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { dismiss() }
+                    Button(auraString("common.done")) { dismiss() }
                 }
             }
         }
@@ -39,23 +39,22 @@ struct HelpView: View {
 
     private var apiKeySection: some View {
         Section {
-            Text("Aura muestra la previsión de AEMET, que es pública y gratuita. Para usarla necesitas tu "
-                 + "propia clave, también gratis y personal.")
+            Text(auraString("help.apiKey.intro"))
                 .font(.subheadline)
             VStack(alignment: .leading, spacing: 8) {
-                step(1, "Abre la página de AEMET (botón de abajo).")
-                step(2, "Escribe tu correo y acepta las condiciones.")
-                step(3, "AEMET te envía la clave por correo (mira también en spam).")
-                step(4, "Pégala en Ajustes → Clave API.")
+                step(1, auraString("help.step1"))
+                step(2, auraString("help.step2"))
+                step(3, auraString("help.step3"))
+                step(4, auraString("help.step4"))
             }
             .padding(.vertical, 2)
             Link(destination: apiKeyURL) {
-                Label("Solicitar mi clave en AEMET", systemImage: "arrow.up.right.square")
+                Label(auraString("help.requestKey"), systemImage: "arrow.up.right.square")
             }
         } header: {
-            Text("Tu clave de AEMET")
+            Text(auraString("help.yourKey.title"))
         } footer: {
-            Text("Si la previsión deja de actualizarse, pide otra clave del mismo modo y vuelve a pegarla.")
+            Text(auraString("help.yourKey.body"))
         }
     }
 
@@ -76,127 +75,125 @@ struct HelpView: View {
             conditionRow("51", night: false, "Tormenta")
             conditionRow("53", night: false, "Tormenta con lluvia")
         } header: {
-            Text("Condiciones del cielo")
+            Text(auraString("help.sky.title"))
         } footer: {
-            Text("De noche, el sol de estos iconos se convierte en luna.")
+            Text(auraString("help.sky.body"))
         }
     }
 
     private var temperatureSection: some View {
         Section {
-            iconRow("arrow.up",   "Temperatura máxima", "La más alta prevista para el día.")
-            iconRow("arrow.down", "Temperatura mínima", "La más baja prevista para el día.")
+            iconRow("arrow.up",   auraString("help.tempMax.title"), auraString("help.tempMax.body"))
+            iconRow("arrow.down", auraString("help.tempMin.title"), auraString("help.tempMin.body"))
         } header: {
-            Text("Temperatura")
+            Text(auraString("help.temp.title"))
         } footer: {
-            Text("Los grados se colorean en una escala continua de azul (frío) a rojo (calor), la misma en "
-                 + "las tarjetas, las barras de rango y los widgets.")
+            Text(auraString("help.temp.body"))
         }
     }
 
     private var rainHumiditySection: some View {
         Section {
-            iconRow("umbrella.fill", "Probabilidad de lluvia", "El porcentaje de que llueva. Es la lluvia.")
-            iconRow("drop.fill", "Probabilidad de lluvia (reloj)", "La gota lisa del medidor de lluvia en el reloj.")
-            iconRow("humidity.fill", "Humedad relativa", "El agua que hay en el aire, en %. No es la lluvia.")
+            iconRow("umbrella.fill", auraString("help.rain.title"), auraString("help.rain.body"))
+            iconRow("drop.fill", auraString("help.rainWatch.title"), auraString("help.rainWatch.body"))
+            iconRow("humidity.fill", auraString("help.humidity.title"), auraString("help.humidity.body"))
         } header: {
-            Text("Lluvia y humedad")
+            Text(auraString("help.rainHumidity.title"))
         } footer: {
-            Text("La gota con ondas (humedad) y el paraguas o la gota lisa (lluvia) son cosas distintas a "
-                 + "propósito.")
+            Text(auraString("help.rainHumidity.body"))
         }
     }
 
     private var windSection: some View {
         Section {
-            iconRow("wind", "Velocidad del viento", "En km/h, la unidad que da AEMET.")
+            iconRow("wind", auraString("help.wind.speed.title"), auraString("help.wind.speed.body"))
             legendRow(glyph: { WindArrowMark() },
-                      title: "Rosa de los vientos",
-                      meaning: "La flecha señala la dirección del viento y su color, la intensidad.")
+                      title: auraString("help.windrose.title"),
+                      meaning: auraString("help.windrose.body"))
         } header: {
-            Text("Viento")
+            Text(auraString("card.wind.title"))
         } footer: {
-            Text("Toca la tarjeta del viento para ver la escala Beaufort completa.")
+            Text(auraString("help.wind.body"))
         }
     }
 
     private var sunMoonSection: some View {
         Section {
-            iconRow("sunrise.fill", "Amanecer", "La salida del sol (orto).")
-            iconRow("sunset.fill",  "Atardecer", "La puesta del sol (ocaso).")
-            conditionRow("11", night: true, "La luna está sobre el horizonte: es de noche.")
+            iconRow("sunrise.fill", auraString("help.sunrise.title"), auraString("help.sunrise.body"))
+            iconRow("sunset.fill",  auraString("help.sunset.title"), auraString("help.sunset.body"))
+            conditionRow("11", night: true, auraString("help.moonUp.body"))
         } header: {
-            Text("Sol y luna")
+            Text(auraString("help.sunmoon.title"))
         }
     }
 
     private var uvSection: some View {
         Section {
-            iconRow("sun.max.fill",                          "UV bajo (0–2)", "Sin protección necesaria.")
-            iconRow("sunglasses.fill",                       "UV moderado (3–5)", "Gafas de sol y crema.")
-            iconRow("sun.max.trianglebadge.exclamationmark", "UV alto (6–7)", "Protégete del sol.")
-            iconRow("beach.umbrella.fill",                   "UV muy alto (8–10)", "Evita el sol del mediodía.")
-            iconRow("thermometer.variable.and.figure",       "UV extremadamente alto (11+)", "Evita la exposición al sol.")
-            iconRow("cloud",                                 "UV atenuado por nubes", "El cielo nublado baja el UV de ahora por debajo del máximo previsto.")
+            // The UV band names stay in Spanish to match the on-device UV vocabulary the reader sees on
+            // the card and scale sheet; only the advice on the right localizes.
+            iconRow("sun.max.fill",                          "UV bajo (0–2)", auraString("help.uv.low.advice"))
+            iconRow("sunglasses.fill",                       "UV moderado (3–5)", auraString("help.uv.moderate.advice"))
+            iconRow("sun.max.trianglebadge.exclamationmark", "UV alto (6–7)", auraString("help.uv.high.advice"))
+            iconRow("beach.umbrella.fill",                   "UV muy alto (8–10)", auraString("help.uv.veryHigh.advice"))
+            iconRow("thermometer.variable.and.figure",       "UV extremadamente alto (11+)", auraString("help.uv.extreme.advice"))
+            iconRow("cloud",                                 "UV atenuado por nubes", auraString("help.uv.clouds.advice"))
         } header: {
-            Text("Índice UV")
+            Text(auraString("card.uv.title"))
         } footer: {
-            Text("El UV es el máximo previsto del día con el cielo despejado. Toca la tarjeta para ver "
-                 + "cada nivel.")
+            Text(auraString("help.uv.body"))
         }
     }
 
     private var airSection: some View {
         Section {
-            iconRow("aqi.medium", "Calidad del aire (ICA)", "El Índice de Calidad del Aire de MITECO.")
+            iconRow("aqi.medium", auraString("help.aqi.iconTitle"), auraString("help.aqi.iconBody"))
         } header: {
-            Text("Calidad del aire")
+            Text(auraString("card.aqi.title"))
         } footer: {
-            Text("Toca la tarjeta para ver la escala completa y cada contaminante por separado.")
+            Text(auraString("help.aqi.body"))
         }
     }
 
     private var avisoSection: some View {
         Section {
-            iconRow("exclamationmark.triangle.fill", "Aviso meteorológico", "AEMET tiene un aviso activo para la zona.")
+            iconRow("exclamationmark.triangle.fill", auraString("help.aviso.iconTitle"), auraString("help.aviso.iconBody"))
         } header: {
-            Text("Avisos")
+            Text(auraString("help.avisos.title"))
         } footer: {
-            Text("El color del aviso indica el nivel: amarillo, naranja o rojo, de menor a mayor peligro.")
+            Text(auraString("help.avisos.body"))
         }
     }
 
     private var appSection: some View {
         Section {
-            iconRow("line.3.horizontal",   "Menú", "Abre las secciones de la app.")
-            iconRow("text.alignleft",      "Predicción", "El parte escrito del día.")
-            iconRow("mappin.and.ellipse",  "Ubicaciones", "Tus lugares guardados.")
-            iconRow("gearshape",           "Ajustes", "Tu clave y las opciones.")
-            iconRow("questionmark.circle", "Ayuda", "Esta pantalla.")
-            iconRow("waterbottle",         "Propina", "Invítame a una tónica, si te apetece.")
-            iconRow("info.circle",         "Acerca de Aura", "Versión, fuentes y créditos.")
-            iconRow("location.fill",       "Tu ubicación", "El lugar que se muestra, o usar el actual.")
-            iconRow("mappin.slash",        "Sin ubicación", "Aún no hay ningún lugar elegido.")
-            iconRow("key",                 "Falta tu clave", "Añade tu clave de AEMET en Ajustes.")
-            iconRow("checkmark.seal",      "Clave guardada", "Tu clave de AEMET está guardada en el Llavero.")
-            iconRow("plus",                "Añadir", "Guarda una ubicación nueva.")
-            iconRow("checkmark",           "Elegida", "La ubicación que se está mostrando.")
-            iconRow("chevron.down",        "Desplegar", "Muestra más detalle.")
-            iconRow("xmark.circle.fill",   "Cerrar", "Cierra la ficha o la escala abierta.")
+            iconRow("line.3.horizontal",   auraString("help.icon.menu.title"), auraString("help.icon.menu.body"))
+            iconRow("text.alignleft",      auraString("card.forecast.title"), auraString("help.icon.forecast.body"))
+            iconRow("mappin.and.ellipse",  auraString("locations.title"), auraString("help.icon.locations.body"))
+            iconRow("gearshape",           auraString("settings.title"), auraString("help.icon.settings.body"))
+            iconRow("questionmark.circle", auraString("help.title"), auraString("help.icon.help.body"))
+            iconRow("waterbottle",         auraString("tip.title"), auraString("help.icon.tip.body"))
+            iconRow("info.circle",         auraString("settings.aboutRow"), auraString("help.icon.about.body"))
+            iconRow("location.fill",       auraString("help.icon.myLocation.title"), auraString("help.icon.myLocation.body"))
+            iconRow("mappin.slash",        auraString("help.icon.noLocation.title"), auraString("help.icon.noLocation.body"))
+            iconRow("key",                 auraString("help.icon.missingKey.title"), auraString("help.icon.missingKey.body"))
+            iconRow("checkmark.seal",      auraString("onboarding.keySaved"), auraString("help.icon.keySaved.body"))
+            iconRow("plus",                auraString("help.icon.add.title"), auraString("help.icon.add.body"))
+            iconRow("checkmark",           auraString("help.icon.selected.title"), auraString("help.icon.selected.body"))
+            iconRow("chevron.down",        auraString("help.icon.expand.title"), auraString("help.icon.expand.body"))
+            iconRow("xmark.circle.fill",   auraString("common.close"), auraString("help.icon.close.body"))
         } header: {
-            Text("En la app")
+            Text(auraString("help.inApp.title"))
         }
     }
 
     private var scalesSection: some View {
         Section {
-            Text("Muchas tarjetas se pueden tocar para abrir su escala de color, con tu valor actual "
-                 + "señalado: Viento (Beaufort), Calidad del aire (ICA) y UV.")
+            Text(auraString("help.scales.intro"))
                 .font(.subheadline)
         } header: {
-            Text("Escalas de color")
+            Text(auraString("help.scales.title"))
         } footer: {
-            Text("La temperatura usa la misma escala azul→rojo en toda la app: tarjetas, barras y widgets.")
+            Text(auraString("help.scales.body"))
         }
     }
 

@@ -128,7 +128,7 @@ struct WatchRootView: View {
                     }
                     .ignoresSafeArea(.container, edges: .top)
                 } else {
-                    ContentUnavailableView("Abre Aura en el iPhone", systemImage: "iphone")
+                    ContentUnavailableView(auraString("watch.openOnPhone"), systemImage: "iphone")
                         .environment(\.colorScheme, .dark)
                 }
             }
@@ -187,7 +187,7 @@ private struct WatchScenePicker: View {
                     }
                 }
             }
-            .navigationTitle("Fondo")
+            .navigationTitle(auraString("watch.background.title"))
         }
         .fontDesign(.rounded)
     }
@@ -208,7 +208,7 @@ private struct WatchLocationPicker: View {
             List {
                 Button { onPick(nil) } label: {
                     HStack {
-                        Label("Seguir el iPhone", systemImage: "iphone")
+                        Label(auraString("watch.followPhone"), systemImage: "iphone")
                         Spacer()
                         if following { Image(systemName: "checkmark").foregroundStyle(.tint) }
                     }
@@ -233,7 +233,7 @@ private struct WatchLocationPicker: View {
                     }
                 }
             }
-            .navigationTitle("Ubicación")
+            .navigationTitle(auraString("watch.location.title"))
         }
         .fontDesign(.rounded)
     }

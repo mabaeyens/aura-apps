@@ -26,8 +26,8 @@ struct AuraSunMoonWidget: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
                 .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("Sol y Luna")
-        .description("El próximo amanecer, ocaso o salida de la luna.")
+        .configurationDisplayName(auraString("card.sunmoon.title"))
+        .description(auraString("widget.sunmoon.desc"))
         .supportedFamilies([.accessoryInline, .accessoryCircular])
     }
 }
@@ -68,8 +68,8 @@ struct AuraSummaryWidget: Widget {
             .containerBackground(.fill.tertiary, for: .widget)
             .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("Resumen")
-        .description("Temperatura, lluvia y humedad en una línea.")
+        .configurationDisplayName(auraString("widget.summary.name"))
+        .description(auraString("widget.summary.desc"))
         .supportedFamilies([.accessoryInline])
     }
 }
@@ -90,8 +90,8 @@ struct AuraHumidityWidget: Widget {
             .containerBackground(.fill.tertiary, for: .widget)
             .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("Humedad")
-        .description("La humedad relativa actual.")
+        .configurationDisplayName(auraString("widget.humidity.name"))
+        .description(auraString("widget.humidity.desc"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -107,8 +107,8 @@ struct AuraAvisoWidget: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
                 .widgetURL(entry.deepLink)
         }
-        .configurationDisplayName("Aviso")
-        .description("El aviso meteorológico activo, si lo hay.")
+        .configurationDisplayName(auraString("aviso.label"))
+        .description(auraString("widget.aviso.desc"))
         .supportedFamilies([.accessoryCircular, .accessoryInline])
     }
 }
@@ -145,7 +145,7 @@ struct AuraHomeWidget: Widget {
                 .widgetURL(entry.deepLink)
         }
         .configurationDisplayName("Aura")
-        .description("El tiempo de tu ubicación en la pantalla de inicio.")
+        .description(auraString("widget.home.desc"))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }

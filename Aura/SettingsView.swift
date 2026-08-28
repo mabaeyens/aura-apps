@@ -36,61 +36,61 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Clave de AEMET", text: $keyInput)
+                    SecureField(auraString("settings.apiKey.placeholder"), text: $keyInput)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Button("Guardar clave") { save() }
+                    Button(auraString("settings.saveKey")) { save() }
                         .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
                     if store.apiKeyPresent {
-                        Button("Borrar clave", role: .destructive) { confirmClearKey = true }
+                        Button(auraString("settings.deleteKey"), role: .destructive) { confirmClearKey = true }
                     }
                 } header: {
-                    Text("Clave API")
+                    Text(auraString("settings.apiKey.section"))
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         Label(
-                            store.apiKeyPresent ? "Clave guardada en el Llavero." : "No hay clave guardada.",
+                            store.apiKeyPresent ? auraString("settings.keyStored") : auraString("settings.keyNotStored"),
                             systemImage: store.apiKeyPresent ? "checkmark.seal" : "key"
                         )
                         if justSaved {
-                            Text("Clave actualizada.").foregroundStyle(.green)
+                            Text(auraString("settings.keyUpdated")).foregroundStyle(.green)
                         }
-                        Text("Si la predicción deja de actualizarse, pide otra clave gratis en opendata.aemet.es y pégala aquí.")
+                        Text(auraString("settings.apiKey.footer"))
                     }
                 }
 
                 if hasCityscapeArt {
                     Section {
-                        Picker("Fondo", selection: $heroFamily) {
+                        Picker(auraString("settings.background.picker"), selection: $heroFamily) {
                             ForEach(HeroBackground.Family.allCases, id: \.rawValue) { family in
                                 Text(family.displayName).tag(family.rawValue)
                             }
                         }
                         .pickerStyle(.segmented)
                     } header: {
-                        Text("Fondo del cielo")
+                        Text(auraString("settings.background.section"))
                     } footer: {
-                        Text("Elige el paisaje que acompaña al cielo. El sol y la luna se dibujan siempre en su posición real, sea cual sea el fondo.")
+                        Text(auraString("settings.background.footer"))
                     }
                 }
 
                 Section {
-                    Picker("Formato de hora", selection: $use24h) {
-                        Text("24 h").tag(true)
-                        Text("12 h").tag(false)
+                    Picker(auraString("settings.timeFormat.picker"), selection: $use24h) {
+                        Text(auraString("settings.timeFormat.24h")).tag(true)
+                        Text(auraString("settings.timeFormat.12h")).tag(false)
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: use24h) { _, _ in
                         WidgetCenter.shared.reloadAllTimelines()
                     }
                 } header: {
-                    Text("Formato de hora")
+                    Text(auraString("settings.timeFormat.section"))
                 } footer: {
-                    Text("Elige entre 24 horas (14:30) y 12 horas con AM/PM (2:30 PM). Se aplica en toda la app, los widgets y el reloj.")
+                    Text(auraString("settings.timeFormat.footer"))
                 }
 
                 Section {
-                    Picker("Notificaciones", selection: $notifyLevel) {
+                    Picker(auraString("settings.notifications.picker"), selection: $notifyLevel) {
                         ForEach(NotificationLevel.allCases) { level in
                             Text(level.label).tag(level)
                         }
@@ -99,35 +99,33 @@ struct SettingsView: View {
                         if newValue != .off { NotificationManager.requestAuthorization() }
                     }
                 } header: {
-                    Text("Notificaciones")
+                    Text(auraString("settings.notifications.section"))
                 } footer: {
-                    Text("Los avisos notifican solo en nivel naranja o rojo de tu ubicación activa. "
-                        + "Las predicciones avisan cuando AEMET actualiza el boletín. Necesita permiso "
-                        + "de notificaciones y el repaso en segundo plano activado en Ajustes del sistema.")
+                    Text(auraString("settings.notifications.footer"))
                 }
 
                 Section {
                     NavigationLink {
                         AboutView()
                     } label: {
-                        Label("Acerca de Aura", systemImage: "info.circle")
+                        Label(auraString("settings.aboutRow"), systemImage: "info.circle")
                     }
-                    LabeledContent("Versión", value: appVersion)
+                    LabeledContent(auraString("settings.versionLabel"), value: appVersion)
                 } footer: {
-                    Text("Elaborado con datos de AEMET.")
+                    Text(auraString("attribution.madeWith", "AEMET") + ".")
                 }
             }
-            .navigationTitle("Ajustes")
+            .navigationTitle(auraString("settings.title"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") { dismiss() }
+                    Button(auraString("common.done")) { dismiss() }
                 }
             }
-            .confirmationDialog("¿Borrar la clave de AEMET?", isPresented: $confirmClearKey, titleVisibility: .visible) {
-                Button("Borrar clave", role: .destructive) { clear() }
-                Button("Cancelar", role: .cancel) { }
+            .confirmationDialog(auraString("settings.deleteKey.confirmTitle"), isPresented: $confirmClearKey, titleVisibility: .visible) {
+                Button(auraString("settings.deleteKey"), role: .destructive) { clear() }
+                Button(auraString("common.cancel"), role: .cancel) { }
             } message: {
-                Text("Dejarás de recibir datos hasta que vuelvas a introducir una clave.")
+                Text(auraString("settings.deleteKey.confirmBody"))
             }
         }
     }
