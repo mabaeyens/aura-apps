@@ -1133,6 +1133,10 @@ public struct AuraStationCard: View {
             Image(systemName: metric.icon)
                 .font(.system(size: size == .phone ? 16 : 11, weight: .medium))
                 .foregroundStyle(on ? .white : .white.opacity(0.3))
+                // SF Symbols share a point size but not an intrinsic glyph height (a thermometer is
+                // taller than a wind glyph), which used to leave each chip a different height. Pin the
+                // icon into one fixed box so every chip's stack — and so its background — is identical.
+                .frame(height: size == .phone ? 20 : 14)
             AuraMetricValue(value ?? "—",
                             size: size.bodySize - (size == .phone ? 2 : 4),
                             relativeTo: .body, weight: .semibold)
@@ -1142,7 +1146,9 @@ public struct AuraStationCard: View {
                 .foregroundStyle(.white.opacity(on ? 0.7 : 0.35))
                 .lineLimit(1).minimumScaleFactor(0.9)   // safety only; every label fits at this size
         }
-        .frame(maxWidth: .infinity)
+        // maxHeight stretches every chip to the tallest in the row, so the five tiles stay exactly the
+        // same height even if a value ever wraps — the fixed icon box already equalises them today.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.vertical, 8)
         .padding(.horizontal, 2)
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
