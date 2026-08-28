@@ -357,10 +357,10 @@ public struct AuraHourlyCard: View {
     /// "18h, 22 grados, 30% de lluvia; 19h, 23 grados; …" — the strip read as one spoken summary.
     private var hoursA11yValue: String {
         hours.map { h in
-            var s = AuraTime.hourLabel(hour: h.hour)
-            if let t = h.temp { s += ", \(t) grados" }
-            if let p = h.precipProb, p > 0 { s += ", \(p)% de lluvia" }
-            return s
+            var parts = [AuraTime.hourLabel(hour: h.hour)]
+            if let t = h.temp { parts.append(auraString("a11y.hour.temp", t)) }
+            if let p = h.precipProb, p > 0 { parts.append(auraString("a11y.hour.rain", p)) }
+            return parts.joined(separator: ", ")
         }.joined(separator: "; ")
     }
 
@@ -741,11 +741,11 @@ public struct AuraSunArcCard: View {
     /// the watch). `nil` when orto/ocaso are unavailable.
     private var dayLengthLine: String? {
         guard let sr = sunrise, let ss = sunset, let len = CelestialArc.compact(from: sr, to: ss) else { return nil }
-        var line = "\(len) de luz"
+        var line = auraString("sun.daylightLength", len)
         if size == .phone, let dm = dayLengthDeltaMinutes {
-            if dm > 0 { line += " · \(dm) min más que ayer" }
-            else if dm < 0 { line += " · \(-dm) min menos que ayer" }
-            else { line += " · igual que ayer" }
+            if dm > 0 { line += " · " + auraString("sun.deltaMore", dm) }
+            else if dm < 0 { line += " · " + auraString("sun.deltaLess", -dm) }
+            else { line += " · " + auraString("sun.deltaSame") }
         }
         return line
     }
@@ -1298,13 +1298,14 @@ public struct AuraAirQualityCard: View {
     /// flagged with a trailing "·  parcial" so a lower-confidence category isn't shown as if it were full.
     private var detail: String {
         var parts: [String] = []
-        if let pollutant = airQuality.pollutantLabel { parts.append("por \(pollutant)") }
+        if let pollutant = airQuality.pollutantLabel { parts.append(auraString("aqi.detail.by", pollutant)) }
         parts.append(airQuality.station)
         let km = airQuality.distanceKm
-        parts.append(km < 10
-            ? "a " + String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",") + " km"
-            : "a \(Int(km.rounded())) km")
-        if airQuality.partial { parts.append("parcial") }
+        let kmText = km < 10
+            ? String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")
+            : "\(Int(km.rounded()))"
+        parts.append(auraString("aqi.detail.distance", kmText))
+        if airQuality.partial { parts.append(auraString("aqi.detail.partial")) }
         return parts.joined(separator: " · ")
     }
 }

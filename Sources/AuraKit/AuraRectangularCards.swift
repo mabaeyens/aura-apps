@@ -69,7 +69,7 @@ public struct AuraRectHours: View {
                 // blue umbrella tell the two percentages apart. Replaces the old "· location" line
                 // (which read as an observed-station reference) entirely.
                 HStack(spacing: 8) {
-                    Text("act. \(Self.hhmm(snapshot.updated))")
+                    Text(auraString("rect.updatedAbbrev", Self.hhmm(snapshot.updated)))
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 2)
                     pct("humidity.fill", snapshot.currentHumidity ?? 0, Palette.tempTeal)

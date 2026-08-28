@@ -125,11 +125,18 @@
 "rel.hoursAgo" = "%dh ago";
 "rel.daysAgo"  = "%dd ago";
 
+/* Rectangular Lock Screen / complication footer — abbreviated "updated at HH:mm" */
+"rect.updatedAbbrev" = "upd. %@";
+
 /* Daily forecast — spoken row */
 "a11y.day.minMax" = "min %1$d degrees, max %2$d degrees";
 "a11y.day.max"    = "max %d degrees";
 "a11y.day.min"    = "min %d degrees";
 "a11y.day.rain"   = "%d%% chance of rain";
+
+/* Hourly strip — spoken row */
+"a11y.hour.temp" = "%d degrees";
+"a11y.hour.rain" = "%d%% chance of rain";
 
 /* Sun card / arc — interpolated readouts (times are model-supplied) */
 "sun.solarNoonAt"        = "Solar noon %@";
@@ -187,6 +194,12 @@
 "aqi.byPollutantNote"  = "Each from the nearest station that measures it.";
 "aqi.bySuffix"         = ", by %@";
 "aqi.subtitle"         = "Now: %1$@ (level %2$d)%3$@, at %4$@.";
+
+/* Air-quality card — driver/station/distance readout (the pollutant and station names are data;
+   the distance number keeps the Spanish comma in both languages) */
+"aqi.detail.by"        = "by %@";
+"aqi.detail.distance"  = "%@ km away";
+"aqi.detail.partial"   = "partial";
 "ica.advice.1" = "Air quality ideal for any outdoor activity.";
 "ica.advice.2" = "Normal outdoor life is fine.";
 "ica.advice.3" = "Sensitive groups may notice mild discomfort.";
