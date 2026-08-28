@@ -189,6 +189,21 @@ public extension AEMETClient {
         try await fetch("/observacion/convencional/todas", as: [StationObservation].self)
     }
 
+    /// AEMET's keyless observation RSS notifier: a plain static-host GET (no `api_key`, no two-call envelope),
+    /// served from `/rss/`, not the `/opendata/api` product base.
+    static let observacionRSSURL = "https://opendata.aemet.es/rss/obsconv_hh_opendata_todos_RSS.xml"
+
+    /// When AEMET last refreshed the conventional-observation dataset, from the keyless RSS notifier
+    /// (`observacionRSSURL`), or nil when the feed is unreachable or unparseable. One cheap keyless GET (still
+    /// paced and 429-backed-off through `perform`, counting against the shared per-key budget) so the refresh
+    /// path can decide whether the far larger keyed `observacionTodas()` download is worth making without
+    /// spending a keyed request. The returned value is a publish time (~30 min past the hour), a DIFFERENT clock
+    /// from the observation `fint`; never compare the two. See the unified-freshness design.
+    func observacionRssUpdated() async throws -> Date? {
+        guard let url = URL(string: AEMETClient.observacionRSSURL) else { return nil }
+        return ObservationRSS.latestUpdate(try await perform(url))
+    }
+
     /// Active meteorological warnings for an AEMET avisos area (a `.tar` of CAP-XML files). `area`
     /// is a two-digit community code (`AvisoArea.forProvincia`). Filter to a location by province.
     func avisos(area: String) async throws -> [WeatherAlert] {

@@ -50,6 +50,20 @@ public enum SharedCache {
         }
     }
 
+    /// The RSS publish time (`Última actualización`, ~30 min past the hour) from the observation RSS notifier at
+    /// the last successful keyed observation fetch. Drives fetch cadence: the keyed `/observacion/convencional/
+    /// todas` download fires only when the current RSS marker has advanced past this. A DIFFERENT clock from
+    /// `lastObservationFint` (the reading's measurement time, top of the hour) and never compared against it —
+    /// this one is compared RSS-to-RSS. Nil until the first successful fetch that read a marker.
+    public static let lastObservationPublishedKey = "AuraKit.lastObservationPublished"
+    public static var lastObservationPublished: Date? {
+        get { groupDefaults?.object(forKey: lastObservationPublishedKey) as? Date }
+        set {
+            if let newValue { groupDefaults?.set(newValue, forKey: lastObservationPublishedKey) }
+            else { groupDefaults?.removeObject(forKey: lastObservationPublishedKey) }
+        }
+    }
+
     private static var fileURL: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?

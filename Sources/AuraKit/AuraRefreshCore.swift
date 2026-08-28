@@ -62,6 +62,44 @@ public enum AuraRefreshCore {
         return false
     }
 
+    /// The observation TTL: an hourly cadence plus a ~30-minute publish-lag margin. Used both as the fint-based
+    /// fallback when the RSS marker is unreadable, and as the historical heuristic it replaced.
+    public static let observationTTL: TimeInterval = 90 * 60
+
+    /// The fint-based TTL gate (the fallback path). A location's national observation feed is due when there is
+    /// no stored anchor (first fetch), on a `force`, or once `now` reaches `anchor + observationTTL`. The anchor
+    /// is clamped to `now` so a corrupt future-dated `fint` can suppress a fetch for at most the margin window,
+    /// never indefinitely. Pure, so it is unit-tested directly (mirrors aura-android's `observationDue`).
+    public static func observationDue(anchor: Date?, now: Date, force: Bool) -> Bool {
+        if force { return true }
+        guard let anchor else { return true }
+        let clamped = min(anchor, now)
+        return now >= clamped.addingTimeInterval(observationTTL)
+    }
+
+    /// Whether the national observation feed is due, decided by AEMET's own publish marker rather than a timer.
+    /// `rssMarker` is the newest publish time read from the keyless observation RSS this cycle (nil when the RSS
+    /// was unreachable or unparseable, or when skipped on a `force`/single-location pass); `storedPublished` is
+    /// the marker from the last successful keyed fetch. A `force` refresh always fetches. Otherwise, when the
+    /// RSS marker is available, fetch only when it has advanced past `storedPublished` (a nil stored marker —
+    /// first ever fetch — fetches), so a cycle where AEMET has published nothing new makes zero keyed calls.
+    /// When the RSS is unreachable, fall back to the fint-based TTL (`observationDue` on `storedFint`) so the
+    /// gate degrades gracefully.
+    ///
+    /// `storedPublished` and `storedFint` are two different clocks (publish time ~30 min past the hour vs the
+    /// observation `fint` at the top of the hour) and are never compared against each other; the marker path
+    /// uses only the former, the fallback only the latter. Pure, so it is unit-tested directly (mirrors
+    /// aura-android's `observationDueFromMarker`).
+    public static func observationDueFromMarker(storedPublished: Date?, rssMarker: Date?,
+                                                storedFint: Date?, now: Date, force: Bool) -> Bool {
+        if force { return true }
+        if let rssMarker {
+            guard let storedPublished else { return true }
+            return rssMarker > storedPublished
+        }
+        return observationDue(anchor: storedFint, now: now, force: false)
+    }
+
     /// Refresh and cache a snapshot for every stale location, returning what changed. Prunes the cache to
     /// the current favourites first (even when there is no key, so removed places are cleaned up), then —
     /// unless `force` — skips locations cached within the last hour to stay under AEMET's rate limit.
@@ -103,24 +141,30 @@ public enum AuraRefreshCore {
         // publish-lag margin — and skip the network call entirely until then. A forced or single-location
         // (`onlyINE`) refresh always fetches; when we skip, each location reuses its last good station
         // reading (carried forward in `WeatherSnapshot.make`) instead of blanking the observed card.
+        // Gate the keyed observation download on AEMET's own publish marker, not a fixed timer: a cheap keyless
+        // RSS notifier (`observacionRssUpdated`) says when the dataset last refreshed, and the keyed call fires
+        // only when that marker has advanced past the one stored from the last fetch. A forced or single-
+        // location (`onlyINE`) pull always fetches and skips the RSS probe. When the RSS is unreachable, fall
+        // back to the fint-based TTL so the cadence degrades, never breaks. Two distinct markers for two
+        // distinct jobs: the RSS publish time drives fetch cadence (compared RSS-to-RSS), the freshest `fint`
+        // drives the display gate and the TTL fallback — different clocks, never compared against each other.
+        // Mirrors aura-android's `observationDueFromMarker` (unified-freshness spec).
         var observations: [StationObservation] = []
-        let observationDue: Bool
-        if force || onlyINE != nil {
-            observationDue = true
-        } else if let last = SharedCache.lastObservationFint {
-            // Clamp the anchor to now so a bad, future-dated `fint` can suppress the fetch for at most the
-            // margin window, never indefinitely.
-            let anchor = min(last, Date())
-            observationDue = Date() >= anchor.addingTimeInterval(90 * 60)
-        } else {
-            observationDue = true
-        }
-        if observationDue {
+        let alwaysFetch = force || onlyINE != nil
+        let now = Date()
+        let rssMarker: Date? = alwaysFetch ? nil : (try? await client.observacionRssUpdated())
+        if observationDueFromMarker(storedPublished: SharedCache.lastObservationPublished,
+                                    rssMarker: rssMarker,
+                                    storedFint: SharedCache.lastObservationFint,
+                                    now: now, force: alwaysFetch) {
             do {
                 observations = try await client.observacionTodas()
+                // Persist both markers for the next cycle: the freshest fint (display gate + TTL fallback) and,
+                // when we read one, the RSS publish time (fetch cadence). They are different clocks.
                 if let newest = observations.compactMap({ $0.timestamp }).max() {
                     SharedCache.lastObservationFint = newest
                 }
+                if let rssMarker { SharedCache.lastObservationPublished = rssMarker }
             } catch { note(error) }
         }
 
