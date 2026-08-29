@@ -96,6 +96,18 @@ final class LocalizationTests: XCTestCase {
             "beaufort.effect.12",
             "uv.sheetTitle", "uv.subtitle", "uv.footnote", "uv.cloudyNote",
             "uv.advice.0", "uv.advice.3", "uv.advice.6", "uv.advice.8", "uv.advice.11",
+            // Data-freshness reference page
+            "freshness.title", "freshness.link.title", "freshness.link.body", "freshness.intro",
+            "freshness.section.data", "freshness.section.app",
+            "freshness.observed.title", "freshness.observed.body",
+            "freshness.forecast.title", "freshness.forecast.body",
+            "freshness.bulletin.title", "freshness.bulletin.body",
+            "freshness.radar.title", "freshness.radar.body",
+            "freshness.uv.title", "freshness.uv.body",
+            "freshness.air.title", "freshness.air.body",
+            "freshness.aviso.title", "freshness.aviso.body",
+            "freshness.news.title", "freshness.news.body",
+            "freshness.refresh.title", "freshness.refresh.body",
         ]
         for key in keys {
             XCTAssertNotEqual(try string(key, "es"), "∅MISSING∅", "missing es/\(key)")

@@ -496,3 +496,29 @@
 "widget.rain.desc"       = "La probabilidad de precipitación de la hora actual.";
 "widget.uv.name"         = "UV ahora";
 "widget.uv.desc"         = "El índice UV de la hora, sobre el máximo del día.";
+
+/* Data-freshness reference: when each reading is actually pulled and what the screen shows */
+"freshness.title"          = "Actualización de los datos";
+"freshness.link.title"     = "Cuándo se actualiza cada dato";
+"freshness.link.body"      = "Qué muestra cada tarjeta y cada cuánto llega dato nuevo.";
+"freshness.intro"          = "Aura muestra al instante lo último que guardó y se actualiza en segundo plano. Cada fuente tiene su propio ritmo, así que no todo cambia a la vez.";
+"freshness.section.data"   = "De dónde viene cada dato";
+"freshness.section.app"    = "En la app";
+"freshness.observed.title" = "La temperatura de la cabecera";
+"freshness.observed.body"  = "La cabecera muestra la temperatura observada en la estación más cercana para la hora actual. AEMET mide en punto, a las HH:00, pero publica esa lectura entre 20 y 40 minutos después, así que la de las 12:00 puede no llegar hasta las 12:32. Hasta entonces se mantiene la última lectura buena; si aún no hay observación, se usa la previsión de esa hora.";
+"freshness.forecast.title" = "Previsión por horas y por días";
+"freshness.forecast.body"  = "La previsión municipal de AEMET se elabora varias veces al día. Aura la vuelve a pedir cuando su copia tiene más de una hora, o cuando tiras para actualizar.";
+"freshness.bulletin.title" = "El texto de la predicción";
+"freshness.bulletin.body"  = "El comentario en prosa es el boletín oficial de tu comunidad autónoma. AEMET lo emite una o dos veces al día y solo lo corrige si cambia lo previsto. Lleva su propia hora de elaboración (hora oficial).";
+"freshness.radar.title"    = "Radar";
+"freshness.radar.body"     = "La imagen del radar regional se renueva más o menos cada 10 minutos. Aura conserva el último fotograma 10 minutos antes de volver a pedirlo.";
+"freshness.uv.title"       = "Índice UV";
+"freshness.uv.body"        = "El número grande es el máximo diario con cielo despejado que prevé AEMET, un valor para todo el día, no el de ahora. La curva por horas de debajo viene de CAMS y sí muestra cómo sube y baja el UV a lo largo del día.";
+"freshness.air.title"      = "Calidad del aire";
+"freshness.air.body"       = "El dato de calidad del aire es la última hora válida de la estación más cercana (MITECO). El feed nacional se actualiza cada hora.";
+"freshness.aviso.title"    = "Avisos";
+"freshness.aviso.body"     = "Los avisos por fenómenos adversos son los de AEMET (Meteoalerta). Se publican y se revisan a lo largo del día conforme AEMET los emite.";
+"freshness.news.title"     = "Noticias";
+"freshness.news.body"      = "Los titulares se guardan 30 minutos antes de refrescar las fuentes.";
+"freshness.refresh.title"  = "Tirar para actualizar";
+"freshness.refresh.body"   = "Tira hacia abajo para forzar la actualización del lugar en pantalla. Después hay un minuto de espera: si vuelves a tirar dentro de ese minuto, se reutiliza lo que ya hay y no se llama otra vez a AEMET, para no saturar la fuente.";

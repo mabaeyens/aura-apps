@@ -14,6 +14,7 @@ struct HelpView: View {
         NavigationStack {
             Form {
                 apiKeySection
+                freshnessSection
                 skySection
                 temperatureSection
                 rainHumiditySection
@@ -55,6 +56,29 @@ struct HelpView: View {
             Text(auraString("help.yourKey.title"))
         } footer: {
             Text(auraString("help.yourKey.body"))
+        }
+    }
+
+    // MARK: Freshness
+
+    /// A link to the data-freshness page — what each card shows and when it was actually pulled. Sits right
+    /// under the API-key how-to because "why hasn't this number moved?" is the next question after "no data".
+    private var freshnessSection: some View {
+        Section {
+            NavigationLink {
+                FreshnessView()
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(auraString("freshness.link.title")).font(.subheadline.weight(.medium))
+                        Text(auraString("freshness.link.body")).font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .symbolRenderingMode(.multicolor)
+                        .auraFont(22, relativeTo: .title2)
+                }
+            }
         }
     }
 

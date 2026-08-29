@@ -496,3 +496,29 @@
 "widget.rain.desc"       = "The chance of precipitation for the current hour.";
 "widget.uv.name"         = "UV now";
 "widget.uv.desc"         = "The hour’s UV index, against the day’s maximum.";
+
+/* Data-freshness reference: when each reading is actually pulled and what the screen shows */
+"freshness.title"          = "Data freshness";
+"freshness.link.title"     = "When each reading updates";
+"freshness.link.body"      = "What each card shows, and how often new data arrives.";
+"freshness.intro"          = "Aura shows the last data it saved right away and refreshes in the background. Every source has its own rhythm, so not everything changes at once.";
+"freshness.section.data"   = "Where each reading comes from";
+"freshness.section.app"    = "In the app";
+"freshness.observed.title" = "The headline temperature";
+"freshness.observed.body"  = "The headline shows the temperature observed at the nearest station for the current hour. AEMET measures on the hour, at HH:00, but publishes that reading 20 to 40 minutes later, so the 12:00 reading may not arrive until around 12:32. Until then the last good reading stays; if there is no observation yet, the forecast for that hour is shown instead.";
+"freshness.forecast.title" = "Hourly and daily forecast";
+"freshness.forecast.body"  = "AEMET’s municipal forecast is issued several times a day. Aura re-fetches it once its copy is over an hour old, or when you pull to refresh.";
+"freshness.bulletin.title" = "The forecast text";
+"freshness.bulletin.body"  = "The written summary is your region’s official bulletin. AEMET issues it once or twice a day and only amends it when the outlook changes. It carries its own issue time (official time).";
+"freshness.radar.title"    = "Radar";
+"freshness.radar.body"     = "The regional radar image refreshes about every 10 minutes. Aura keeps the last frame for 10 minutes before fetching a new one.";
+"freshness.uv.title"       = "UV index";
+"freshness.uv.body"        = "The big number is AEMET’s clear-sky daily maximum, one value for the whole day, not the level right now. The hourly curve below it comes from CAMS and does show how UV rises and falls through the day.";
+"freshness.air.title"      = "Air quality";
+"freshness.air.body"       = "The air-quality reading is the latest valid hour from the nearest station (MITECO). The national feed updates hourly.";
+"freshness.aviso.title"    = "Weather warnings";
+"freshness.aviso.body"     = "Warnings for severe weather come from AEMET (Meteoalerta). They are published and revised through the day as AEMET issues them.";
+"freshness.news.title"     = "News";
+"freshness.news.body"      = "Headlines are cached for 30 minutes before the feeds refresh.";
+"freshness.refresh.title"  = "Pull to refresh";
+"freshness.refresh.body"   = "Pull down to force a refresh of the place on screen. A one-minute cooldown follows: pull again within that minute and Aura reuses what is already there instead of calling AEMET again, so the source is not hammered.";
