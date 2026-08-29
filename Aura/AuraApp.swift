@@ -25,9 +25,10 @@ struct AuraApp: App {
                     if !ine.isEmpty { store.select(ine: ine) }
                 }
                 // Cache every saved location at launch so widgets have data whichever one is picked,
-                // and sweep any stale radar frames left in the Caches directory.
+                // and sweep any stale radar frames and surface maps left in the Caches directory.
                 .task {
                     RadarService.pruneCache()
+                    SurfaceAnalysisService.pruneCache()
                     await AEMETService.refreshAllForWidgets(store.favorites)
                 }
                 .onChange(of: scenePhase) { _, phase in

@@ -11,6 +11,7 @@
 "card.aqi.title"      = "Air quality";
 "card.uv.title"       = "UV index";
 "card.radar.title"    = "Radar";
+"card.surface.title"  = "Surface analysis";
 "card.news.title"     = "News";
 "card.forecast.title" = "Forecast";
 "card.sunmoon.title"  = "Sun & Moon";
@@ -175,6 +176,30 @@
 "radar.torrential"     = "Torrential";
 "radar.intensityScale" = "Intensity scale";
 "radar.intensityValue" = "From light (green) to torrential or hail (magenta)";
+
+/* Surface analysis card + its symbols legend. The chart is AEMET's; the A/B letters stay Spanish (data). */
+"card.surface.a11y"               = "Surface analysis map: isobars, pressure centres and fronts. Pinch to zoom.";
+"surface.subtitle"                = "%1$@:00 UTC analysis · %2$@";
+"surface.legend.open"             = "Symbols";
+"surface.legend.title"            = "Reading the map";
+"surface.legend.subtitle"         = "The surface analysis shows the pressure pattern and the fronts steering the weather. Here is what each symbol means.";
+"surface.legend.isobars.title"    = "Isobars";
+"surface.legend.isobars.body"     = "Lines joining points of equal pressure (hPa). The closer together they are, the stronger the wind.";
+"surface.legend.high.title"       = "High pressure (A)";
+"surface.legend.high.body"        = "A marks a high, from the Spanish “alta”. Capital A is the main centre, small a a secondary one. Highs bring settled, calmer weather.";
+"surface.legend.low.title"        = "Low pressure (B)";
+"surface.legend.low.body"         = "B marks a low, from the Spanish “baja”. Capital B is the main centre, small b a secondary one. Lows bring unsettled, wet or windy weather.";
+"surface.legend.warm.title"       = "Warm front";
+"surface.legend.warm.body"        = "Red line with semicircles. Warmer air advancing over cooler air, usually with steady rain ahead of it.";
+"surface.legend.cold.title"       = "Cold front";
+"surface.legend.cold.body"        = "Blue line with triangles. Colder air pushing in behind, often a sharp band of showers and a shift in the wind.";
+"surface.legend.occluded.title"   = "Occluded front";
+"surface.legend.occluded.body"    = "Purple line with alternating semicircles and triangles. A cold front has caught up with a warm one and lifted the warm air off the surface.";
+"surface.legend.stationary.title" = "Stationary front";
+"surface.legend.stationary.body"  = "Alternating red semicircles and blue triangles on opposite sides. A boundary that is barely moving.";
+"surface.legend.trough.title"     = "Trough";
+"surface.legend.trough.body"      = "A dashed line marking an elongated area of low pressure or instability, with no closed centre.";
+"surface.legend.footnote"         = "Chart by AEMET. The pressure-centre letters (A/B) stay in Spanish, as AEMET publishes them. AEMET’s surface analysis symbols guide has the full set.";
 
 /* Aviso validity window (the times are model-supplied) */
 "aviso.window.between" = "From %1$@ to %2$@";

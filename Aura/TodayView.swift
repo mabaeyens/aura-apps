@@ -50,6 +50,7 @@ struct TodayView: View {
 
     @State private var snapshot: WeatherSnapshot?
     @State private var radar: AuraRadarInfo?
+    @State private var surface: AuraSurfaceInfo?
     @State private var news: [NewsItem] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -301,7 +302,8 @@ struct TodayView: View {
 
                     if let snap = displaySnapshot {
                         AuraForecastStack(snapshot: snap, size: .phone, now: displayNow,
-                                          radar: radar, news: news, heroFillHeight: geo.size.height)
+                                          radar: radar, surface: surface, news: news,
+                                          heroFillHeight: geo.size.height)
                     } else if isLoading {
                         notice { HStack(spacing: 8) { ProgressView().tint(.white); Text(auraString("common.loading")) } }
                     } else if let errorMessage {
@@ -386,6 +388,7 @@ struct TodayView: View {
             WidgetCenter.shared.reloadAllTimelines()
             errorMessage = nil
             await loadRadar(for: location, force: force)
+            await loadSurface()
             news = await NewsService.latest(force: force)
         } else {
             // Nothing cached yet and the refresh couldn't fill it — surface why, if we know.
@@ -400,5 +403,14 @@ struct TodayView: View {
         guard let frame = await RadarService.frame(for: location, force: force),
               let image = UIImage(data: frame.data) else { radar = nil; return }
         radar = AuraRadarInfo(image: Image(uiImage: image), siteName: frame.siteName, time: frame.time)
+    }
+
+    /// Fetch (or reuse the cache of) AEMET's surface analysis map and hand it to the card already decoded
+    /// and rotated upright. Location-independent (one national map) and deliberately not tied to pull-to-
+    /// refresh: the chart is byte-identical within a 12 h slot, so the service re-fetches only when the slot
+    /// turns over and otherwise serves disk, keeping the AEMET budget flat. A miss just leaves `surface` nil.
+    private func loadSurface() async {
+        guard let frame = await SurfaceAnalysisService.frame() else { surface = nil; return }
+        surface = AuraSurfaceInfo(image: Image(uiImage: frame.image), issue: frame.issue)
     }
 }

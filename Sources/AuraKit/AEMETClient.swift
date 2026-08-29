@@ -174,6 +174,13 @@ public extension AEMETClient {
         return try await fetchBinary("/red/radar/regional/\(code)")
     }
 
+    /// The latest surface analysis chart (análisis de superficie / mapa de frentes): isobars, high and
+    /// low pressure centres, and fronts over Europe and the North Atlantic. Raw image bytes (a single
+    /// non-animated GIF, stored rotated 90° counter-clockwise). Reissued every ~12 hours (00/12 UTC).
+    func surfaceAnalysis() async throws -> Data {
+        return try await fetchBinary("/mapasygraficos/analisis")
+    }
+
     /// Forecast daily-max UV index for every provincial capital, in one call. `dia` 0 = today … 4.
     /// One fetch serves every location; resolve per location by INE with `UVIndex.pick(ine:in:)`. The
     /// payload is a single JSON object (not the array most `/prediccion` products use).

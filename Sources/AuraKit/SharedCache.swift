@@ -64,6 +64,19 @@ public enum SharedCache {
         }
     }
 
+    /// When the surface analysis chart was last successfully fetched. The chart is reissued every ~12h
+    /// (00/12 UTC), so `SurfaceAnalysisService` re-fetches only when this marker is older than 12h (or the
+    /// disk cache is empty), keeping the AEMET request budget flat across repeated app opens. App-process
+    /// only — the widget never fetches this heavy image. Nil until the first successful fetch.
+    public static let lastSurfaceAnalysisFetchKey = "AuraKit.lastSurfaceAnalysisFetch"
+    public static var lastSurfaceAnalysisFetch: Date? {
+        get { groupDefaults?.object(forKey: lastSurfaceAnalysisFetchKey) as? Date }
+        set {
+            if let newValue { groupDefaults?.set(newValue, forKey: lastSurfaceAnalysisFetchKey) }
+            else { groupDefaults?.removeObject(forKey: lastSurfaceAnalysisFetchKey) }
+        }
+    }
+
     private static var fileURL: URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?

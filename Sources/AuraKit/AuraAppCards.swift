@@ -106,6 +106,9 @@ public struct AuraForecastStack: View {
     /// Optional radar frame, fetched and passed by the app (kept out of the snapshot). Nil on the Watch
     /// and until the image loads, so the radar card simply doesn't appear.
     private let radar: AuraRadarInfo?
+    /// Optional surface analysis map, fetched and passed by the app (kept out of the snapshot, like radar).
+    /// Nil on the Watch and until the image loads, so the surface card simply doesn't appear. iOS only.
+    private let surface: AuraSurfaceInfo?
     /// Optional Noticias stream, fetched and passed by the app. Empty on the Watch and until it loads,
     /// so the news card simply doesn't appear.
     private let news: [NewsItem]
@@ -116,13 +119,14 @@ public struct AuraForecastStack: View {
     private let heroFillHeight: CGFloat
 
     public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date(),
-                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil, news: [NewsItem] = [],
-                heroFillHeight: CGFloat = 0) {
+                hoursScroll: Bool = true, radar: AuraRadarInfo? = nil, surface: AuraSurfaceInfo? = nil,
+                news: [NewsItem] = [], heroFillHeight: CGFloat = 0) {
         self.snapshot = snapshot
         self.size = size
         self.now = now
         self.hoursScroll = hoursScroll
         self.radar = radar
+        self.surface = surface
         self.news = news
         self.heroFillHeight = heroFillHeight
     }
@@ -190,6 +194,11 @@ public struct AuraForecastStack: View {
                            cloudy: UVNow.cloudy(snapshot))
             }
             if let radar { AuraRadarCard(radar: radar, size: size, now: now) }
+            // The synoptic surface analysis, right after radar (both are AEMET maps). iOS only: the card
+            // and its zoom gestures are `#if os(iOS)`, so `surface` is never non-nil elsewhere.
+            #if os(iOS)
+            if let surface { AuraSurfaceCard(surface: surface, size: size, now: now) }
+            #endif
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
             }
@@ -1568,6 +1577,378 @@ public struct AuraRadarCard: View {
         .accessibilityValue(auraString("radar.intensityValue"))
     }
 }
+
+// MARK: - Surface analysis
+
+/// AEMET's surface analysis map plus its issue time. Like `AuraRadarInfo`, kept out of `WeatherSnapshot`
+/// (the image bytes would bloat the cached/Watch-synced snapshot); the app fetches and passes it in.
+public struct AuraSurfaceInfo {
+    public let image: Image
+    /// Nominal issue time (the 00/12 UTC slot), for the freshness line.
+    public let issue: Date
+    public init(image: Image, issue: Date) {
+        self.image = image; self.issue = issue
+    }
+}
+
+#if os(iOS)
+/// The synoptic surface analysis: isobars, pressure centres and fronts over Europe and the North
+/// Atlantic — the big-picture map behind the local forecast. Pinch to zoom and pan inline (pan only once
+/// zoomed, so a fit-scale drag still scrolls the page); a legend button opens the symbols sheet. iOS only:
+/// the heavy image doesn't belong on the Watch or in a widget, so this card and its sheet are iOS-scoped.
+public struct AuraSurfaceCard: View {
+    let surface: AuraSurfaceInfo
+    let size: AuraSize
+    let now: Date
+
+    /// Committed zoom/pan, plus the live gesture deltas layered on top until each gesture ends.
+    @State private var scale: CGFloat = 1
+    @State private var liveScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var liveOffset: CGSize = .zero
+    @State private var showsLegend = false
+
+    public init(surface: AuraSurfaceInfo, size: AuraSize, now: Date = Date()) {
+        self.surface = surface; self.size = size; self.now = now
+    }
+
+    private static let minScale: CGFloat = 1
+    private static let maxScale: CGFloat = 5
+    /// The rotated chart is a wide, short landscape (~2000×1400); reserve that shape for the map box.
+    private static let mapAspect: CGFloat = 2000.0 / 1400.0
+
+    private var effectiveScale: CGFloat {
+        min(Self.maxScale, max(Self.minScale, scale * liveScale))
+    }
+
+    public var body: some View {
+        AuraCard(size: size) {
+            VStack(alignment: .leading, spacing: size == .phone ? 9 : 5) {
+                map
+                HStack(alignment: .firstTextBaseline) {
+                    Text(subtitle)
+                        .auraFont(size.smallSize, relativeTo: .callout)
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer(minLength: 8)
+                    legendButton
+                }
+            }
+        }
+        .auraSectionTitle(auraString("card.surface.title").uppercased(), size)
+        .sheet(isPresented: $showsLegend) {
+            AuraSurfaceSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// The map itself: a fixed wide box (so the stack lays out before the image loads), the chart drawn to
+    /// fill it, and the pinch/pan/double-tap zoom on top, all clipped to the card's rounded shape.
+    private var map: some View {
+        Color.clear
+            .aspectRatio(Self.mapAspect, contentMode: .fit)
+            .overlay {
+                GeometryReader { geo in
+                    let eff = effectiveScale
+                    surface.image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .scaleEffect(eff)
+                        .offset(clampedOffset(in: geo.size, scale: eff))
+                        .gesture(magnify(in: geo.size))
+                        // Pan exists only once zoomed, so at fit scale a vertical drag reaches the ScrollView.
+                        .auraPanGesture(scale > 1, pan(in: geo.size))
+                        .onTapGesture(count: 2) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                                if scale > Self.minScale { resetZoom() } else { scale = 2.5 }
+                            }
+                        }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: max(size.cardCorner - 8, 6), style: .continuous))
+            .contentShape(Rectangle())
+            .accessibilityLabel(auraString("card.surface.a11y"))
+    }
+
+    private var legendButton: some View {
+        Button { showsLegend = true } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle")
+                Text(auraString("surface.legend.open"))
+            }
+            .auraFont(size.smallSize - 2, relativeTo: .callout, weight: .semibold)
+            .foregroundStyle(.white.opacity(0.85))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Gestures
+
+    private func magnify(in size: CGSize) -> some Gesture {
+        MagnifyGesture()
+            .onChanged { value in liveScale = value.magnification }
+            .onEnded { value in
+                scale = min(Self.maxScale, max(Self.minScale, scale * value.magnification))
+                liveScale = 1
+                offset = scale <= Self.minScale ? .zero : clamp(offset, in: size, scale: scale)
+            }
+    }
+
+    private func pan(in size: CGSize) -> some Gesture {
+        DragGesture()
+            .onChanged { value in liveOffset = value.translation }
+            .onEnded { value in
+                offset = clamp(CGSize(width: offset.width + value.translation.width,
+                                      height: offset.height + value.translation.height),
+                               in: size, scale: effectiveScale)
+                liveOffset = .zero
+            }
+    }
+
+    private func resetZoom() {
+        scale = 1; liveScale = 1; offset = .zero; liveOffset = .zero
+    }
+
+    /// The live (committed + in-flight) offset, clamped so the zoomed map's edges never leave the frame.
+    private func clampedOffset(in size: CGSize, scale: CGFloat) -> CGSize {
+        clamp(CGSize(width: offset.width + liveOffset.width,
+                     height: offset.height + liveOffset.height),
+              in: size, scale: scale)
+    }
+
+    private func clamp(_ o: CGSize, in size: CGSize, scale: CGFloat) -> CGSize {
+        let maxX = max(0, size.width  * (scale - 1) / 2)
+        let maxY = max(0, size.height * (scale - 1) / 2)
+        return CGSize(width: min(max(o.width, -maxX), maxX),
+                      height: min(max(o.height, -maxY), maxY))
+    }
+
+    // MARK: Subtitle
+
+    /// "Análisis de las 12 UTC · hace 3 h" — the nominal slot hour and how long ago it was issued.
+    private var subtitle: String {
+        let hours = Int(now.timeIntervalSince(surface.issue) / 3600)
+        let age = hours <= 0 ? auraString("rel.now") : auraString("rel.hoursAgo", hours)
+        return auraString("surface.subtitle", Self.utcHour(surface.issue), age)
+    }
+
+    private static let utcHourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.dateFormat = "HH"
+        return f
+    }()
+    private static func utcHour(_ date: Date) -> String { utcHourFormatter.string(from: date) }
+}
+
+/// Attach a pan gesture only while `active`, so at fit scale the map passes vertical drags to the outer
+/// ScrollView. `highPriorityGesture` (not `.gesture`) so, once zoomed, the pan wins over the ScrollView.
+private extension View {
+    @ViewBuilder func auraPanGesture<G: Gesture>(_ active: Bool, _ gesture: G) -> some View {
+        if active { highPriorityGesture(gesture) } else { self }
+    }
+}
+
+/// The symbols explainer for the surface map: a title, a one-line intro, a row per symbol with a drawn
+/// glyph, and a footnote crediting AEMET. Same dark, night-gradient scaffold as the scale sheets.
+public struct AuraSurfaceSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    public init() {}
+
+    /// AEMET draws the pressure-centre letters (A/B) in blue on the chart; match it in the legend.
+    private let pressureBlue = Color(red: 0.35, green: 0.55, blue: 0.95)
+
+    public var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(red: 0.09, green: 0.12, blue: 0.19),
+                                    Color(red: 0.03, green: 0.04, blue: 0.08)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            ScrollView { content }
+        }
+        .environment(\.colorScheme, .dark)
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .auraFont(27, relativeTo: .title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .buttonStyle(.plain)
+            .padding(16)
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(auraString("surface.legend.title"))
+                    .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
+                    .foregroundStyle(.white)
+                    .padding(.trailing, 34)   // clear of the close button
+                Text(auraString("surface.legend.subtitle"))
+                    .auraFont(15, relativeTo: .body)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 16) {
+                row({ AuraFrontGlyph(kind: .isobars) }, "surface.legend.isobars.title", "surface.legend.isobars.body")
+                row({ AuraLetterGlyph(letters: "A a", color: pressureBlue) }, "surface.legend.high.title", "surface.legend.high.body")
+                row({ AuraLetterGlyph(letters: "B b", color: pressureBlue) }, "surface.legend.low.title", "surface.legend.low.body")
+                row({ AuraFrontGlyph(kind: .warm) }, "surface.legend.warm.title", "surface.legend.warm.body")
+                row({ AuraFrontGlyph(kind: .cold) }, "surface.legend.cold.title", "surface.legend.cold.body")
+                row({ AuraFrontGlyph(kind: .occluded) }, "surface.legend.occluded.title", "surface.legend.occluded.body")
+                row({ AuraFrontGlyph(kind: .stationary) }, "surface.legend.stationary.title", "surface.legend.stationary.body")
+                row({ AuraFrontGlyph(kind: .trough) }, "surface.legend.trough.title", "surface.legend.trough.body")
+            }
+            Text(auraString("surface.legend.footnote"))
+                .auraFont(13, relativeTo: .callout)
+                .foregroundStyle(.white.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+    }
+
+    private func row<G: View>(@ViewBuilder _ glyph: () -> G, _ titleKey: String, _ bodyKey: String) -> some View {
+        AuraSurfaceLegendRow(glyph: glyph(), name: auraString(titleKey), detail: auraString(bodyKey))
+    }
+}
+
+/// One legend entry: a drawn glyph in a small tinted tile, the symbol's name, and a line of what it means.
+private struct AuraSurfaceLegendRow<Glyph: View>: View {
+    let glyph: Glyph
+    let name: String
+    let detail: String
+    init(glyph: Glyph, name: String, detail: String) {
+        self.glyph = glyph; self.name = name; self.detail = detail
+    }
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            glyph
+                .frame(width: 54, height: 40)
+                .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name)
+                    .auraFont(17, relativeTo: .body, weight: .semibold)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(detail)
+                    .auraFont(14, relativeTo: .callout)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// The pressure-centre letters, drawn in the map's blue with a serif face to echo the chart's lettering.
+private struct AuraLetterGlyph: View {
+    let letters: String
+    let color: Color
+    var body: some View {
+        Text(letters)
+            .auraFont(18, relativeTo: .title3, weight: .heavy, design: .serif)
+            .foregroundStyle(color)
+    }
+}
+
+/// A single meteorological front (or isobars / a trough) drawn with `Canvas`, matching the app's habit of
+/// self-drawn visuals: warm = red semicircles, cold = blue triangles, occluded = purple alternating,
+/// stationary = red semicircles above / blue triangles below, trough = a dashed line, isobars = thin rules.
+private struct AuraFrontGlyph: View {
+    enum Kind { case isobars, warm, cold, occluded, stationary, trough }
+    let kind: Kind
+
+    private static let warm = Color(red: 0.85, green: 0.20, blue: 0.20)
+    private static let cold = Color(red: 0.20, green: 0.42, blue: 0.85)
+    private static let occ  = Color(red: 0.60, green: 0.30, blue: 0.75)
+
+    var body: some View {
+        Canvas { ctx, size in
+            let midY = size.height / 2
+            switch kind {
+            case .isobars:
+                let gap = size.height / 3.4
+                for i in -1...1 {
+                    var p = Path()
+                    let y = midY + CGFloat(i) * gap
+                    p.move(to: CGPoint(x: 4, y: y))
+                    p.addLine(to: CGPoint(x: size.width - 4, y: y))
+                    ctx.stroke(p, with: .color(.white.opacity(0.7)), lineWidth: 1)
+                }
+            case .trough:
+                var p = Path()
+                p.move(to: CGPoint(x: 4, y: midY))
+                p.addLine(to: CGPoint(x: size.width - 4, y: midY))
+                ctx.stroke(p, with: .color(Color(red: 0.80, green: 0.62, blue: 0.30)),
+                           style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
+            default:
+                var base = Path()
+                base.move(to: CGPoint(x: 4, y: midY))
+                base.addLine(to: CGPoint(x: size.width - 4, y: midY))
+                let lineColor: Color = kind == .warm ? Self.warm
+                    : kind == .cold ? Self.cold
+                    : kind == .occluded ? Self.occ
+                    : .white.opacity(0.6)   // stationary: neutral base, the markers carry the two colours
+                ctx.stroke(base, with: .color(lineColor), lineWidth: 2)
+
+                let r = size.height * 0.30
+                let step = r * 2.3
+                var x = r + 5
+                var toggle = true
+                while x + r <= size.width - 4 {
+                    let c = CGPoint(x: x, y: midY)
+                    switch kind {
+                    case .warm:
+                        ctx.fill(auraSemicircle(center: c, r: r, up: true), with: .color(Self.warm))
+                    case .cold:
+                        ctx.fill(auraTriangle(center: c, r: r, up: true), with: .color(Self.cold))
+                    case .occluded:
+                        if toggle { ctx.fill(auraSemicircle(center: c, r: r, up: true), with: .color(Self.occ)) }
+                        else { ctx.fill(auraTriangle(center: c, r: r, up: true), with: .color(Self.occ)) }
+                    case .stationary:
+                        if toggle { ctx.fill(auraSemicircle(center: c, r: r, up: true), with: .color(Self.warm)) }
+                        else { ctx.fill(auraTriangle(center: c, r: r, up: false), with: .color(Self.cold)) }
+                    default: break
+                    }
+                    x += step; toggle.toggle()
+                }
+            }
+        }
+    }
+}
+
+/// A filled half-disc sitting on the baseline, bulging `up` (screen-up) or down — a warm-front bump.
+private func auraSemicircle(center: CGPoint, r: CGFloat, up: Bool) -> Path {
+    var p = Path()
+    let dir: CGFloat = up ? -1 : 1
+    let steps = 18
+    for i in 0...steps {
+        let ang = CGFloat.pi * CGFloat(i) / CGFloat(steps)
+        let pt = CGPoint(x: center.x - r * cos(ang), y: center.y + dir * r * sin(ang))
+        if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+    }
+    p.closeSubpath()
+    return p
+}
+
+/// A filled triangle sitting on the baseline, its apex pointing `up` or down — a cold-front spike.
+private func auraTriangle(center: CGPoint, r: CGFloat, up: Bool) -> Path {
+    let dir: CGFloat = up ? -1 : 1
+    var p = Path()
+    p.move(to: CGPoint(x: center.x - r, y: center.y))
+    p.addLine(to: CGPoint(x: center.x + r, y: center.y))
+    p.addLine(to: CGPoint(x: center.x, y: center.y + dir * r * 1.5))
+    p.closeSubpath()
+    return p
+}
+#endif
 
 // MARK: - News
 

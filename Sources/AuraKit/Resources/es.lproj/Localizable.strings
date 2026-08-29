@@ -11,6 +11,7 @@
 "card.aqi.title"      = "Calidad del aire";
 "card.uv.title"       = "Índice UV";
 "card.radar.title"    = "Radar";
+"card.surface.title"  = "Análisis de superficie";
 "card.news.title"     = "Noticias";
 "card.forecast.title" = "Predicción";
 "card.sunmoon.title"  = "Sol y Luna";
@@ -175,6 +176,30 @@
 "radar.torrential"     = "Torrencial";
 "radar.intensityScale" = "Escala de intensidad";
 "radar.intensityValue" = "De débil (verde) a torrencial o granizo (magenta)";
+
+/* Tarjeta de análisis de superficie y su leyenda de símbolos. El mapa es de AEMET; las letras A/B se dejan como las publica. */
+"card.surface.a11y"               = "Mapa de análisis de superficie: isobaras, centros de presión y frentes. Pellizca para ampliar.";
+"surface.subtitle"                = "Análisis de las %1$@:00 UTC · %2$@";
+"surface.legend.open"             = "Símbolos";
+"surface.legend.title"            = "Cómo leer el mapa";
+"surface.legend.subtitle"         = "El análisis de superficie muestra la configuración de presión y los frentes que dirigen el tiempo. Esto es lo que significa cada símbolo.";
+"surface.legend.isobars.title"    = "Isobaras";
+"surface.legend.isobars.body"     = "Líneas que unen puntos de igual presión (hPa). Cuanto más juntas están, más fuerte es el viento.";
+"surface.legend.high.title"       = "Altas presiones (A)";
+"surface.legend.high.body"        = "La A señala una alta. La A mayúscula es el centro principal y la a minúscula uno secundario. Las altas traen tiempo estable y tranquilo.";
+"surface.legend.low.title"        = "Bajas presiones (B)";
+"surface.legend.low.body"         = "La B señala una baja. La B mayúscula es el centro principal y la b minúscula uno secundario. Las bajas traen tiempo inestable, lluvioso o ventoso.";
+"surface.legend.warm.title"       = "Frente cálido";
+"surface.legend.warm.body"        = "Línea roja con semicírculos. Aire cálido que avanza sobre aire más frío, con lluvia persistente por delante.";
+"surface.legend.cold.title"       = "Frente frío";
+"surface.legend.cold.body"        = "Línea azul con triángulos. Aire frío que empuja por detrás, a menudo con una banda marcada de chubascos y un giro del viento.";
+"surface.legend.occluded.title"   = "Frente ocluido";
+"surface.legend.occluded.body"    = "Línea morada con semicírculos y triángulos alternos. Un frente frío ha alcanzado a uno cálido y levanta el aire cálido de la superficie.";
+"surface.legend.stationary.title" = "Frente estacionario";
+"surface.legend.stationary.body"  = "Semicírculos rojos y triángulos azules alternos a cada lado. Un límite que apenas se mueve.";
+"surface.legend.trough.title"     = "Vaguada";
+"surface.legend.trough.body"      = "Una línea discontinua que marca una zona alargada de bajas presiones o inestabilidad, sin centro cerrado.";
+"surface.legend.footnote"         = "Mapa de AEMET. Las letras de los centros de presión (A/B) se muestran tal como las publica AEMET. La guía de símbolos del análisis de superficie de AEMET tiene el conjunto completo.";
 
 /* Aviso validity window (the times are model-supplied) */
 "aviso.window.between" = "De %1$@ a %2$@";
