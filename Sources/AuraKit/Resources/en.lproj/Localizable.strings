@@ -43,7 +43,7 @@
 
 /* Error / status messages surfaced while talking to AEMET (the AEMET status text is server data) */
 "error.missingKey"  = "Your AEMET key is missing. Add it in Settings.";
-"error.rateLimited" = "AEMET is rate-limiting requests. Try again in a minute.";
+"error.rateLimited" = "Hold on, I need a minute";
 "error.network"     = "Network error (HTTP %d).";
 "error.aemetStatus" = "AEMET returned %1$d: %2$@";
 "error.decoding"    = "Couldn’t read the data from AEMET.";

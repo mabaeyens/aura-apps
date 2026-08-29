@@ -43,7 +43,7 @@
 
 /* Error / status messages surfaced while talking to AEMET (the AEMET status text is server data) */
 "error.missingKey"  = "Falta la clave de AEMET. Añádela en Ajustes.";
-"error.rateLimited" = "AEMET ha limitado las peticiones. Inténtalo en un minuto.";
+"error.rateLimited" = "Espera, necesito un minuto";
 "error.network"     = "Error de red (HTTP %d).";
 "error.aemetStatus" = "AEMET devolvió %1$d: %2$@";
 "error.decoding"    = "No se pudieron leer los datos de AEMET.";

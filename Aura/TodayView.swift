@@ -57,6 +57,9 @@ struct TodayView: View {
     /// foreground doesn't trigger a refresh when the on-screen data is already recent.
     @State private var loadedINE: String?
     @State private var loadedAt: Date?
+    /// When the last manual pull-to-refresh actually hit AEMET — drives the pull-to-refresh cooldown so a
+    /// burst of swipes within a minute can't hammer the API.
+    @State private var lastForcedAt: Date?
     /// True while the Hoy scroll sits at the very top; drives the "MÁS" hint (shown only at the top,
     /// faded out the moment the user scrolls). Updated via `onScrollGeometryChange` on iOS 18+.
     @State private var atTop = true
@@ -69,6 +72,10 @@ struct TodayView: View {
     /// AEMET updates municipal forecasts only a few times a day; don't refresh the same location
     /// more often than this except on an explicit pull-to-refresh.
     private static let minInterval: TimeInterval = 15 * 60
+
+    /// Pull-to-refresh cooldown: once a manual refresh fires, ignore further pulls within this window so a
+    /// burst of swipes can't hammer AEMET. Matches aura-android's one-minute pull-to-refresh gate.
+    private static let forceInterval: TimeInterval = 60
 
     /// The sunless hero art for the current sky+time, or `nil` to fall back to the procedural `AuraSky`.
     /// Probes only the shipped assets in the app bundle; `AuraSky` still draws the live sun/moon on top.
@@ -339,10 +346,17 @@ struct TodayView: View {
            let at = loadedAt, Date().timeIntervalSince(at) < Self.minInterval {
             return
         }
+        // Pull-to-refresh cooldown: a manual refresh just hit AEMET, so treat further pulls within the next
+        // minute as no-ops — the data already on screen stays put rather than firing another API round.
+        if force, let at = lastForcedAt, Date().timeIntervalSince(at) < Self.forceInterval {
+            return
+        }
         guard store.apiKeyPresent else {
             errorMessage = nil // handled by the key banner
             return
         }
+        // Only start the cooldown once we're actually about to fetch (a keyless pull above never fired).
+        if force { lastForcedAt = Date() }
         isLoading = true
         errorMessage = nil
         // A manual pull-to-refresh (force) refreshes only the place on screen; a passive load (launch,
