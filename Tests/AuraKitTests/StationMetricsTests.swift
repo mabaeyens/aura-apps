@@ -66,6 +66,24 @@ final class StationMetricsTests: XCTestCase {
         XCTAssertEqual(reading.precipMm, 0.2)            // mm passes through unrounded
     }
 
+    /// Cross-platform rounding parity for the observed temperature. iOS `Int(ta.rounded())` is
+    /// half-away-from-zero (`.toNearestOrAwayFromZero`); Android rounds the magnitude then reapplies the
+    /// sign, which is the same rule. These vectors are the SAME set locked on Android
+    /// (`StationObservationTest.kt`), so both platforms produce identical Ints from the same feed — the
+    /// only case where plain half-up would diverge is a negative half (e.g. -2.5 → -3, not -2).
+    func testObservedTemperatureRoundingMatchesAndroidVectors() throws {
+        func temp(_ ta: Double?) -> Int? {
+            StationObservation(idema: "T", ubi: "T", lat: 40.0, lon: -3.0, ta: ta,
+                               hr: nil, fint: "2026-08-25T11:00:00+0000").reading.temperature
+        }
+        XCTAssertEqual(temp(23.4), 23)
+        XCTAssertEqual(temp(23.6), 24)
+        XCTAssertEqual(temp(0.5), 1)
+        XCTAssertEqual(temp(-0.5), -1)   // the case where half-up would give -0/0
+        XCTAssertEqual(temp(-2.5), -3)   // winter example: half-up would give -2
+        XCTAssertNil(temp(nil))
+    }
+
     func testReadingLeavesUnreportedMetricsNil() {
         // A station reporting only temperature and humidity: wind/pressure/rain must stay nil so the
         // card shows a dash rather than a fabricated 0.
