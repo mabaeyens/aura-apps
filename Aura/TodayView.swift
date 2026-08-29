@@ -51,6 +51,7 @@ struct TodayView: View {
     @State private var snapshot: WeatherSnapshot?
     @State private var radar: AuraRadarInfo?
     @State private var surface: AuraSurfaceInfo?
+    @State private var national: AuraNationalInfo?
     @State private var news: [NewsItem] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -302,7 +303,7 @@ struct TodayView: View {
 
                     if let snap = displaySnapshot {
                         AuraForecastStack(snapshot: snap, size: .phone, now: displayNow,
-                                          radar: radar, surface: surface, news: news,
+                                          radar: radar, surface: surface, national: national, news: news,
                                           heroFillHeight: geo.size.height)
                     } else if isLoading {
                         notice { HStack(spacing: 8) { ProgressView().tint(.white); Text(auraString("common.loading")) } }
@@ -389,6 +390,7 @@ struct TodayView: View {
             errorMessage = nil
             await loadRadar(for: location, force: force)
             await loadSurface()
+            await loadNational(force: force)
             news = await NewsService.latest(force: force)
         } else {
             // Nothing cached yet and the refresh couldn't fill it — surface why, if we know.
@@ -412,5 +414,18 @@ struct TodayView: View {
     private func loadSurface() async {
         guard let frame = await SurfaceAnalysisService.frame() else { surface = nil; return }
         surface = AuraSurfaceInfo(image: Image(uiImage: frame.image), issue: frame.issue)
+    }
+
+    /// Fetch (or reuse the ≤6 h cache of) today's national forecast for the card, and hand the card the
+    /// lazy loaders the sheet uses for the other horizons — so opening the app pulls at most `hoy` (gated),
+    /// and the Mañana / Pasado / Medio-plazo products are fetched only if the sheet is opened. A miss leaves
+    /// `national` nil, so the card is dropped rather than shown empty.
+    private func loadNational(force: Bool) async {
+        guard let today = await NationalTextService.today(force: force) else { national = nil; return }
+        national = AuraNationalInfo(
+            today: today,
+            loadDay: { day in await NationalTextService.bulletin(day) },
+            loadMedioplazo: { await NationalTextService.medioplazo() }
+        )
     }
 }

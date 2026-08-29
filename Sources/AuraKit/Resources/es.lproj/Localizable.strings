@@ -201,6 +201,17 @@
 "surface.legend.trough.body"      = "Una línea discontinua que marca una zona alargada de bajas presiones o inestabilidad, sin centro cerrado.";
 "surface.legend.footnote"         = "Mapa de AEMET. Las letras de los centros de presión (A/B) se muestran tal como las publica AEMET. La guía de símbolos del análisis de superficie de AEMET tiene el conjunto completo.";
 
+// National text forecast card (pairs with the surface map)
+"card.national.title"             = "Predicción nacional";
+"card.national.a11y"              = "Abre la predicción nacional de España.";
+"national.readMore"               = "Leer más";
+"national.validFor"               = "Válido para %@";
+"national.unavailable"            = "No disponible ahora mismo.";
+"national.range.today"            = "Hoy";
+"national.range.tomorrow"         = "Mañana";
+"national.range.dayAfter"         = "Pasado";
+"national.range.mediumRange"      = "Medio plazo";
+
 /* Aviso validity window (the times are model-supplied) */
 "aviso.window.between" = "De %1$@ a %2$@";
 "aviso.window.until"   = "Hasta %@";

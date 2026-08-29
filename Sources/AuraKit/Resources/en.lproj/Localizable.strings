@@ -201,6 +201,17 @@
 "surface.legend.trough.body"      = "A dashed line marking an elongated area of low pressure or instability, with no closed centre.";
 "surface.legend.footnote"         = "Chart by AEMET. The pressure-centre letters (A/B) stay in Spanish, as AEMET publishes them. AEMET’s surface analysis symbols guide has the full set.";
 
+// National text forecast card (pairs with the surface map)
+"card.national.title"             = "National forecast";
+"card.national.a11y"              = "Opens the national forecast for Spain.";
+"national.readMore"               = "Read more";
+"national.validFor"               = "Valid for %@";
+"national.unavailable"            = "Not available right now.";
+"national.range.today"            = "Today";
+"national.range.tomorrow"         = "Tomorrow";
+"national.range.dayAfter"         = "Day after";
+"national.range.mediumRange"      = "Medium range";
+
 /* Aviso validity window (the times are model-supplied) */
 "aviso.window.between" = "From %1$@ to %2$@";
 "aviso.window.until"   = "Until %@";

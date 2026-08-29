@@ -109,6 +109,9 @@ public struct AuraForecastStack: View {
     /// Optional surface analysis map, fetched and passed by the app (kept out of the snapshot, like radar).
     /// Nil on the Watch and until the image loads, so the surface card simply doesn't appear. iOS only.
     private let surface: AuraSurfaceInfo?
+    /// Optional national text forecast, fetched and passed by the app (kept out of the snapshot). Nil on
+    /// the Watch and until it loads, so the card simply doesn't appear. Pairs with the surface map. iOS only.
+    private let national: AuraNationalInfo?
     /// Optional Noticias stream, fetched and passed by the app. Empty on the Watch and until it loads,
     /// so the news card simply doesn't appear.
     private let news: [NewsItem]
@@ -120,13 +123,14 @@ public struct AuraForecastStack: View {
 
     public init(snapshot: WeatherSnapshot, size: AuraSize, now: Date = Date(),
                 hoursScroll: Bool = true, radar: AuraRadarInfo? = nil, surface: AuraSurfaceInfo? = nil,
-                news: [NewsItem] = [], heroFillHeight: CGFloat = 0) {
+                national: AuraNationalInfo? = nil, news: [NewsItem] = [], heroFillHeight: CGFloat = 0) {
         self.snapshot = snapshot
         self.size = size
         self.now = now
         self.hoursScroll = hoursScroll
         self.radar = radar
         self.surface = surface
+        self.national = national
         self.news = news
         self.heroFillHeight = heroFillHeight
     }
@@ -198,6 +202,8 @@ public struct AuraForecastStack: View {
             // and its zoom gestures are `#if os(iOS)`, so `surface` is never non-nil elsewhere.
             #if os(iOS)
             if let surface { AuraSurfaceCard(surface: surface, size: size, now: now) }
+            // The national forecast in words, right after the map it describes (map + its synopsis). iOS only.
+            if let national { AuraNationalCard(national: national, size: size, now: now) }
             #endif
             if let bulletin = snapshot.bulletin, !bulletin.isEmpty {
                 AuraBulletinCard(phenomenon: snapshot.bulletinPhenomenon, text: bulletin, size: size)
@@ -1947,6 +1953,320 @@ private func auraTriangle(center: CGPoint, r: CGFloat, up: Bool) -> Path {
     p.addLine(to: CGPoint(x: center.x, y: center.y + dir * r * 1.5))
     p.closeSubpath()
     return p
+}
+#endif
+
+// MARK: - National text forecast
+
+/// The national forecast that pairs with the surface analysis map: AEMET's forecaster-written prose. The
+/// card carries today's bulletin (already resolved by the app: `hoy` when it's valid for today, else
+/// `manana`); the sheet fetches the other horizons lazily through the injected loaders, so opening the app
+/// never pulls them and the request budget stays flat. Kept out of the snapshot, like radar and surface.
+public struct AuraNationalInfo {
+    /// Today's national bulletin, already resolved by the app.
+    public let today: ForecastBulletin
+    /// Lazily fetch another day horizon (manana / pasadomanana) when its tab is first opened in the sheet.
+    public let loadDay: @Sendable (NationalDay) async -> ForecastBulletin?
+    /// Lazily fetch the medium-range forecast when its tab is first opened.
+    public let loadMedioplazo: @Sendable () async -> MedioplazoForecast?
+    public init(today: ForecastBulletin,
+                loadDay: @escaping @Sendable (NationalDay) async -> ForecastBulletin?,
+                loadMedioplazo: @escaping @Sendable () async -> MedioplazoForecast?) {
+        self.today = today
+        self.loadDay = loadDay
+        self.loadMedioplazo = loadMedioplazo
+    }
+}
+
+#if os(iOS)
+/// The national forecast card: today's significant-phenomena line (when any) and the synopsis lead, right
+/// after the surface map so the map and its words read together. A tap opens the multi-day sheet. iOS only,
+/// like the surface map it pairs with.
+public struct AuraNationalCard: View {
+    let national: AuraNationalInfo
+    let size: AuraSize
+    let now: Date
+    @State private var showsSheet = false
+
+    public init(national: AuraNationalInfo, size: AuraSize, now: Date = Date()) {
+        self.national = national; self.size = size; self.now = now
+    }
+
+    private var today: ForecastBulletin { national.today }
+
+    /// The amber used for the significant-phenomena line, legible over the dark card.
+    private static let amber = Color(red: 1.0, green: 0.72, blue: 0.30)
+
+    public var body: some View {
+        AuraCard(size: size) {
+            VStack(alignment: .leading, spacing: size == .phone ? 10 : 6) {
+                if let fenomeno = today.fenomenoSignificativo {
+                    Label(fenomeno, systemImage: "exclamationmark.triangle.fill")
+                        .auraFont(size.bodySize - (size == .phone ? 3 : 2), relativeTo: .subheadline, weight: .medium)
+                        .foregroundStyle(Self.amber)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                // The synopsis lead: the first few sentences of the B narrative (the synoptic situation,
+                // the same systems the surface map draws). The full multi-day text is behind the tap.
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(BulletinText.sentences(today.texto).prefix(3).enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .auraFont(size.bodySize - (size == .phone ? 3 : 2), relativeTo: .body)
+                            .foregroundStyle(.white.opacity(0.92))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(subtitle)
+                        .auraFont(size.smallSize, relativeTo: .callout)
+                        .foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Spacer(minLength: 8)
+                    HStack(spacing: 4) {
+                        Text(auraString("national.readMore"))
+                        Image(systemName: "chevron.right")
+                    }
+                    .auraFont(size.smallSize - 2, relativeTo: .callout, weight: .semibold)
+                    .foregroundStyle(.white.opacity(0.85))
+                }
+            }
+        }
+        .auraSectionTitle(auraString("card.national.title").uppercased(), size)
+        .contentShape(Rectangle())
+        .onTapGesture { showsSheet = true }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(auraString("card.national.a11y"))
+        .sheet(isPresented: $showsSheet) {
+            AuraNationalSheet(national: national)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// "Válido para el domingo, 30 de agosto" — the day these words actually cover, which on a stale-`hoy`
+    /// day is tomorrow (the honest fallback). Falls back to the issue date, then to nothing.
+    private var subtitle: String {
+        if let validez = today.validezInicio {
+            return auraString("national.validFor", Self.dayText(validez))
+        }
+        if let elaborado = today.elaborado {
+            return auraString("forecast.updatedAt", Self.dayText(elaborado))
+        }
+        return ""
+    }
+
+    private static func dayText(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = .current
+        f.timeZone = TimeZone(identifier: "Europe/Madrid") ?? .current
+        f.setLocalizedDateFormatFromTemplate("EEEE d MMMM")
+        return f.string(from: date)
+    }
+}
+
+/// The full national forecast: a segmented control over Hoy / Mañana / Pasado mañana / Medio plazo, each
+/// fetched on first selection and cached for the session (the Hoy tab is seeded from the card, so it costs
+/// nothing). The day horizons render like the community bulletin (phenomena banner + one line per
+/// sentence); medium range renders one dated block per day, since it has no phenomena section.
+public struct AuraNationalSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let national: AuraNationalInfo
+
+    enum Segment: Int, CaseIterable, Identifiable {
+        case today, tomorrow, dayAfter, mediumRange
+        var id: Int { rawValue }
+        var titleKey: String {
+            switch self {
+            case .today:       return "national.range.today"
+            case .tomorrow:    return "national.range.tomorrow"
+            case .dayAfter:    return "national.range.dayAfter"
+            case .mediumRange: return "national.range.mediumRange"
+            }
+        }
+        var day: NationalDay? {
+            switch self {
+            case .today:       return .hoy
+            case .tomorrow:    return .manana
+            case .dayAfter:    return .pasadoManana
+            case .mediumRange: return nil
+            }
+        }
+    }
+
+    @State private var selection: Segment = .today
+    @State private var bulletins: [Segment: ForecastBulletin]
+    @State private var medioplazo: MedioplazoForecast?
+    @State private var loading = false
+
+    private static let amber = Color(red: 1.0, green: 0.72, blue: 0.30)
+
+    public init(national: AuraNationalInfo) {
+        self.national = national
+        // Seed the Hoy tab with the already-loaded today bulletin, so it shows instantly with no fetch.
+        _bulletins = State(initialValue: [.today: national.today])
+    }
+
+    public var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(red: 0.09, green: 0.12, blue: 0.19),
+                                    Color(red: 0.03, green: 0.04, blue: 0.08)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            VStack(spacing: 0) {
+                Picker("", selection: $selection) {
+                    ForEach(Segment.allCases) { seg in
+                        Text(auraString(seg.titleKey)).tag(seg)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                ScrollView { content.padding(20) }
+            }
+        }
+        .environment(\.colorScheme, .dark)
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .auraFont(27, relativeTo: .title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .buttonStyle(.plain)
+            .padding(16)
+        }
+        .task(id: selection) { await ensureLoaded(selection) }
+    }
+
+    @ViewBuilder private var content: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(auraString("card.national.title"))
+                .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
+                .foregroundStyle(.white)
+                .padding(.trailing, 34)   // clear of the close button
+            if selection == .mediumRange {
+                mediumRangeBody
+            } else if let bulletin = bulletins[selection] {
+                bulletinBody(bulletin)
+            } else if loading {
+                loadingRow
+            } else {
+                unavailableRow
+            }
+            Text(auraString("attribution.madeWith", "AEMET"))
+                .auraFont(13, relativeTo: .callout)
+                .foregroundStyle(.white.opacity(0.5))
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A day bulletin (hoy / manana / pasadomanana): issue date, the phenomena banner when present, then
+    /// the narrative one line per sentence — the same render the community "Predicción" sheet uses.
+    @ViewBuilder private func bulletinBody(_ bulletin: ForecastBulletin) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let elaborado = bulletin.elaborado {
+                Text(auraString("forecast.updatedAt", Self.dateText(elaborado)))
+                    .auraFont(14, relativeTo: .footnote)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            if let fenomeno = bulletin.fenomenoSignificativo {
+                Label(fenomeno, systemImage: "exclamationmark.triangle.fill")
+                    .auraFont(15, relativeTo: .subheadline, weight: .medium)
+                    .foregroundStyle(Self.amber)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Self.amber.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(Array(BulletinText.sentences(bulletin.texto).enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .auraFont(16, relativeTo: .body)
+                    .foregroundStyle(.white.opacity(0.9))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// The medium range: the issue date, then one dated block per day ("Martes 1", "Miércoles 2", …), each
+    /// with its narrative one line per sentence.
+    @ViewBuilder private var mediumRangeBody: some View {
+        if let m = medioplazo {
+            VStack(alignment: .leading, spacing: 18) {
+                if let elaborado = m.elaborado {
+                    Text(auraString("forecast.updatedAt", Self.dateText(elaborado)))
+                        .auraFont(14, relativeTo: .footnote)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                ForEach(Array(m.days.enumerated()), id: \.offset) { _, day in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("\(day.weekday) \(day.day)")
+                            .auraFont(18, relativeTo: .title3, weight: .semibold)
+                            .foregroundStyle(.white)
+                        ForEach(Array(BulletinText.sentences(day.texto).enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .auraFont(16, relativeTo: .body)
+                                .foregroundStyle(.white.opacity(0.9))
+                                .textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+            }
+        } else if loading {
+            loadingRow
+        } else {
+            unavailableRow
+        }
+    }
+
+    private var loadingRow: some View {
+        HStack(spacing: 8) {
+            ProgressView().tint(.white)
+            Text(auraString("common.loading")).foregroundStyle(.white.opacity(0.7))
+        }
+        .auraFont(15, relativeTo: .body)
+    }
+
+    private var unavailableRow: some View {
+        Label(auraString("national.unavailable"), systemImage: "wifi.slash")
+            .auraFont(15, relativeTo: .body)
+            .foregroundStyle(.white.opacity(0.6))
+    }
+
+    /// Load a segment's data on first open. `.task(id: selection)` cancels the previous load on a fast tab
+    /// switch, and each range is cached in `@State`, so switching back never refetches within the session.
+    private func ensureLoaded(_ seg: Segment) async {
+        switch seg {
+        case .today:
+            return   // seeded in init
+        case .tomorrow, .dayAfter:
+            guard bulletins[seg] == nil, let day = seg.day else { return }
+            loading = true
+            let bulletin = await national.loadDay(day)
+            if let bulletin { bulletins[seg] = bulletin }
+            loading = false
+        case .mediumRange:
+            guard medioplazo == nil else { return }
+            loading = true
+            medioplazo = await national.loadMedioplazo()
+            loading = false
+        }
+    }
+
+    private static func dateText(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = .current
+        f.timeZone = TimeZone(identifier: "Europe/Madrid") ?? .current
+        f.setLocalizedDateFormatFromTemplate("d MMMM HH:mm")
+        return f.string(from: date)
+    }
 }
 #endif
 

@@ -2,7 +2,7 @@ import Foundation
 
 /// The official narrative forecast for an autonomous community, as issued by an AEMET
 /// forecaster and served from the OpenData normalized-text products (`ascii/txt`).
-public struct ForecastBulletin: Sendable {
+public struct ForecastBulletin: Sendable, Codable {
     /// When AEMET produced this bulletin (from the "DÍA … A LAS … HORA OFICIAL" header).
     public let elaborado: Date?
     /// The day the bulletin is valid for (from the "PREDICCIÓN VÁLIDA PARA …" header).
@@ -13,6 +13,39 @@ public struct ForecastBulletin: Sendable {
     public let fenomenoSignificativo: String?
     /// The main narrative text (section "B.- PREDICCIÓN"), hard wraps unfolded into paragraphs.
     public let texto: String
+
+    public init(elaborado: Date?, validezInicio: Date?, validezFin: Date?,
+                fenomenoSignificativo: String?, texto: String) {
+        self.elaborado = elaborado
+        self.validezInicio = validezInicio
+        self.validezFin = validezFin
+        self.fenomenoSignificativo = fenomenoSignificativo
+        self.texto = texto
+    }
+}
+
+/// AEMET's national medium-range forecast (`/prediccion/nacional/medioplazo`). Unlike the day products it
+/// has no A.-/B.- sections, just one free-narrative block per day, so each block is kept separate and the
+/// card can show one dated section per day.
+public struct MedioplazoForecast: Sendable, Codable {
+    /// One day's block: the day-of-month, its Spanish weekday name (as AEMET writes it), and the narrative.
+    public struct Day: Sendable, Codable {
+        public let day: Int
+        public let weekday: String
+        public let texto: String
+        public init(day: Int, weekday: String, texto: String) {
+            self.day = day; self.weekday = weekday; self.texto = texto
+        }
+    }
+    /// When AEMET produced this bulletin (from the "DÍA … A LAS … HORA OFICIAL" header).
+    public let elaborado: Date?
+    /// The raw "PREDICCIÓN VÁLIDA PARA LOS DÍAS …" line, shown verbatim as the validity note.
+    public let validez: String?
+    /// One block per day, in feed order.
+    public let days: [Day]
+    public init(elaborado: Date?, validez: String?, days: [Day]) {
+        self.elaborado = elaborado; self.validez = validez; self.days = days
+    }
 }
 
 public extension AEMETClient {
@@ -107,6 +140,49 @@ enum AEMETBulletinParser {
         )
     }
 
+    /// Parse the national medium-range product (`/prediccion/nacional/medioplazo`). It has no A.-/B.-
+    /// sections: after the header it is one free-narrative block per day, each introduced by a
+    /// `DÍA NN (WEEKDAY)` line (two-digit day, uppercase weekday in parentheses). Blocks are split on that
+    /// header and each block's lines are unfolded into flowing paragraphs. Returns nil if no day block is
+    /// found (an unexpected layout), so the caller can drop the segment rather than show a blank.
+    static func parseMedioplazo(_ raw: String) -> MedioplazoForecast? {
+        let lines = raw.replacingOccurrences(of: "\r\n", with: "\n")
+            .components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+
+        let elaborado = lines.first { $0.uppercased().contains("HORA OFICIAL") }.flatMap(issueDate(from:))
+        let validez = lines.first { $0.uppercased().hasPrefix("PREDICCIÓN VÁLIDA") }
+
+        var days: [MedioplazoForecast.Day] = []
+        var currentDay: Int?
+        var currentWeekday: String?
+        var buffer: [String] = []
+
+        func flush() {
+            if let day = currentDay, let weekday = currentWeekday {
+                let texto = unfold(buffer)
+                if !texto.isEmpty { days.append(.init(day: day, weekday: weekday, texto: texto)) }
+            }
+            buffer.removeAll()
+        }
+
+        for line in lines {
+            // The lines are already trimmed, so the header's leading space is gone; match `DÍA NN (NOMBRE)`.
+            if let match = line.firstMatch(of: /^D[IÍ]A\s+(\d{1,2})\s+\(([^)]+)\)$/.ignoresCase()),
+               let day = Int(match.1) {
+                flush()
+                currentDay = day
+                currentWeekday = String(match.2).capitalized
+            } else if currentDay != nil {
+                buffer.append(line)
+            }
+        }
+        flush()
+
+        guard !days.isEmpty else { return nil }
+        return MedioplazoForecast(elaborado: elaborado, validez: validez, days: days)
+    }
+
     /// Unfold hard-wrapped lines: blank lines delimit paragraphs; within a paragraph the wraps
     /// are joined with spaces. Paragraphs are rejoined with a blank line.
     private static func unfold(_ lines: [String]) -> String {
@@ -179,5 +255,44 @@ enum AEMETBulletinParser {
         comps.year = year; comps.month = month; comps.day = day
         comps.hour = hour; comps.minute = minute
         return calendar.date(from: comps)
+    }
+}
+
+/// The horizon of a day-scoped national bulletin (`hoy` / `manana` / `pasadomanana`). `medioplazo` is a
+/// different document with its own parser, so it is not a case here.
+public enum NationalDay: Sendable { case hoy, manana, pasadoManana }
+
+public extension AEMETClient {
+    /// Raw national normalized-text products (España-level), the counterpart of the per-community `hoy`
+    /// text. Same `text/plain` two-step envelope as every other product, served by `fetchText`.
+    func prediccionNacionalHoy() async throws -> String { try await fetchText("/prediccion/nacional/hoy") }
+    func prediccionNacionalManana() async throws -> String { try await fetchText("/prediccion/nacional/manana") }
+    func prediccionNacionalPasadoManana() async throws -> String { try await fetchText("/prediccion/nacional/pasadomanana") }
+    func prediccionNacionalMedioplazo() async throws -> String { try await fetchText("/prediccion/nacional/medioplazo") }
+
+    /// A day-scoped national bulletin, parsed from the same A.-/B.- normalized text as the community
+    /// bulletin. This fetches and parses a single horizon; the amendment-only `hoy` resolve (accept only
+    /// when valid for today, otherwise fall back to `manana`) lives in the app's `NationalTextService`, so
+    /// each horizon's fetch stays independently cached instead of `hoy` pulling `manana` behind its cache.
+    func nacionalBulletin(_ day: NationalDay) async throws -> ForecastBulletin {
+        let text: String
+        switch day {
+        case .hoy:          text = try await prediccionNacionalHoy()
+        case .manana:       text = try await prediccionNacionalManana()
+        case .pasadoManana: text = try await prediccionNacionalPasadoManana()
+        }
+        guard let bulletin = AEMETBulletinParser.parse(text) else {
+            throw ClientError.decoding("national bulletin text was not in the expected format")
+        }
+        return bulletin
+    }
+
+    /// The national medium-range forecast, split into one block per day on the `DÍA NN (WEEKDAY)` headers.
+    func nacionalMedioplazo() async throws -> MedioplazoForecast {
+        let text = try await prediccionNacionalMedioplazo()
+        guard let forecast = AEMETBulletinParser.parseMedioplazo(text) else {
+            throw ClientError.decoding("national medium-range text was not in the expected format")
+        }
+        return forecast
     }
 }

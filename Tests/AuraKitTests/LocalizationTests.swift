@@ -108,6 +108,10 @@ final class LocalizationTests: XCTestCase {
             "freshness.aviso.title", "freshness.aviso.body",
             "freshness.news.title", "freshness.news.body",
             "freshness.refresh.title", "freshness.refresh.body",
+            // National text forecast card
+            "card.national.title", "card.national.a11y", "national.readMore", "national.validFor",
+            "national.unavailable", "national.range.today", "national.range.tomorrow",
+            "national.range.dayAfter", "national.range.mediumRange",
         ]
         for key in keys {
             XCTAssertNotEqual(try string(key, "es"), "∅MISSING∅", "missing es/\(key)")
