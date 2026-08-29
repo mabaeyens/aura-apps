@@ -169,14 +169,13 @@ public struct WeatherSnapshot: Codable, Sendable, Hashable {
 }
 
 public extension WeatherSnapshot {
-    /// The card's "now" hero temperature. °C, or nil only when there is genuinely neither a measurement nor
-    /// a forecast (the honest "—"). This is just `currentTemp` *after* `resolved(at:)` has re-derived it at
-    /// display time, so the single source of truth for what leads is `observedLeadsHero`/`resolved(at:)`, not
-    /// this accessor: the more recent of the nearest station's observation and the current-hour forecast,
-    /// tie to the observation, then the frozen scalar. It is deliberately *not* today's high — falling back
-    /// to `tempMax` once made a missing hourly feed read as a real "now" pinned to the day's peak. Render the
-    /// value from a `resolved(at:)` snapshot; on a raw (unresolved) snapshot this is the frozen fetch-time
-    /// scalar.
+    /// The card's "now" hero temperature. °C, or nil only when there is genuinely neither a forecast nor a
+    /// fresh measurement (the honest "—"). This is just `currentTemp` *after* `resolved(at:)` has re-derived
+    /// it at display time, so the single source of truth for what the hero shows is `resolved(at:)`, not this
+    /// accessor: the current-hour forecast, or a fresh station observation only when there is no forecast to
+    /// show, then the frozen scalar. It is deliberately *not* today's high — falling back to `tempMax` once
+    /// made a missing hourly feed read as a real "now" pinned to the day's peak. Render the value from a
+    /// `resolved(at:)` snapshot; on a raw (unresolved) snapshot this is the frozen fetch-time scalar.
     var heroTemp: Int? { currentTemp }
 
     /// The snapshot re-anchored to `now` for **display** — the fix for the whole current-conditions family
@@ -191,40 +190,17 @@ public extension WeatherSnapshot {
     /// degraded/thin snapshot, or a snapshot cached before the strip carried that field), so this is **never
     /// worse** than the frozen value and better whenever the strip has the reading.
     ///
-    /// The current **temperature** follows the unified-freshness "most recent wins" rule (`observedLeadsHero`):
-    /// the nearest station's measured reading leads only when it is at least as recent as the current forecast
-    /// hour (tie to the observation) and not in the future, or when there is no forecast to compare against;
-    /// otherwise the re-anchored forecast leads, then the frozen scalar, then nil. The observation feed is a
-    /// light national one that survives when the per-municipality hourly fetch is throttled, so a fresh reading
-    /// keeps the hero populated even from a cache with an empty strip — which is why an empty strip is no longer
-    /// returned unchanged. A stale reading (older than the forecast hour, e.g. after a day change) falls through
-    /// to the forecast rather than pinning the hero, and "—" means there is genuinely neither a measurement nor
-    /// a forecast.
+    /// The current **temperature** is forecast-only: the re-anchored current-hour forecast always leads, and
+    /// because it is the same value the strip's first column shows, the hero and the strip can never disagree.
+    /// The observation feed is a light national one that survives when the per-municipality hourly fetch is
+    /// throttled, so *only* when there is no forecast temperature to show (an empty strip on a throttled or cold
+    /// device) a fresh reading fills in rather than blanking, gated on the same `observationIsFresh` as the
+    /// observation card — which is why an empty strip is no longer returned unchanged. The observation never
+    /// overrides an available forecast, and "—" means there is genuinely neither a forecast nor a fresh reading.
     ///
     /// Call it once at each surface's display boundary (passing the live clock for the app and watch, the
     /// timeline entry date for widgets and complications) and render the returned snapshot; the rest of the
     /// view tree reads the ordinary `current*` properties and gets display-time values for free.
-    /// Whether the nearest station's observation should lead the hero at `now`, per the unified-freshness
-    /// rule shared with Android: show the more recent of the observation and the current-hour forecast, ties
-    /// to the observation. The observation leads only when its measurement time (`observedAt`, AEMET's `fint`)
-    /// is at least as recent as the leading forecast hour and not in the future, or when there is no forecast
-    /// value to compare against; otherwise the re-anchored forecast leads. A stale observation (older than the
-    /// forecast hour — e.g. after a day change) can never win, because the forecast hour keeps advancing past
-    /// it, so no freshness constant is needed. A reading with no `fint` cannot be proven current and never
-    /// leads.
-    func observedLeadsHero(now: Date = Date(),
-                           timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> Bool {
-        guard observedTemp != nil, let fint = observedAt, fint <= now else { return false }
-        let strip = upcomingHours(now: now, timeZone: timeZone)
-        // The leading forecast hour is the first upcoming slot carrying a temperature. With none, there is
-        // no forecast to compare against and a real, non-future measurement beats a blank.
-        guard let forecastSlot = strip.first(where: { $0.temp != nil }) else { return true }
-        // A legacy slot with no stamped instant can't be placed on the clock, so its recency is unverifiable;
-        // let the forecast lead rather than risk showing a stale observation as "now".
-        guard let forecastDate = forecastSlot.date else { return false }
-        return fint >= forecastDate   // tie to the observation
-    }
-
     /// Whether the observation is fresh enough to show on the observation card at `now`, per the
     /// unified-freshness display gate (concept 3, shared with Android as `observationIsFresh`). True only when
     /// the reading's measurement time (`observedAt`, AEMET's `fint`) is present, not in the future, and within
@@ -257,11 +233,15 @@ public extension WeatherSnapshot {
             for slot in strip { if let v = key(slot) { return v } }
             return nil
         }
-        // Hero temperature per the most-recent rule: the observation leads only when it is the more recent
-        // reading (`observedLeadsHero`), otherwise the re-anchored current-hour forecast, then the frozen
-        // scalar, then nil. A stale or timestampless observation falls through to the forecast.
-        let heroTemp = (observedLeadsHero(now: now, timeZone: timeZone) ? observedTemp : nil)
-            ?? first(\.temp) ?? currentTemp
+        // Hero temperature, forecast-only: the re-anchored current-hour forecast always leads (the same
+        // value the strip's first column shows, so the two can never disagree). Only when there is no
+        // forecast temperature at all — a throttled or cold device with an empty strip — does a fresh
+        // station observation fill in rather than blanking, gated on the same `observationIsFresh` the
+        // observation card uses, so the hero borrows a reading only while that reading is on screen. Then
+        // the frozen scalar, then nil. The observation never overrides an available forecast.
+        let heroTemp = first(\.temp)
+            ?? (observationIsFresh(now: now) ? observedTemp : nil)
+            ?? currentTemp
         return WeatherSnapshot(
             ine: ine, localidad: localidad, provincia: provincia,
             tempMin: tempMin, tempMax: tempMax, humedadMax: humedadMax,

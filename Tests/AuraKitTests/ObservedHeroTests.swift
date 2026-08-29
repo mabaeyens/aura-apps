@@ -1,13 +1,13 @@
 import XCTest
 @testable import AuraKit
 
-/// The unified-freshness hero rule (spec: aura-android/specs/unified-freshness.md): the hero shows the
-/// **more recent** of the nearest station's observation and the current-hour forecast, decided at display
-/// time, with a tie going to the observation. The observation leads only when its measurement time
-/// (`observedAt`, AEMET's `fint`) is at least as recent as the leading forecast hour and not in the future,
-/// or when there is no forecast value to compare against; otherwise the re-anchored forecast leads, then the
-/// frozen scalar, then "—". No fixed freshness window — it is self-cleaning across a day change, because the
-/// forecast hour keeps advancing past a stale measurement. iOS and Android must resolve identically.
+/// The forecast-only hero rule (spec: aura-android/specs/unified-freshness.md): the hero shows the
+/// current-hour forecast, decided at display time. The forecast always leads, and because it is the same
+/// value the strip's first column shows, the hero and the first hourly tile can never disagree. A fresh
+/// station observation fills the hero *only* when there is no forecast temperature to show at all (an empty
+/// or thin strip on a throttled or cold device), gated on the same `observationIsFresh` as the observation
+/// card; otherwise the frozen scalar, then "—". The observation never overrides an available forecast.
+/// iOS and Android must resolve identically.
 final class ObservedHeroTests: XCTestCase {
     private let tz = TimeZone(identifier: "Europe/Madrid")!
 
@@ -28,39 +28,35 @@ final class ObservedHeroTests: XCTestCase {
                         sunrise: nil, sunset: nil, hours: hours, updated: updated)
     }
 
-    /// Tie to the observation: once the current hour's reading has published, its `fint` equals the forecast
-    /// hour, and a real measurement of that hour beats the prediction of it.
-    func testObservedLeadsWhenFintTiesForecastHour() throws {
+    /// Even when a same-hour observation has published (its `fint` ties the current forecast hour), the
+    /// forecast leads. The observation no longer overrides an available forecast.
+    func testForecastLeadsOverTyingObservation() throws {
         let now = try date(2026, 8, 28, 9, 35)
         let h9 = try date(2026, 8, 28, 9, 0)
         let h10 = try date(2026, 8, 28, 10, 0)
         let snap = snapshot(currentTemp: 18, observedTemp: 24, observedAt: h9,
                             hours: [slot(9, temp: 22, at: h9), slot(10, temp: 23, at: h10)],
                             updated: try date(2026, 8, 28, 8, 0))
-        XCTAssertTrue(snap.observedLeadsHero(now: now, timeZone: tz))
-        XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 24,
-                       "an observation of the current forecast hour leads (tie to the observation)")
+        XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 22,
+                       "the current-hour forecast leads even when a same-hour observation exists")
     }
 
-    /// Before ~:31 the freshest published reading is still the previous hour's, older than the current
-    /// forecast hour, so the forecast — already 'for now' — leads. This covers the first half of every hour.
+    /// Before the current hour's reading publishes, the forecast — already 'for now' — leads, same as after.
     func testForecastLeadsBeforeHourPublishes() throws {
         let now = try date(2026, 8, 28, 9, 15)
         let h8 = try date(2026, 8, 28, 8, 0)
         let h9 = try date(2026, 8, 28, 9, 0)
         let h10 = try date(2026, 8, 28, 10, 0)
-        // Freshest reading is the 08:00 one (25°); the 09:00 reading has not published yet.
         let snap = snapshot(currentTemp: 18, observedTemp: 25, observedAt: h8,
                             hours: [slot(9, temp: 22, at: h9), slot(10, temp: 23, at: h10)],
                             updated: try date(2026, 8, 28, 8, 0))
-        XCTAssertFalse(snap.observedLeadsHero(now: now, timeZone: tz))
         XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 22,
-                       "a last-hour reading is older than the current forecast hour: forecast leads")
+                       "the forecast leads regardless of the observation's timing")
     }
 
-    /// The day-change guard, and the whole reason for 'most recent' over a fixed window: a reading cached
-    /// last night is older than today's first forecast hour, so it can never pin the hero — no constant needed.
-    func testStaleObservationAcrossDayChangeFallsBackToForecast() throws {
+    /// After a day change, a snapshot cached last night still resolves to today's current-hour forecast,
+    /// never the stale overnight observation.
+    func testForecastLeadsAcrossDayChange() throws {
         let now = try date(2026, 8, 28, 0, 15)
         let h0 = try date(2026, 8, 28, 0, 0)
         let h1 = try date(2026, 8, 28, 1, 0)
@@ -68,68 +64,65 @@ final class ObservedHeroTests: XCTestCase {
         let snap = snapshot(currentTemp: 18, observedTemp: 25, observedAt: lastNight,
                             hours: [slot(0, temp: 19, at: h0), slot(1, temp: 18, at: h1)],
                             updated: lastNight)
-        XCTAssertFalse(snap.observedLeadsHero(now: now, timeZone: tz))
         XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 19,
-                       "a stale overnight observation must never lead across a day change")
+                       "the forecast leads; a stale overnight observation never pins the hero")
     }
 
-    /// A future measurement time (clock skew) never leads.
-    func testFutureFintDoesNotLead() throws {
-        let now = try date(2026, 8, 28, 9, 35)
-        let h9 = try date(2026, 8, 28, 9, 0)
-        let h10 = try date(2026, 8, 28, 10, 0)
-        let future = try date(2026, 8, 28, 11, 0)
-        let snap = snapshot(currentTemp: 18, observedTemp: 25, observedAt: future,
-                            hours: [slot(9, temp: 22, at: h9), slot(10, temp: 23, at: h10)],
-                            updated: try date(2026, 8, 28, 8, 0))
-        XCTAssertFalse(snap.observedLeadsHero(now: now, timeZone: tz))
-        XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 22,
-                       "a future fint fails the not-in-the-future check: forecast leads")
-    }
-
-    /// No forecast to compare against (an empty/thin strip): a real, non-future measurement beats a blank.
-    /// This keeps the hero populated on a throttled or cold device — the iPhone/Watch failure this fixes.
-    func testEmptyStripWithObservationLeads() throws {
+    /// No forecast to compare against (an empty/thin strip): a fresh, non-future observation fills the hero
+    /// rather than blanking. This keeps the hero populated on a throttled or cold device.
+    func testEmptyStripFallsBackToFreshObservation() throws {
         let now = try date(2026, 8, 28, 9, 35)
         let h9 = try date(2026, 8, 28, 9, 0)
         let snap = snapshot(currentTemp: nil, observedTemp: 24, observedAt: h9, hours: [],
                             updated: try date(2026, 8, 27, 22, 0))
         XCTAssertTrue(snap.upcomingHours(now: now, timeZone: tz).isEmpty, "sanity: the strip is empty")
-        XCTAssertTrue(snap.observedLeadsHero(now: now, timeZone: tz))
         XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 24,
-                       "no forecast value: a non-future observation leads rather than blanking")
+                       "no forecast value: a fresh observation fills the hero rather than blanking")
     }
 
-    /// A timestampless observation (an old cache from before `observedAt`, or a reading with no `fint`)
-    /// cannot be proven current, so it must not lead — the forecast leads until a refresh stamps a time.
-    func testTimestamplessObservationDoesNotLead() throws {
+    /// The empty-strip fallback is freshness-gated: an observation older than the observation card's window
+    /// (`observationIsFresh`, 3 h) cannot fill the hero, so it honestly reads "—".
+    func testEmptyStripWithStaleObservationBlanks() throws {
         let now = try date(2026, 8, 28, 9, 35)
-        let h9 = try date(2026, 8, 28, 9, 0)
-        let h10 = try date(2026, 8, 28, 10, 0)
-        let snap = snapshot(currentTemp: 18, observedTemp: 24, observedAt: nil,
-                            hours: [slot(9, temp: 22, at: h9), slot(10, temp: 23, at: h10)],
-                            updated: try date(2026, 8, 28, 8, 0))
-        XCTAssertFalse(snap.observedLeadsHero(now: now, timeZone: tz))
-        XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 22,
-                       "no fint: cannot verify recency, so the forecast leads")
+        let stale = try date(2026, 8, 28, 5, 0)   // > 3 h old
+        let snap = snapshot(currentTemp: nil, observedTemp: 24, observedAt: stale, hours: [],
+                            updated: try date(2026, 8, 27, 22, 0))
+        XCTAssertTrue(snap.upcomingHours(now: now, timeZone: tz).isEmpty, "sanity: the strip is empty")
+        XCTAssertFalse(snap.observationIsFresh(now: now), "sanity: the observation is stale")
+        XCTAssertNil(snap.resolved(at: now, timeZone: tz).heroTemp,
+                     "a stale observation cannot fill the hero: honest —")
     }
 
-    /// With no observation, the hero resolves from the strip as before.
-    func testNoObservedFallsBackToStrip() throws {
+    /// A future observation time (clock skew) fails the freshness gate and never fills.
+    func testEmptyStripWithFutureObservationBlanks() throws {
         let now = try date(2026, 8, 28, 9, 35)
-        let h9 = try date(2026, 8, 28, 9, 0)
-        let h10 = try date(2026, 8, 28, 10, 0)
-        let snap = snapshot(currentTemp: 18, observedTemp: nil, observedAt: nil,
-                            hours: [slot(9, temp: 22, at: h9), slot(10, temp: 23, at: h10)],
-                            updated: try date(2026, 8, 28, 8, 0))
-        XCTAssertEqual(snap.resolved(at: now, timeZone: tz).heroTemp, 22)
+        let future = try date(2026, 8, 28, 11, 0)
+        let snap = snapshot(currentTemp: nil, observedTemp: 24, observedAt: future, hours: [],
+                            updated: try date(2026, 8, 27, 22, 0))
+        XCTAssertNil(snap.resolved(at: now, timeZone: tz).heroTemp,
+                     "a future observation time fails the freshness gate: honest —")
     }
 
-    /// The genuine "—": no observation and no forecast. Only here is a blank honest.
+    /// With no observation and no forecast, the hero is the genuine "—".
     func testNoObservedNoStripIsNilHero() throws {
         let now = try date(2026, 8, 28, 9, 35)
         let snap = snapshot(currentTemp: nil, observedTemp: nil, observedAt: nil, hours: [],
                             updated: try date(2026, 8, 27, 22, 0))
         XCTAssertNil(snap.resolved(at: now, timeZone: tz).heroTemp)
+    }
+
+    /// The invariant that motivated the revert: whenever the strip is non-empty, the hero equals the first
+    /// hourly tile — including when a same-hour observation exists (which used to make them disagree).
+    func testHeroEqualsFirstHourlyTile() throws {
+        let now = try date(2026, 8, 28, 9, 35)
+        let h9 = try date(2026, 8, 28, 9, 0)
+        let h10 = try date(2026, 8, 28, 10, 0)
+        let snap = snapshot(currentTemp: 18, observedTemp: 24, observedAt: h9,
+                            hours: [slot(9, temp: 22, at: h9), slot(10, temp: 23, at: h10)],
+                            updated: try date(2026, 8, 28, 8, 0))
+        let resolved = snap.resolved(at: now, timeZone: tz)
+        let firstTile = snap.upcomingHours(now: now, timeZone: tz).first?.temp
+        XCTAssertEqual(resolved.heroTemp, firstTile,
+                       "the hero must always equal the first tile of the hours strip")
     }
 }
