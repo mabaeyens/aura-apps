@@ -1,10 +1,13 @@
 import AuraKit
 import CoreLocation
 
-/// Thin Core Location wrapper: requests a one-shot fix and reports the nearest municipality
-/// from the full bundled table (`MunicipioDatabase`) by great-circle distance.
+/// One-shot Core Location on the wrist: request a single fix and resolve the nearest bundled
+/// municipality, so the Watch can fetch weather for wherever it physically is, standalone, with no
+/// paired iPhone in the loop. Deliberately one-shot (`requestLocation`), never continuous tracking,
+/// matching the phone's `LocationManager` and the decision not to ask for Always-location. Auth is
+/// When In Use, requested lazily the first time current location is used.
 @MainActor
-final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
+final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isResolving = false
     @Published var authorizationDenied = false
 
@@ -17,8 +20,9 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
-    /// Requests permission (if needed) and resolves the nearest bundled city.
-    func resolveNearestCity(_ completion: @escaping (Location?) -> Void) {
+    /// Request permission if needed and resolve the nearest municipality once. The completion fires with
+    /// the resolved `Location`, or nil if permission was denied or the fix failed.
+    func resolveNearest(_ completion: @escaping (Location?) -> Void) {
         self.completion = completion
         authorizationDenied = false
         switch manager.authorizationStatus {
@@ -48,7 +52,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let coordinate = locations.last?.coordinate else { finish(nil); return }
-        finish(Self.nearestCity(latitude: coordinate.latitude, longitude: coordinate.longitude))
+        finish(MunicipioDatabase.nearest(latitude: coordinate.latitude, longitude: coordinate.longitude))
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -59,11 +63,5 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         isResolving = false
         completion?(location)
         completion = nil
-    }
-
-    /// Nearest municipality by great-circle distance, across the full bundled table. Delegates to the
-    /// shared `MunicipioDatabase.nearest` so the phone and the Watch resolve a fix identically.
-    static func nearestCity(latitude: Double, longitude: Double) -> Location? {
-        MunicipioDatabase.nearest(latitude: latitude, longitude: longitude)
     }
 }

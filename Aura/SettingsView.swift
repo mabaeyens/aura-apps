@@ -153,12 +153,18 @@ struct SettingsView: View {
         keyInput = ""
         store.refreshKeyState()
         justSaved = true
+        // Hand the key to the Watch so it can fetch standalone. Sends the cleaned, stored value, and is
+        // queued, so it reaches the Watch even if it is asleep or out of range right now. See WatchSync.
+        WatchSync.shared.sendAPIKey(AuraKeychain.apiKey() ?? "")
     }
 
     private func clear() {
         AuraKeychain.setAPIKey("")
         store.refreshKeyState()
         justSaved = false
+        // Propagate the clear so the Watch drops its copy and falls back to the add-key state instead of
+        // fetching with a revoked key.
+        WatchSync.shared.sendAPIKey("")
     }
 
     /// Verify the key the user just typed if there is one, otherwise the stored key, with a single

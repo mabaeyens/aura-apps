@@ -21,9 +21,14 @@ struct WatchRootView: View {
     /// `SharedCache.watchSelectedINE`.
     @AppStorage(SharedCache.watchSelectedINEKey, store: SharedCache.groupDefaults) private var selectedINE = ""
 
+    /// True when the wrist is showing its own GPS-resolved current location (a refresh re-runs the fix),
+    /// rather than a phone favourite. Persisted in the App Group so it survives relaunch.
+    @AppStorage("watch.currentLocationMode", store: SharedCache.groupDefaults) private var currentMode = false
+
     @State private var snapshot: WeatherSnapshot?
     @State private var showingPicker = false
     @State private var showingScenePicker = false
+    @StateObject private var refresher = WatchRefreshModel()
 
     /// The instant the wrist renders "now" from — the live clock. The sky's sun/moon position and every
     /// time-derived label (the "· Atardecer" moment word, the hourly strip) all read from this one value,
@@ -92,18 +97,20 @@ struct WatchRootView: View {
                                 // The location switcher lives at the foot of the scroll, below the last card
                                 // (UVI) — not pinned in the top safe area, where the taps were swallowed next
                                 // to the system clock. A frosted pill, shown only with more than one place.
-                                if locationChoices.count > 1 {
-                                    Button { showingPicker = true } label: {
-                                        Label(snapshot.localidad, systemImage: "mappin.and.ellipse")
-                                            .auraFont(14, relativeTo: .callout, weight: .semibold)
-                                            .lineLimit(1)
-                                            .foregroundStyle(.white)
-                                            .frame(maxWidth: .infinity)
-                                            .padding(.vertical, 8)
-                                            .background(.ultraThinMaterial, in: Capsule())
-                                    }
-                                    .buttonStyle(.plain)
+                                // Always shown now, not just with 2+ favourites: this switcher is also how the
+                                // wrist enters current-location mode, which is available with any number of
+                                // saved places. In current mode the label carries a location glyph.
+                                Button { showingPicker = true } label: {
+                                    Label(snapshot.localidad,
+                                          systemImage: currentMode ? "location.fill" : "mappin.and.ellipse")
+                                        .auraFont(14, relativeTo: .callout, weight: .semibold)
+                                        .lineLimit(1)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(.ultraThinMaterial, in: Capsule())
                                 }
+                                .buttonStyle(.plain)
                                 // The hero-art family switch (Paisaje / Ciudad), just below the location pill —
                                 // the same choice the phone offers, here on the wrist so the watch background
                                 // isn't stuck on the default. Writes the same `heroFamily` the sky reads above.
@@ -128,6 +135,15 @@ struct WatchRootView: View {
                             .padding(.top, proxy.safeAreaInsets.top * 0.7)
                             .padding(.bottom, 6)
                         }
+                        // Digital Crown pull to fetch fresh data standalone: in current-location mode this
+                        // re-runs the GPS fix and fetches wherever the wrist now is, straight from AEMET over
+                        // the Watch's own network, with the phone left at home.
+                        .refreshable {
+                            // `snapshot` is shadowed non-optional inside `if let`; reach the @State property
+                            // via self to read the shown INE and to write the refreshed value back.
+                            await refresher.refresh(currentMode: currentMode, shownINE: self.snapshot?.ine)
+                            self.snapshot = resolvedSnapshot()
+                        }
                     }
                     .ignoresSafeArea(.container, edges: .top)
                 } else {
@@ -137,7 +153,12 @@ struct WatchRootView: View {
             }
         }
         .fontDesign(.rounded)   // one typeface across phone and watch (see RootView)
-        .onAppear { snapshot = resolvedSnapshot() }
+        .onAppear {
+            snapshot = resolvedSnapshot()
+            // Catch-up for a Watch set up after the key was already entered on the phone: ask for it if we
+            // have none. The phone replies over WatchConnectivity and `apiKeyDidUpdate` then kicks a fetch.
+            WatchSync.shared.requestAPIKeyIfMissing()
+        }
         .onChange(of: selectedINE) {
             snapshot = resolvedSnapshot()
             // The pick lives in the App Group; nudge the complication so it re-resolves to the same place
@@ -147,12 +168,29 @@ struct WatchRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: WatchSync.snapshotDidUpdate)) { _ in
             snapshot = resolvedSnapshot()
         }
+        .onReceive(NotificationCenter.default.publisher(for: WatchSync.apiKeyDidUpdate)) { _ in
+            // The phone just delivered (or cleared) the key. If we now have one, pull data straight away so
+            // a freshly set-up Watch fills itself without another tap.
+            guard AuraKeychain.apiKey()?.isEmpty == false else { return }
+            Task {
+                await refresher.refresh(currentMode: currentMode, shownINE: snapshot?.ine)
+                snapshot = resolvedSnapshot()
+            }
+        }
         .sheet(isPresented: $showingPicker) {
             WatchLocationPicker(choices: locationChoices,
                                 currentINE: snapshot?.ine,
-                                following: selectedINE.isEmpty) { pick in
+                                following: selectedINE.isEmpty && !currentMode,
+                                currentMode: currentMode) { pick in
+                currentMode = false           // picking a favourite leaves current-location mode
                 selectedINE = pick ?? ""      // nil → follow the phone again
                 showingPicker = false
+            } onPickCurrent: {
+                showingPicker = false
+                Task {
+                    await refresher.switchToCurrentLocation()
+                    snapshot = resolvedSnapshot()
+                }
             }
         }
         .sheet(isPresented: $showingScenePicker) {
@@ -203,12 +241,25 @@ private struct WatchLocationPicker: View {
     let currentINE: String?
     /// True when no manual pick is set (the wrist is tracking the phone's active location).
     let following: Bool
+    /// True when the wrist is showing its own GPS-resolved current location.
+    let currentMode: Bool
     /// Called with the chosen INE, or nil to follow the phone.
     let onPick: (String?) -> Void
+    /// Called when the user picks "current location": resolve GPS and fetch standalone.
+    let onPickCurrent: () -> Void
 
     var body: some View {
         NavigationStack {
             List {
+                // Current location, at the top: the standalone GPS-resolved place, for when the wrist is away
+                // from the phone (a hike, a drive). A checkmark marks it when it is the shown place.
+                Button { onPickCurrent() } label: {
+                    HStack {
+                        Label(auraString("watch.currentLocation"), systemImage: "location.fill")
+                        Spacer()
+                        if currentMode { Image(systemName: "checkmark").foregroundStyle(.tint) }
+                    }
+                }
                 Button { onPick(nil) } label: {
                     HStack {
                         Label(auraString("watch.followPhone"), systemImage: "iphone")
@@ -229,7 +280,7 @@ private struct WatchLocationPicker: View {
                                 }
                             }
                             Spacer()
-                            if !following, loc.ine == currentINE {
+                            if !following, !currentMode, loc.ine == currentINE {
                                 Image(systemName: "checkmark").foregroundStyle(.tint)
                             }
                         }

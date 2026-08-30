@@ -24,6 +24,18 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     private let activeKey = "activeINE"        // which favourite the phone considers active
     private let clockKey = "use24h"            // the phone's 24/12-hour choice, mirrored onto the Watch
 
+    // Option A key handoff (iPhone Keychain → Watch Keychain). The Watch can't read the phone's
+    // Keychain (separate devices), so the key rides a queued `transferUserInfo` and the Watch stores
+    // its own device-only copy. Never placed in `updateApplicationContext`, which lingers as re-readable
+    // state; `transferUserInfo` is a one-shot queued delivery instead.
+    private let apiKeyKey = "aemetKey"          // iPhone → Watch: the AEMET key to store
+    private let apiKeyRemovedKey = "aemetKeyGone"  // iPhone → Watch: the key was cleared, drop the copy
+    private let apiKeyRequestKey = "wantAEMETKey"  // Watch → iPhone: I have no key, send me the current one
+
+    /// Posted on the main thread after the Watch stores or clears its AEMET key, so an open view can
+    /// re-evaluate the add-key state and kick a refresh.
+    public static let apiKeyDidUpdate = Notification.Name("AuraKit.WatchSync.apiKeyDidUpdate")
+
     private override init() { super.init() }
 
     /// Activate the session on either device. Safe to call more than once.
@@ -74,6 +86,32 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         try? session.updateApplicationContext(context)
     }
 
+    // MARK: - Option A key handoff
+
+    /// iPhone → Watch: hand the AEMET key across so the Watch can fetch standalone. An empty key sends a
+    /// "removed" marker so the Watch drops its copy and falls back to the add-key state instead of fetching
+    /// with a stale or revoked key. Queued (`transferUserInfo`), so it survives the Watch being asleep or
+    /// out of range and is delivered when it next reconnects. The key is never logged.
+    public func sendAPIKey(_ key: String) {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        let cleaned = key.filter { !$0.isWhitespace }
+        let payload: [String: Any] = cleaned.isEmpty ? [apiKeyRemovedKey: true] : [apiKeyKey: cleaned]
+        session.transferUserInfo(payload)
+    }
+
+    /// Watch → iPhone: ask for the current key when the Watch has none of its own (first launch after
+    /// pairing, before any key change happened to push one). The phone replies via `sendAPIKey`. Covers the
+    /// case the change-on-save trigger can't: a Watch set up after the key was already entered.
+    public func requestAPIKeyIfMissing() {
+        guard WCSession.isSupported() else { return }
+        guard AuraKeychain.apiKey()?.isEmpty != false else { return }   // already have one, nothing to ask
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        session.transferUserInfo([apiKeyRequestKey: true])
+    }
+
     // MARK: WCSessionDelegate
 
     public func session(_ session: WCSession,
@@ -81,10 +119,43 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         cache(applicationContext)
     }
 
+    public func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        #if os(watchOS)
+        // Watch side: store or clear the handed-over key in the Watch's own Keychain.
+        if let key = userInfo[apiKeyKey] as? String {
+            AuraKeychain.setAPIKey(key)
+            postKeyUpdate()
+        } else if userInfo[apiKeyRemovedKey] != nil {
+            AuraKeychain.setAPIKey("")
+            postKeyUpdate()
+        }
+        #endif
+        #if os(iOS)
+        // Phone side: a Watch with no key asked for it; reply with whatever is currently stored (an empty
+        // reply becomes a "removed" marker, telling the Watch there is genuinely no key yet).
+        if userInfo[apiKeyRequestKey] != nil {
+            sendAPIKey(AuraKeychain.apiKey() ?? "")
+        }
+        #endif
+    }
+
+    private func postKeyUpdate() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Self.apiKeyDidUpdate, object: nil)
+        }
+    }
+
     public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
                         error: Error?) {
         // On the Watch, seed from whatever context arrived before we activated.
-        if activationState == .activated { cache(session.receivedApplicationContext) }
+        if activationState == .activated {
+            cache(session.receivedApplicationContext)
+            #if os(watchOS)
+            // Now that the session is up, ask the phone for the key if the Watch has none of its own. This
+            // is the reliable trigger (activation is async, so requesting straight after `activate()` races).
+            requestAPIKeyIfMissing()
+            #endif
+        }
     }
 
     private func cache(_ context: [String: Any]) {

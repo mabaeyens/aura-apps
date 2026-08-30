@@ -498,6 +498,7 @@
 "watch.openOnPhone"      = "Abre Aura en el iPhone";
 "watch.background.title" = "Fondo";
 "watch.followPhone"      = "Seguir el iPhone";
+"watch.currentLocation"  = "Ubicación actual";
 "watch.location.title"   = "Ubicación";
 
 /* Watch complication gallery (name + description shown in the watch-face editor) */
