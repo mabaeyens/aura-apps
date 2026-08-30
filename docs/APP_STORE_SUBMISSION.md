@@ -113,10 +113,23 @@ Then submit each CPP for its own (quick, independent) review — the `ppid` URLs
 
 ## Order of operations at next release
 
-1. `aura-release` → new build up to ASC, new App Store version created.
-2. In the version's metadata, **swap in the expanded keyword list** (both locales) → submit the
-   version for review. 1.0.0 stays live until it's approved.
-3. Once approved, **tick each CPP's keyword set** (table above) and add screenshots when the art is
+**Important:** `aura-release` (or an Xcode Organizer distribution) only gets the signed build to
+**TestFlight**. It does **not** create the App Store version, so a `VALID` build alone shows nothing
+to submit. Creating and preparing the App Store version is a separate, scripted API step, and it is
+**part of the release process**, not an afterthought:
+
+1. `aura-release <version>` (or Organizer) → build up to ASC, processed to `VALID` in TestFlight.
+   **Does not create an App Store version.**
+2. **Create + prepare the App Store version via the ASC API** (one script): POST the new `X.Y.Z` iOS
+   version, attach the build, set **What's New** (both locales), and set the **App Review notes**.
+   Keywords, description, URLs and promotional text carry forward from the prior version
+   automatically — verify the keywords match the intended set. The version lands in
+   `PREPARE_FOR_SUBMISSION`. A pre-existing review-detail record carries the review contact fields
+   forward; if none exists, create one and copy the contact fields from the previous version.
+3. **Review** in the ASC UI, then **Submit for Review**. The live version stays for sale until approved.
+4. **Record the submission** in a `## X.Y.Z submission` log entry at the bottom of this file (what was
+   set, final state) — this is the durable record and closes the release.
+5. Once approved, **tick each CPP's keyword set** (table above) and add screenshots when the art is
    ready → submit each CPP.
 
 ## Notes
@@ -169,7 +182,20 @@ Build 6 was developer-rejected and 1.1.0 never went public, so the 1.1.0 version
 
 Still to do by hand: the CPP keyword ticks + marketing art still wait until an update is approved.
 
-## 1.2.0 submission (staged 2026-08-30)
+## 1.2.0 submission (prepared via API 2026-08-30)
+
+> **Status: PREPARED, not yet submitted.** The 1.2.0 iOS version exists on ASC in
+> `PREPARE_FOR_SUBMISSION` (id `b59e88a3-9b63-4210-8c88-f6d3650436c2`) with everything set below;
+> it awaits my review + **Submit for Review** in the ASC UI. Live 1.1.1 untouched.
+>
+> Done via the ASC API on 2026-08-30 (shared aura-release credentials):
+> - Version 1.2.0 (IOS) created; **build 8** attached (build 8 `VALID` in TestFlight, uploaded via Xcode Organizer after a signing-cert incident; see the aura-release Step 1.5 preflight cert check added the same day).
+> - **What's New** set both locales (es-ES 1045 chars, en-US 958 chars); the copy is in this section.
+> - **App Review notes** set (700 chars; contact fields + `demoAccountRequired=false` carried from 1.1.1's review detail).
+> - **Keywords carried forward unchanged** and verified: es-ES `…,complicaciones` (98/100), en-US `…,complication` (100/100). Description, URLs and promotional text carried forward too.
+> - Build side already recorded: `CHANGELOG.md` v1.2.0, git tag `v1.2.0`, GitHub release, TestFlight "What to Test" note, build 6 expired.
+>
+> **Still to do by hand:** review both What's New in the UI, optionally add screenshots of the two new cards (existing shots carry forward), then **Submit for Review**. After approval, the CPP keyword ticks + marketing art (unchanged from the plan above).
 
 Marketing version **1.2.0**, build **8** (up from 1.1.1 / build 7). Feature batch: two new AEMET
 national cards on iPhone and iPad (surface analysis map + national text forecast), full device-language
