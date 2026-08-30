@@ -335,6 +335,13 @@
 /* Settings screen (opendata.aemet.es is a URL; the aviso level colours in the footer are prose) */
 "settings.apiKey.placeholder"    = "Clave de AEMET";
 "settings.saveKey"               = "Guardar clave";
+"settings.verifyKey"             = "Comprobar clave";
+"settings.verify.checking"       = "Comprobando…";
+"settings.verify.ok"             = "La clave funciona correctamente.";
+"settings.verify.invalid"        = "La clave no es válida o ha caducado. Vuelve a copiarla.";
+"settings.verify.rateLimited"    = "Demasiadas peticiones ahora mismo. La clave parece correcta; prueba en un minuto.";
+"settings.verify.offline"        = "Sin conexión. Comprueba tu red e inténtalo de nuevo.";
+"settings.verify.serverProblem"  = "AEMET no responde ahora mismo. El problema no parece ser la clave.";
 "settings.deleteKey"             = "Borrar clave";
 "settings.apiKey.section"        = "Clave API";
 "settings.keyStored"             = "Clave guardada en el Llavero.";

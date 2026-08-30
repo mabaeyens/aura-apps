@@ -335,6 +335,13 @@
 /* Settings screen (opendata.aemet.es is a URL; the aviso level colours in the footer are prose) */
 "settings.apiKey.placeholder"    = "AEMET key";
 "settings.saveKey"               = "Save key";
+"settings.verifyKey"             = "Verify key";
+"settings.verify.checking"       = "Checking…";
+"settings.verify.ok"             = "Your key is working.";
+"settings.verify.invalid"        = "Your key is invalid or has expired. Copy it again.";
+"settings.verify.rateLimited"    = "Too many requests right now. The key looks fine; try again in a minute.";
+"settings.verify.offline"        = "No connection. Check your network and try again.";
+"settings.verify.serverProblem"  = "AEMET isn’t responding right now. The key doesn’t look like the problem.";
 "settings.deleteKey"             = "Delete key";
 "settings.apiKey.section"        = "API key";
 "settings.keyStored"             = "Key saved in the Keychain.";

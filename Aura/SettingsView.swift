@@ -13,6 +13,9 @@ struct SettingsView: View {
     /// Gates the destructive Keychain wipe behind a confirmation — clearing the key silently breaks
     /// every data fetch, so it shouldn't happen on a single stray tap.
     @State private var confirmClearKey = false
+    /// Result of the last "Verify Key" tap, and whether a check is in flight.
+    @State private var verifying = false
+    @State private var verifyResult: AEMETClient.KeyCheck?
 
     /// Clock format, shared with the widgets and the Watch through the App Group so every surface reads
     /// the same value (see `AuraTime`). True = 24-hour, false = 12-hour AM/PM. Defaults to 24-hour.
@@ -41,6 +44,15 @@ struct SettingsView: View {
                         .autocorrectionDisabled()
                     Button(auraString("settings.saveKey")) { save() }
                         .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button(auraString("settings.verifyKey")) { verify() }
+                        .disabled(verifying || (!store.apiKeyPresent && keyInput.filter { !$0.isWhitespace }.isEmpty))
+                    if verifying {
+                        Label(auraString("settings.verify.checking"), systemImage: "hourglass")
+                            .foregroundStyle(.secondary)
+                    } else if let result = verifyResult {
+                        Label(verifyMessage(for: result), systemImage: verifyIcon(for: result))
+                            .foregroundStyle(result == .valid ? .green : (result == .invalidKey ? .red : .orange))
+                    }
                     if store.apiKeyPresent {
                         Button(auraString("settings.deleteKey"), role: .destructive) { confirmClearKey = true }
                     }
@@ -147,5 +159,43 @@ struct SettingsView: View {
         AuraKeychain.setAPIKey("")
         store.refreshKeyState()
         justSaved = false
+    }
+
+    /// Verify the key the user just typed if there is one, otherwise the stored key, with a single
+    /// throwaway envelope request. Whitespace is stripped so a line-wrapped paste checks the same
+    /// cleaned string that `save()` would persist.
+    private func verify() {
+        let typed = keyInput.filter { !$0.isWhitespace }
+        let key = typed.isEmpty ? (AuraKeychain.apiKey() ?? "") : typed
+        guard !key.isEmpty else { return }
+        verifying = true
+        verifyResult = nil
+        Task {
+            let outcome = await AEMETClient(apiKey: key).verifyKey()
+            await MainActor.run {
+                verifying = false
+                verifyResult = outcome
+            }
+        }
+    }
+
+    private func verifyMessage(for result: AEMETClient.KeyCheck) -> String {
+        switch result {
+        case .valid:         return auraString("settings.verify.ok")
+        case .invalidKey:    return auraString("settings.verify.invalid")
+        case .rateLimited:   return auraString("settings.verify.rateLimited")
+        case .offline:       return auraString("settings.verify.offline")
+        case .serverProblem: return auraString("settings.verify.serverProblem")
+        }
+    }
+
+    private func verifyIcon(for result: AEMETClient.KeyCheck) -> String {
+        switch result {
+        case .valid:         return "checkmark.seal.fill"
+        case .invalidKey:    return "xmark.seal.fill"
+        case .rateLimited:   return "clock.badge.exclamationmark"
+        case .offline:       return "wifi.slash"
+        case .serverProblem: return "exclamationmark.icloud"
+        }
     }
 }

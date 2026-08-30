@@ -64,6 +64,35 @@ public struct AEMETClient: Sendable {
         return try decodePayload(data, as: T.self)
     }
 
+    /// The outcome of a lightweight key check.
+    public enum KeyCheck: Sendable, Equatable {
+        case valid          // AEMET accepted the key and handed back a data URL
+        case invalidKey     // 401/403: the key is rejected
+        case rateLimited    // 429: too many requests; the key itself may be fine
+        case offline        // no network reached AEMET
+        case serverProblem  // AEMET answered but not with a usable envelope; the key is not the fault
+    }
+
+    /// The dummiest possible key check: one envelope request to a stable, parameter-free national
+    /// product, with the payload never fetched. A valid key yields an envelope carrying a `datos`
+    /// URL; a rejected key comes back 401/403. This separates "the key is bad" from "the key is fine,
+    /// the problem is elsewhere" (offline, rate limit, AEMET down) so the user knows where to look.
+    public func verifyKey() async -> KeyCheck {
+        guard !apiKey.isEmpty else { return .invalidKey }
+        do {
+            let envelope = try await requestEnvelope(path: "/prediccion/nacional/hoy")
+            return envelope.datos != nil ? .valid : .serverProblem
+        } catch ClientError.http(401), ClientError.http(403) {
+            return .invalidKey
+        } catch ClientError.rateLimited {
+            return .rateLimited
+        } catch let urlError as URLError where urlError.code == .notConnectedToInternet {
+            return .offline
+        } catch {
+            return .serverProblem
+        }
+    }
+
     private func requestEnvelope(path: String) async throws -> Envelope {
         guard !apiKey.isEmpty else { throw ClientError.missingAPIKey }
         var comps = URLComponents(string: base + path)!
