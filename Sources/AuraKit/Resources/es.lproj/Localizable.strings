@@ -46,6 +46,7 @@
 "error.missingKey"  = "Falta la clave de AEMET. Añádela en Ajustes.";
 "error.rateLimited" = "Espera, necesito un minuto";
 "error.network"     = "Error de red (HTTP %d).";
+"error.invalidKey"  = "La clave AEMET no es válida o ha caducado. Vuelve a copiarla en Ajustes.";
 "error.aemetStatus" = "AEMET devolvió %1$d: %2$@";
 "error.decoding"    = "No se pudieron leer los datos de AEMET.";
 "error.offline"     = "Sin conexión. Se muestran los últimos datos disponibles.";

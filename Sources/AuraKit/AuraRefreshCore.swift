@@ -264,6 +264,10 @@ public enum AuraRefreshCore {
             return auraString("error.missingKey")
         case AEMETClient.ClientError.rateLimited:
             return auraString("error.rateLimited")
+        case AEMETClient.ClientError.http(401), AEMETClient.ClientError.http(403):
+            // AEMET returns 401/403 when it rejects the api_key; that is an auth failure, not a
+            // network fault, so point the user at their key rather than the generic network message.
+            return auraString("error.invalidKey")
         case AEMETClient.ClientError.http(let code):
             return auraString("error.network", code)
         case AEMETClient.ClientError.aemetStatus(let code, let desc):

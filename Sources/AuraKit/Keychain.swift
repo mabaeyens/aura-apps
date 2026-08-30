@@ -13,10 +13,15 @@ public enum AuraKeychain {
     private static let service = "com.mab.Aura"
 
     /// Store (or replace) the AEMET API key. Passing an empty string deletes it.
+    ///
+    /// A valid AEMET key is a JWT with no internal whitespace, but email clients line-wrap it, so a
+    /// paste can carry a newline or space in the middle that end-trimming leaves in place. That
+    /// corrupts the stored key and AEMET rejects it with a 401, so strip every whitespace character,
+    /// not just the ends.
     public static func setAPIKey(_ key: String) {
-        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { delete(account: apiKeyAccount); return }
-        save(trimmed, account: apiKeyAccount)
+        let cleaned = key.filter { !$0.isWhitespace }
+        guard !cleaned.isEmpty else { delete(account: apiKeyAccount); return }
+        save(cleaned, account: apiKeyAccount)
     }
 
     /// The stored AEMET API key, or nil if none has been set.

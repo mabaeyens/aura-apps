@@ -46,6 +46,7 @@
 "error.missingKey"  = "Your AEMET key is missing. Add it in Settings.";
 "error.rateLimited" = "Hold on, I need a minute";
 "error.network"     = "Network error (HTTP %d).";
+"error.invalidKey"  = "Your AEMET key is invalid or has expired. Copy it again in Settings.";
 "error.aemetStatus" = "AEMET returned %1$d: %2$@";
 "error.decoding"    = "Couldn’t read the data from AEMET.";
 "error.offline"     = "No connection. Showing the last available data.";
