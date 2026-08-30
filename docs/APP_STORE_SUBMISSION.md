@@ -5,11 +5,17 @@ this file tracks the **App Store metadata** that lives in the ASC UI, not in the
 I set by hand when I promote a build to an App Store version and submit it for review.
 
 App: **Aura · El tiempo** · bundle `com.mab.Aura` · ASC app id **6804193524** · primary locale `es-ES`,
-also `en-US`. Live version: **1.0.0 (Ready for Distribution)**.
+also `en-US`. Live version: **1.1.1 (build 7, READY_FOR_SALE)** — verified via the ASC API 2026-08-30.
 
 ---
 
 ## Expanded keywords — APPLIED on 1.1.0 (build 6), submitted 2026-08-26
+
+> **SUPERSEDED (historical plan).** The live keyword field is the 1.1.1 set (see the 1.1.1 log at
+> the bottom): es-ES `AEMET,España,previsión,lluvia,UV,calidad aire,avisos,alertas,radar,widget,reloj,sol,complicaciones`
+> and en-US `weather,Spain,AEMET,forecast,rain,UV,air quality,warnings,alerts,radar,widget,watch,sun,complication`.
+> For the 1.2.0 keyword decision see the **1.2.0 submission** section at the end. This section is kept
+> only for the reasoning behind the original expansion.
 
 > Status: done. Staged and submitted with build 6 on 2026-08-26 (state WAITING_FOR_REVIEW).
 > Change from the original plan: es-ES uses the Spanish set below; en-US instead got an
@@ -162,3 +168,71 @@ Build 6 was developer-rejected and 1.1.0 never went public, so the 1.1.0 version
 - The three tip IAPs (com.mab.Aura.tip.small/medium/large, consumables) are APPROVED and unchanged, so they are not part of this version submission and stay live.
 
 Still to do by hand: the CPP keyword ticks + marketing art still wait until an update is approved.
+
+## 1.2.0 submission (staged 2026-08-30)
+
+Marketing version **1.2.0**, build **8** (up from 1.1.1 / build 7). Feature batch: two new AEMET
+national cards on iPhone and iPad (surface analysis map + national text forecast), full device-language
+localization, and the day-change current-conditions fix carried to the Lock Screen and Watch. Full
+customer copy is in `CHANGELOG.md`. `aura-release 1.2.0` bumps the build, archives, uploads and tags;
+everything below is the ASC-side metadata to set by hand once the build is up.
+
+### 0. Version slot: CONFIRMED clean (verified via ASC API 2026-08-30)
+
+ASC shows **1.1.1 (build 7) is live (READY_FOR_SALE)**, above 1.0.0. There is no 1.1.2 record on ASC
+(despite an assumption it had shipped — it was never cut, or was a mix-up with 1.1.1). Highest build on
+ASC is 7, so:
+- **1.2.0 is a clean new version.** Create it fresh (no slot reuse), attach build **8** (7 + 1), set the metadata below. 1.1.1 stays live until 1.2.0 is approved.
+
+### 1. Keywords: no change (carry the 1.1.1 set forward)
+
+Recommendation: keep the 1.1.1 keyword field unchanged for 1.2.0. It is already maxed and well-targeted
+(es-ES 98/100, en-US 100/100), and the two new cards are depth features, not search-acquisition drivers,
+so no term earns a swap. en-US has zero headroom to add anything without dropping a stronger term.
+
+Future candidates, only if a slot ever frees: es-ES `mapa` / `isobaras` / `análisis` (weather-map intent;
+e.g. drop `sol` to add `mapa` = 99/100), en-US `surface` / `isobars`. Parked, not applied.
+
+### 2. What's New (guideline 2.3.12), both locales
+
+**es-ES**
+```
+Novedades:
+
+• Dos tarjetas nuevas en iPhone y iPad, con datos nacionales de AEMET: el mapa del análisis de superficie (isobaras, centros de presión y frentes, con zoom y leyenda) y la predicción en texto redactada por AEMET, con hoy en la tarjeta y los próximos cuatro días a un toque.
+• La interfaz sigue ahora el idioma del dispositivo. En un dispositivo no configurado en español, la app, la configuración del widget y el reloj se muestran en inglés, mientras la predicción conserva las palabras de AEMET.
+• La temperatura y el cielo actuales se calculan en el momento de mirar, así que un dato guardado ayer ya no muestra el tiempo de ayer. También en la pantalla de bloqueo y en las complicaciones del reloj.
+• La tarjeta de la estación más cercana solo aparece cuando su lectura es realmente reciente.
+• Los widgets avisan cuando sus datos están desactualizados, actualizan su ubicación cuando hace falta y recuperan un sitio que se quedaba sin dato.
+• Nueva página de ayuda que explica cómo de reciente es cada dato y cuándo se actualiza.
+```
+
+**en-US**
+```
+What's new:
+
+• Two new cards on iPhone and iPad, from AEMET's national products: a surface analysis map (isobars, pressure centers and fronts, with zoom and a legend) and the national text forecast written by AEMET's forecasters, with today on the card and the next four days a tap away.
+• The interface now follows your device language. On a non-Spanish device the app, the widget setup and the Watch read in English, while the forecast keeps AEMET's own Spanish wording.
+• Current temperature and sky are worked out the moment you look, so a reading cached yesterday no longer shows yesterday's weather. This now covers the Lock Screen and the Watch complications too.
+• The nearest-station card only appears when its reading is genuinely recent.
+• Widgets flag when their data is stale, refresh their own location when needed, and recover a location that was stuck with no reading.
+• A new help page explains how fresh each reading is and when it updates.
+```
+
+### 3. Reviewer notes
+
+```
+Aura shows Spain's public weather from AEMET open data. No account, no login.
+
+On first run the app asks for a free AEMET OpenData API key and explains where to obtain it (opendata.aemet.es); this is unchanged from previously approved builds. A demo key can be provided on request.
+
+New in this build: two informational cards on iPhone and iPad built from AEMET's official national products, a surface analysis map and a national text forecast. Both are read-only official open data. The About screen states that Aura is an independent app and does not represent any government entity.
+
+All forecast content is free to view. Tips remain optional in-app purchases and are not required for any feature.
+```
+
+### 4. Everything else carries forward unchanged
+
+- Description, Marketing / Support / Privacy URLs (askmira.es), availability (worldwide except China), and promotional text are all already correct from 1.1.1 and need no edit.
+- Promotional text is editable without review anytime, if wanted.
+- CPP keyword ticks + marketing art: still parked until an update is approved (unchanged from the plan above). The two new cards could seed a fifth CPP later, but that is post-approval work, not part of 1.2.0.
