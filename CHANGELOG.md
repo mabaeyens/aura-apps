@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.0 (build 8)
+
+- Two new cards on iPhone and iPad, drawn from AEMET's national products: a surface analysis map with isobars, pressure centres and fronts (pinch to zoom, with a legend), and the national text forecast written by AEMET's forecasters, with today on the card and the next four days a tap away.
+- The whole interface now follows your device language. On a non-Spanish device the app, the widget setup and the Watch read in English, while the forecast itself keeps AEMET's own Spanish wording.
+- Current conditions are worked out the moment you look, so a reading cached yesterday no longer shows yesterday's weather. The fix now covers the Lock Screen and the Watch complications too, and the big current temperature is always the forecast for the current hour, never the day's high by mistake.
+- The nearest-station card only appears when its reading is genuinely recent, judged by the station's own timestamp and AEMET's publish marker rather than a fixed timer, and its metric tiles now share one height.
+- Widgets show a small staleness marker when their cached data is old, refresh their own location when it goes stale, and recover a location that had been stuck with no reading.
+- A new help page explains how fresh each reading is and when it refreshes.
+- Steadier refreshing: gentler pull-to-refresh throttling, clearer wording when AEMET's rate limit is hit, and observed-temperature rounding pinned to the same result across iPhone and Android.
+
 ## v1.1.1 (build 7)
 
 - Fixed the current conditions on the Hoy screen sometimes showing the day's high instead of the real current temperature, with a sky description that could lag a day behind. The current hour now reads correctly, and a good reading is kept when a refresh comes back empty.
