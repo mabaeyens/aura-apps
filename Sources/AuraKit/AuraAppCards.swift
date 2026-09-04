@@ -2146,6 +2146,8 @@ public struct AuraNationalSheet: View {
             Text(auraString("card.national.title"))
                 .auraFont(25, relativeTo: .title2, weight: .bold, design: .rounded)
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .padding(.trailing, 34)   // clear of the close button
             if selection == .mediumRange {
                 mediumRangeBody

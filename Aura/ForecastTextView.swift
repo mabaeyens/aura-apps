@@ -45,6 +45,8 @@ struct ForecastTextView: View {
                 if let comunidad {
                     Text(comunidad.nombre)
                         .font(.title3.bold())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
 
                 if let bulletin {
