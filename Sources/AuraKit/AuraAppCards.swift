@@ -296,7 +296,7 @@ public struct AuraHeroCard: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(alert.shortLabel)
                 }
-                .auraFont(size.bodySize, relativeTo: .title3, weight: .semibold)
+                .auraFont(size.bodySize - (size == .phone ? 4 : 3), relativeTo: .title3, weight: .semibold)
                 .foregroundStyle(Palette.alert(alert.level))
                 // A dark capsule behind the level-tinted label so the amarillo levels (a yellow that
                 // vanishes over a pale dawn or hazy sky — the "Tormentas" case) stay legible on any sky,
