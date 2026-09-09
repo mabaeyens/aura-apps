@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.0 (build 1)
+
+- Added a tap-to-refresh button on the Apple Watch app, since the swipe/Digital Crown gesture doesn't reliably trigger a refresh on real hardware.
+- The Watch now shows its last-updated time and whether an AEMET key is saved, and re-syncs its snapshot the moment it requests a missing key from the phone.
+- Confirmed the Watch's background auto-refresh fires and reschedules reliably on real hardware, so the complication stays current even with the wrist never raised.
+- The national forecast sheet's Hoy/Mañana/Pasado mañana segments each show a clear day header now, instead of running together as one paragraph.
+
 ## v1.2.0 (build 8)
 
 - Two new cards on iPhone and iPad, drawn from AEMET's national products: a surface analysis map with isobars, pressure centres and fronts (pinch to zoom, with a legend), and the national text forecast written by AEMET's forecasters, with today on the card and the next four days a tap away.
