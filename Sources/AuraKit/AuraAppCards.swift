@@ -2158,7 +2158,7 @@ public struct AuraNationalSheet: View {
             if selection == .mediumRange {
                 mediumRangeBody
             } else if let bulletin = bulletins[selection] {
-                bulletinBody(bulletin)
+                bulletinBody(bulletin, dayTitle: auraString(selection.titleKey))
             } else if loading {
                 loadingRow
             } else {
@@ -2174,8 +2174,11 @@ public struct AuraNationalSheet: View {
 
     /// A day bulletin (hoy / manana / pasadomanana): issue date, the phenomena banner when present, then
     /// the narrative one line per sentence — the same render the community "Predicción" sheet uses.
-    @ViewBuilder private func bulletinBody(_ bulletin: ForecastBulletin) -> some View {
+    @ViewBuilder private func bulletinBody(_ bulletin: ForecastBulletin, dayTitle: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text(dayTitle)
+                .auraFont(18, relativeTo: .title3, weight: .semibold)
+                .foregroundStyle(.white)
             if let elaborado = bulletin.elaborado {
                 Text(auraString("forecast.updatedAt", Self.dateText(elaborado)))
                     .auraFont(14, relativeTo: .footnote)
