@@ -135,6 +135,13 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         // reply becomes a "removed" marker, telling the Watch there is genuinely no key yet).
         if userInfo[apiKeyRequestKey] != nil {
             sendAPIKey(AuraKeychain.apiKey() ?? "")
+            // A Watch that has no key yet also has no snapshot yet on a fresh install or reinstall
+            // (`updateApplicationContext` only goes out on the phone's own next fetch, which can be a long
+            // wait) — push whatever the phone already has cached right away so "Abre Aura en el iPhone"
+            // doesn't linger for no reason once the phone is reachable.
+            if let snapshot = SharedCache.resolve(preferredINE: SharedCache.activeINE) {
+                send(active: snapshot, favorites: SharedLocations.read())
+            }
         }
         #endif
     }

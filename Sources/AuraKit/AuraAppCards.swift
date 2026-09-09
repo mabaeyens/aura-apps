@@ -218,6 +218,12 @@ public struct AuraForecastStack: View {
                 .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, size == .phone ? 4 : 2)
+            // When this snapshot was actually built, so a stuck or stale screen (Watch away from the
+            // phone, a background refresh that silently failed) is visible instead of looking current.
+            Text(auraString("stack.updatedAt", AuraTime.hhmm(snapshot.updated)))
+                .auraFont(size == .phone ? 12 : 9, relativeTo: .caption, weight: .regular)
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .environment(\.colorScheme, .dark)   // dark frosted materials + light text over the sky
         // Tune every card's scrim to the sky behind it: a bright clear day gets the full darkening so the

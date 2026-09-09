@@ -121,6 +121,9 @@
 /* Source attribution (the source names stay as-is) */
 "attribution.madeWith" = "Made with data from %@";
 
+/* Last-updated footer, shared by iPhone and Watch (AuraForecastStack) */
+"stack.updatedAt" = "Updated at %@";
+
 /* Relative time */
 "rel.now"      = "now";
 "rel.minsAgo"  = "%d min ago";
@@ -500,6 +503,9 @@
 "watch.followPhone"      = "Follow the iPhone";
 "watch.currentLocation"  = "Current location";
 "watch.location.title"   = "Location";
+"watch.keyPresent"       = "AEMET key saved";
+"watch.keyMissing"       = "No AEMET key";
+"watch.updating"         = "Updating…";
 
 /* Watch complication gallery (name + description shown in the watch-face editor) */
 "watch.complication.conditions.name" = "Weather";

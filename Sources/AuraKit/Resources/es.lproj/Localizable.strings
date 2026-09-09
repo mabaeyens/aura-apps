@@ -121,6 +121,9 @@
 /* Source attribution (the source names stay as-is) */
 "attribution.madeWith" = "Elaborado con datos de %@";
 
+/* Last-updated footer, shared by iPhone and Watch (AuraForecastStack) */
+"stack.updatedAt" = "Actualizado a las %@";
+
 /* Relative time */
 "rel.now"      = "ahora";
 "rel.minsAgo"  = "hace %d min";
@@ -500,6 +503,9 @@
 "watch.followPhone"      = "Seguir el iPhone";
 "watch.currentLocation"  = "Ubicación actual";
 "watch.location.title"   = "Ubicación";
+"watch.keyPresent"       = "Clave AEMET guardada";
+"watch.keyMissing"       = "Sin clave AEMET";
+"watch.updating"         = "Actualizando…";
 
 /* Watch complication gallery (name + description shown in the watch-face editor) */
 "watch.complication.conditions.name" = "El tiempo";

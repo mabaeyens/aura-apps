@@ -30,6 +30,11 @@ struct WatchRootView: View {
     @State private var showingScenePicker = false
     @StateObject private var refresher = WatchRefreshModel()
 
+    /// Whether the wrist has its own stored AEMET key. There is no Settings screen on the Watch (unlike
+    /// the phone's Verify Key button), so this is the only way to confirm the key handoff actually
+    /// landed rather than guessing from whether a (possibly just-mirrored) snapshot happens to be showing.
+    @State private var hasKey = AuraKeychain.apiKey()?.isEmpty == false
+
     /// The instant the wrist renders "now" from — the live clock. The sky's sun/moon position and every
     /// time-derived label (the "· Atardecer" moment word, the hourly strip) all read from this one value,
     /// so they agree, exactly as the phone keeps them matched through its own `displayNow`. Before this the
@@ -51,6 +56,16 @@ struct WatchRootView: View {
     /// first cached snapshot. Resolved from the cache on every read so a new sync or a new pick re-points it.
     private func resolvedSnapshot() -> WeatherSnapshot? {
         SharedCache.resolve(preferredINE: selectedINE)
+    }
+
+    /// A one-line status shown under the switcher pills: refresh progress and errors take priority (the
+    /// only visual feedback a Digital Crown pull otherwise gets — before this nothing on screen changed
+    /// until the fetch finished), otherwise the key-present/missing state so it's always checkable at a
+    /// glance without a Settings screen.
+    private var statusLine: String {
+        if refresher.isRefreshing { return auraString("watch.updating") }
+        if let error = refresher.errorMessage { return error }
+        return hasKey ? auraString("watch.keyPresent") : auraString("watch.keyMissing")
     }
 
     /// The places the switcher offers: the favourites the phone mirrored, or (before that first sync) the
@@ -125,6 +140,12 @@ struct WatchRootView: View {
                                         .background(.ultraThinMaterial, in: Capsule())
                                 }
                                 .buttonStyle(.plain)
+                                Text(statusLine)
+                                    .auraFont(10, relativeTo: .caption2, weight: .medium)
+                                    .foregroundStyle(refresher.errorMessage != nil ? .yellow : .white.opacity(0.55))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                                    .padding(.top, 1)
                             }
                             .padding(.horizontal, 4)
                             // Sit the editorial text a set fraction of the top safe-area inset below the
@@ -155,6 +176,7 @@ struct WatchRootView: View {
         .fontDesign(.rounded)   // one typeface across phone and watch (see RootView)
         .onAppear {
             snapshot = resolvedSnapshot()
+            hasKey = AuraKeychain.apiKey()?.isEmpty == false
             // Catch-up for a Watch set up after the key was already entered on the phone: ask for it if we
             // have none. The phone replies over WatchConnectivity and `apiKeyDidUpdate` then kicks a fetch.
             WatchSync.shared.requestAPIKeyIfMissing()
@@ -169,9 +191,12 @@ struct WatchRootView: View {
             snapshot = resolvedSnapshot()
         }
         .onReceive(NotificationCenter.default.publisher(for: WatchSync.apiKeyDidUpdate)) { _ in
-            // The phone just delivered (or cleared) the key. If we now have one, pull data straight away so
-            // a freshly set-up Watch fills itself without another tap.
-            guard AuraKeychain.apiKey()?.isEmpty == false else { return }
+            // The phone just delivered (or cleared) the key: update the on-screen key-present indicator
+            // either way, since a clear is exactly the case that indicator exists to catch.
+            hasKey = AuraKeychain.apiKey()?.isEmpty == false
+            // If we now have one, pull data straight away so a freshly set-up Watch fills itself without
+            // another tap.
+            guard hasKey else { return }
             Task {
                 await refresher.refresh(currentMode: currentMode, shownINE: snapshot?.ine)
                 snapshot = resolvedSnapshot()
