@@ -506,6 +506,7 @@
 "watch.keyPresent"       = "AEMET key saved";
 "watch.keyMissing"       = "No AEMET key";
 "watch.updating"         = "Updating…";
+"watch.refreshNow"       = "Refresh now";
 
 /* Watch complication gallery (name + description shown in the watch-face editor) */
 "watch.complication.conditions.name" = "Weather";

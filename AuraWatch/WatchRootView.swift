@@ -58,6 +58,14 @@ struct WatchRootView: View {
         SharedCache.resolve(preferredINE: selectedINE)
     }
 
+    /// Refresh the shown selection and write the result back into `snapshot`. Shared by `.refreshable`
+    /// (crown/swipe, unreliable on-device — see the tap button below), the manual refresh button, and the
+    /// key-arrival handler, so there is one place that pairs the fetch with the redraw.
+    private func manualRefresh() async {
+        await refresher.refresh(currentMode: currentMode, shownINE: self.snapshot?.ine)
+        self.snapshot = resolvedSnapshot()
+    }
+
     /// A one-line status shown under the switcher pills: refresh progress and errors take priority (the
     /// only visual feedback a Digital Crown pull otherwise gets — before this nothing on screen changed
     /// until the fetch finished), otherwise the key-present/missing state so it's always checkable at a
@@ -140,6 +148,23 @@ struct WatchRootView: View {
                                         .background(.ultraThinMaterial, in: Capsule())
                                 }
                                 .buttonStyle(.plain)
+                                // A tap-driven fallback for the crown/swipe `.refreshable` gesture below,
+                                // which on-device testing found unreliable at the top of this full-bleed,
+                                // safe-area-ignoring scroll view. Same fetch, same status feedback, just
+                                // triggered by a plain tap instead of a system pull gesture.
+                                Button {
+                                    Task { await manualRefresh() }
+                                } label: {
+                                    Label(auraString("watch.refreshNow"), systemImage: "arrow.clockwise")
+                                        .auraFont(14, relativeTo: .callout, weight: .semibold)
+                                        .lineLimit(1)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(.ultraThinMaterial, in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(refresher.isRefreshing)
                                 Text(statusLine)
                                     .auraFont(10, relativeTo: .caption2, weight: .medium)
                                     .foregroundStyle(refresher.errorMessage != nil ? .yellow : .white.opacity(0.55))
@@ -160,10 +185,7 @@ struct WatchRootView: View {
                         // re-runs the GPS fix and fetches wherever the wrist now is, straight from AEMET over
                         // the Watch's own network, with the phone left at home.
                         .refreshable {
-                            // `snapshot` is shadowed non-optional inside `if let`; reach the @State property
-                            // via self to read the shown INE and to write the refreshed value back.
-                            await refresher.refresh(currentMode: currentMode, shownINE: self.snapshot?.ine)
-                            self.snapshot = resolvedSnapshot()
+                            await manualRefresh()
                         }
                     }
                     .ignoresSafeArea(.container, edges: .top)
@@ -197,10 +219,7 @@ struct WatchRootView: View {
             // If we now have one, pull data straight away so a freshly set-up Watch fills itself without
             // another tap.
             guard hasKey else { return }
-            Task {
-                await refresher.refresh(currentMode: currentMode, shownINE: snapshot?.ine)
-                snapshot = resolvedSnapshot()
-            }
+            Task { await manualRefresh() }
         }
         .sheet(isPresented: $showingPicker) {
             WatchLocationPicker(choices: locationChoices,

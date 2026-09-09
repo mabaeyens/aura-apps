@@ -506,6 +506,7 @@
 "watch.keyPresent"       = "Clave AEMET guardada";
 "watch.keyMissing"       = "Sin clave AEMET";
 "watch.updating"         = "Actualizando…";
+"watch.refreshNow"       = "Actualizar ahora";
 
 /* Watch complication gallery (name + description shown in the watch-face editor) */
 "watch.complication.conditions.name" = "El tiempo";
