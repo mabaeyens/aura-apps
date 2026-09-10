@@ -266,3 +266,55 @@ All forecast content is free to view. Tips remain optional in-app purchases and 
 - Description, Marketing / Support / Privacy URLs (askmira.es), availability (worldwide except China), and promotional text are all already correct from 1.1.1 and need no edit.
 - Promotional text is editable without review anytime, if wanted.
 - CPP keyword ticks + marketing art: still parked until an update is approved (unchanged from the plan above). The two new cards could seed a fifth CPP later, but that is post-approval work, not part of 1.2.0.
+
+## 1.3.0 submission (prepared via API 2026-09-10)
+
+> **Status: PREPARED, not yet submitted.** The 1.3.0 iOS version exists on ASC in
+> `PREPARE_FOR_SUBMISSION` (id `6f4422ac-28b9-4cef-bd40-37d40a626ff0`) with everything set below;
+> it awaits **Submit for Review** in the ASC UI. Live 1.2.0 untouched.
+>
+> Done via the ASC API on 2026-09-10 (shared aura-release credentials):
+> - Version 1.3.0 (IOS) created with build 1 attached directly on creation (build 1 `VALID` in
+>   TestFlight, uploaded the same day).
+> - **What's New** set both locales (es-ES 574 chars, en-US 494 chars); the copy is in this section.
+> - **App Review notes** updated (819 chars; contact fields carried forward automatically from
+>   1.2.0's review detail, only the notes text itself needed a rewrite for this build's changes).
+> - **Keywords carried forward unchanged** and verified: es-ES `…,complicaciones` (98/100), en-US
+>   `…,complication` (100/100). Description, URLs and promotional text carried forward too, seeded
+>   automatically on version creation with no explicit copy step needed.
+>
+> **Submit for Review could not be done via the API**: `POST /v1/appStoreVersionSubmissions`
+> returned `403 FORBIDDEN_ERROR`, "The resource 'appStoreVersionSubmissions' does not allow
+> 'CREATE'. Allowed operation is: DELETE." The shared key's role does not carry submission rights
+> (this matches every prior release in this file too, despite some being filed under a "Done via
+> the ASC API" heading: the actual Submit-for-Review click has always been a manual ASC UI step,
+> confirmed now rather than assumed). **Still to do by hand:** open App Store Connect, review both
+> What's New in the UI, then Submit for Review.
+
+Marketing version **1.3.0**, build **1** (a new minor train, reset from 1.2.0 / build 8). Feature
+batch: an Apple Watch tap-to-refresh button (the Digital Crown/swipe gesture is unreliable on real
+hardware), Watch last-updated/key-status feedback, a confirmed-reliable Watch background
+auto-refresh, and clearer day headers on the national forecast sheet's segments. Full customer copy
+is in `CHANGELOG.md`.
+
+### What's New copy, both locales
+
+**es-ES**
+```
+Novedades:
+
+• El Apple Watch ahora tiene un botón «Actualizar ahora», ya que el gesto de deslizar o girar la Corona Digital no siempre actualiza los datos en un reloj real.
+• El reloj muestra la hora de la última actualización y si tiene guardada la clave de AEMET.
+• La actualización en segundo plano del reloj funciona de forma fiable, así que la complicación se mantiene al día aunque no levantes la muñeca.
+• En la predicción general de AEMET, cada segmento (Hoy, Mañana, Pasado mañana) muestra ahora un título claro, en vez de aparecer todo seguido en un único párrafo.
+```
+
+**en-US**
+```
+What's new:
+
+• The Apple Watch app now has a "Refresh now" button, since the swipe or Digital Crown gesture doesn't always update data on real hardware.
+• The Watch shows when it last updated and whether it has a saved AEMET key.
+• The Watch's background refresh now works reliably, so the complication stays current even without raising your wrist.
+• In AEMET's national forecast, each segment (Hoy, Mañana, Pasado mañana) now shows a clear header instead of running together as one paragraph.
+```
