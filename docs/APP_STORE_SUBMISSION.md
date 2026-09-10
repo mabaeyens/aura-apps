@@ -267,11 +267,11 @@ All forecast content is free to view. Tips remain optional in-app purchases and 
 - Promotional text is editable without review anytime, if wanted.
 - CPP keyword ticks + marketing art: still parked until an update is approved (unchanged from the plan above). The two new cards could seed a fifth CPP later, but that is post-approval work, not part of 1.2.0.
 
-## 1.3.0 submission (prepared via API 2026-09-10)
+## 1.3.0 submission (prepared via API, submitted by hand 2026-09-10)
 
-> **Status: PREPARED, not yet submitted.** The 1.3.0 iOS version exists on ASC in
-> `PREPARE_FOR_SUBMISSION` (id `6f4422ac-28b9-4cef-bd40-37d40a626ff0`) with everything set below;
-> it awaits **Submit for Review** in the ASC UI. Live 1.2.0 untouched.
+> **Status: SUBMITTED.** The 1.3.0 iOS version (id `6f4422ac-28b9-4cef-bd40-37d40a626ff0`) is
+> **WAITING_FOR_REVIEW**, confirmed via the ASC API 2026-09-10. Live 1.2.0 stays for sale until
+> 1.3.0 is approved.
 >
 > Done via the ASC API on 2026-09-10 (shared aura-release credentials):
 > - Version 1.3.0 (IOS) created with build 1 attached directly on creation (build 1 `VALID` in
@@ -288,8 +288,7 @@ All forecast content is free to view. Tips remain optional in-app purchases and 
 > 'CREATE'. Allowed operation is: DELETE." The shared key's role does not carry submission rights
 > (this matches every prior release in this file too, despite some being filed under a "Done via
 > the ASC API" heading: the actual Submit-for-Review click has always been a manual ASC UI step,
-> confirmed now rather than assumed). **Still to do by hand:** open App Store Connect, review both
-> What's New in the UI, then Submit for Review.
+> confirmed now rather than assumed). Submitted by hand in the ASC UI.
 
 Marketing version **1.3.0**, build **1** (a new minor train, reset from 1.2.0 / build 8). Feature
 batch: an Apple Watch tap-to-refresh button (the Digital Crown/swipe gesture is unreliable on real
