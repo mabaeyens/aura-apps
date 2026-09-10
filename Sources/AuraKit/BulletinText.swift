@@ -6,11 +6,17 @@ import Foundation
 /// it back out and breaks it into one line per sentence, since each sentence is its own topic (sky,
 /// rain, max temps, min temps, wind), which is far easier to scan on both the phone and the watch.
 public enum BulletinText {
+    /// Collapse AEMET's hard column wraps (and any paragraph breaks) back into one flowing line,
+    /// for single-line presentations like the significant-phenomena banner.
+    public static func flattened(_ text: String) -> String {
+        text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+    }
+
     /// The bulletin as one line per sentence, with every hard wrap collapsed to a single space first.
     public static func sentences(_ text: String) -> [String] {
         // Collapse ALL whitespace runs — spaces, tabs and AEMET's mid-sentence newlines — to a single
         // space, so the text flows regardless of how it was wrapped upstream.
-        let flowed = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let flowed = flattened(text)
         // One line per sentence: a break after each ". " sentence boundary. AEMET prose has no
         // mid-sentence abbreviations and writes decimals with commas, so "." reliably ends a sentence.
         return flowed

@@ -2007,7 +2007,7 @@ public struct AuraNationalCard: View {
         AuraCard(size: size) {
             VStack(alignment: .leading, spacing: size == .phone ? 10 : 6) {
                 if let fenomeno = today.fenomenoSignificativo {
-                    Label(fenomeno, systemImage: "exclamationmark.triangle.fill")
+                    Label(BulletinText.flattened(fenomeno), systemImage: "exclamationmark.triangle.fill")
                         .auraFont(size.bodySize - (size == .phone ? 3 : 2), relativeTo: .subheadline, weight: .medium)
                         .foregroundStyle(Self.amber)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2185,7 +2185,7 @@ public struct AuraNationalSheet: View {
                     .foregroundStyle(.white.opacity(0.6))
             }
             if let fenomeno = bulletin.fenomenoSignificativo {
-                Label(fenomeno, systemImage: "exclamationmark.triangle.fill")
+                Label(BulletinText.flattened(fenomeno), systemImage: "exclamationmark.triangle.fill")
                     .auraFont(15, relativeTo: .subheadline, weight: .medium)
                     .foregroundStyle(Self.amber)
                     .padding(12)
