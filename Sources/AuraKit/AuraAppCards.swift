@@ -2186,7 +2186,7 @@ public struct AuraNationalSheet: View {
             }
             if let fenomeno = bulletin.fenomenoSignificativo {
                 Label(BulletinText.flattened(fenomeno), systemImage: "exclamationmark.triangle.fill")
-                    .auraFont(15, relativeTo: .subheadline, weight: .medium)
+                    .auraFont(16, relativeTo: .subheadline, weight: .medium)
                     .foregroundStyle(Self.amber)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
