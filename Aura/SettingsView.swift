@@ -17,6 +17,12 @@ struct SettingsView: View {
     @State private var verifying = false
     @State private var verifyResult: AEMETClient.KeyCheck?
 
+    /// The system's actual Background App Refresh permission for Aura, surfaced directly rather than left
+    /// to a silent `BGTaskScheduler.submit` failure: when this isn't `.available`, the background top-up
+    /// never runs at all, no matter how well-behaved the refresh path itself is. Re-read on foreground so
+    /// a toggle flipped in system Settings while this screen is open is reflected without a relaunch.
+    @State private var backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
+
     /// Clock format, shared with the widgets and the Watch through the App Group so every surface reads
     /// the same value (see `AuraTime`). True = 24-hour, false = 12-hour AM/PM. Defaults to 24-hour.
     @AppStorage(AuraTime.use24hKey, store: SharedCache.groupDefaults) private var use24h = true
@@ -117,6 +123,21 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    LabeledContent(auraString("settings.backgroundRefresh.label"), value: backgroundRefreshStatusLabel)
+                    if backgroundRefreshStatus != .available {
+                        Button(auraString("settings.backgroundRefresh.openSettings")) {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                    }
+                } header: {
+                    Text(auraString("settings.backgroundRefresh.section"))
+                } footer: {
+                    Text(auraString("settings.backgroundRefresh.footer"))
+                }
+
+                Section {
                     NavigationLink {
                         AboutView()
                     } label: {
@@ -139,6 +160,18 @@ struct SettingsView: View {
             } message: {
                 Text(auraString("settings.deleteKey.confirmBody"))
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            backgroundRefreshStatus = UIApplication.shared.backgroundRefreshStatus
+        }
+    }
+
+    private var backgroundRefreshStatusLabel: String {
+        switch backgroundRefreshStatus {
+        case .available:  return auraString("settings.backgroundRefresh.available")
+        case .denied:     return auraString("settings.backgroundRefresh.denied")
+        case .restricted: return auraString("settings.backgroundRefresh.restricted")
+        @unknown default: return auraString("settings.backgroundRefresh.unknown")
         }
     }
 

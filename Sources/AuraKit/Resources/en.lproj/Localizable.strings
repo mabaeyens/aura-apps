@@ -365,6 +365,14 @@
 "settings.notifications.picker"  = "Notifications";
 "settings.notifications.section" = "Notifications";
 "settings.notifications.footer"  = "Warnings only notify at orange or red level for your active location. Forecasts notify when AEMET updates the bulletin. It needs notification permission and background refresh turned on in system Settings.";
+"settings.backgroundRefresh.section"      = "Background refresh";
+"settings.backgroundRefresh.label"        = "Status";
+"settings.backgroundRefresh.available"    = "On";
+"settings.backgroundRefresh.denied"       = "Off";
+"settings.backgroundRefresh.restricted"   = "Restricted";
+"settings.backgroundRefresh.unknown"      = "Unknown";
+"settings.backgroundRefresh.openSettings" = "Open System Settings";
+"settings.backgroundRefresh.footer"       = "Widgets and notifications depend on this being on. iOS decides exactly when it runs based on how often you open Aura and your device's battery and network state, so it can lag well behind an hourly cadence even while on; it never runs at all if it's off, restricted, or Low Power Mode is active.";
 "settings.aboutRow"              = "About Aura";
 "settings.versionLabel"          = "Version";
 "settings.deleteKey.confirmTitle" = "Delete the AEMET key?";

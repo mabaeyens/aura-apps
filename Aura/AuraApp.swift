@@ -30,6 +30,11 @@ struct AuraApp: App {
                     RadarService.pruneCache()
                     SurfaceAnalysisService.pruneCache()
                     await AEMETService.refreshAllForWidgets(store.favorites)
+                    // Also re-arm here, not just on `.background`: iOS cancels any pending BGTaskScheduler
+                    // request outright when the user swipes the app away from the switcher, and that
+                    // cancellation otherwise stands until the app happens to background again. Arming on
+                    // launch closes that gap the moment the app is reopened.
+                    AEMETService.scheduleBackgroundRefresh()
                 }
                 .onChange(of: scenePhase) { _, phase in
                     switch phase {

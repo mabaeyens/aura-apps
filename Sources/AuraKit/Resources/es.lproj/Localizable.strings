@@ -365,6 +365,14 @@
 "settings.notifications.picker"  = "Notificaciones";
 "settings.notifications.section" = "Notificaciones";
 "settings.notifications.footer"  = "Los avisos notifican solo en nivel naranja o rojo de tu ubicación activa. Las predicciones avisan cuando AEMET actualiza el boletín. Necesita permiso de notificaciones y el repaso en segundo plano activado en Ajustes del sistema.";
+"settings.backgroundRefresh.section"      = "Actualización en segundo plano";
+"settings.backgroundRefresh.label"        = "Estado";
+"settings.backgroundRefresh.available"    = "Activada";
+"settings.backgroundRefresh.denied"       = "Desactivada";
+"settings.backgroundRefresh.restricted"   = "Restringida";
+"settings.backgroundRefresh.unknown"      = "Desconocido";
+"settings.backgroundRefresh.openSettings" = "Abrir Ajustes del sistema";
+"settings.backgroundRefresh.footer"       = "Los widgets y las notificaciones dependen de que esté activada. iOS decide cuándo se ejecuta según la frecuencia con la que abres Aura y el estado de batería y red del dispositivo, así que puede quedar muy por detrás de un ciclo horario incluso estando activada; si está desactivada, restringida o el modo de bajo consumo está activo, no se ejecuta nunca.";
 "settings.aboutRow"              = "Acerca de Aura";
 "settings.versionLabel"          = "Versión";
 "settings.deleteKey.confirmTitle" = "¿Borrar la clave de AEMET?";

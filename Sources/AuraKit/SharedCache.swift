@@ -77,17 +77,23 @@ public enum SharedCache {
         }
     }
 
+    /// The App Group container itself, for anything that needs a file rather than a defaults key (the
+    /// snapshot cache below, and `CrossProcessRefreshLock`'s lock file).
+    static var groupContainerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+    }
+
     private static var fileURL: URL? {
-        FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appendingPathComponent("snapshots.json")
+        groupContainerURL?.appendingPathComponent("snapshots.json")
     }
 
     /// Serializes the cache's file access within this process so the read-modify-write in `upsert`/`prune`
     /// can't interleave with another task's read or write and lose an update. Recursive so the mutating
     /// paths can call `read`/`write` while already holding it. Cross-process safety comes from the atomic
-    /// write (a rename, so a reader in another process sees the whole old file or the whole new one); the
-    /// app is the only writer, so there are no cross-process read-modify-write races to guard.
+    /// write (a rename, so a reader in another process sees the whole old file or the whole new one) *plus*
+    /// `CrossProcessRefreshLock`, which keeps the app and the widget extension from ever being inside a
+    /// refresh — and so inside a read-modify-write here — at the same time; without it, the widget's own
+    /// `refreshIfStale` self-heal is a second writer that can race the app's.
     private static let lock = NSRecursiveLock()
     private static func sync<T>(_ body: () -> T) -> T {
         lock.lock(); defer { lock.unlock() }

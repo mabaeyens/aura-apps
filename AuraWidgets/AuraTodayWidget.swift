@@ -27,8 +27,14 @@ private func resolveSnapshot(ine: String?, isPreview: Bool) -> WeatherSnapshot? 
 
 /// The interval WidgetKit is nudged to re-read the cache over. The app is still the main fetch hub; the
 /// widget only tops up its own device's cache when the app hasn't run recently (see `refreshIfStale`).
+/// Matches `AuraRefreshCore.staleWindow` (the hour AEMET's own data actually turns over): asking for a
+/// reload every 3 hours — as this used to — meant that even on a lucky cycle where the system granted the
+/// reload, the widget could still be sitting on data up to 3 hours stale by design, on top of whatever the
+/// system's own budget already withholds. Asking hourly doesn't cost extra network calls (`refreshIfStale`
+/// still gates on the same one-hour staleness check) — it just gives the system a nearer date to grant
+/// against.
 private func nextRefresh(after date: Date) -> Date {
-    Calendar.current.date(byAdding: .hour, value: 3, to: date) ?? date.addingTimeInterval(3 * 3600)
+    Calendar.current.date(byAdding: .hour, value: 1, to: date) ?? date.addingTimeInterval(3600)
 }
 
 /// Before rendering a timeline, refresh the shown location if the shared staleness gate says its cache is

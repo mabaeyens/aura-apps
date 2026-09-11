@@ -498,6 +498,7 @@ public struct AuraHomeLarge: View {
             }
             Spacer(minLength: 0)
             HomeSunFooter(snapshot: snapshot)
+            AuraStalenessNote(snapshot: snapshot, now: now)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         // The aviso as a bare level-tinted sign in the top-right corner, clear of the temperature and
@@ -544,6 +545,7 @@ public struct AuraHomeXL: View {
                     // The next sunrise/sunset — the "when does the light change" line — with the day's UV
                     // index sitting alongside it rather than up in the metrics row.
                     HomeNextEventLine(snapshot: snapshot, now: now, showUV: true)
+                    AuraStalenessNote(snapshot: snapshot, now: now)
                 }
                 .frame(width: geo.size.width * 0.37, alignment: .leading)
 
