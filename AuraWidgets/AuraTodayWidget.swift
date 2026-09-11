@@ -32,9 +32,30 @@ private func resolveSnapshot(ine: String?, isPreview: Bool) -> WeatherSnapshot? 
 /// reload, the widget could still be sitting on data up to 3 hours stale by design, on top of whatever the
 /// system's own budget already withholds. Asking hourly doesn't cost extra network calls (`refreshIfStale`
 /// still gates on the same one-hour staleness check) — it just gives the system a nearer date to grant
-/// against.
+/// against. This is now on top of `timelineEntries`' own hour-by-hour coverage below, not the only thing
+/// standing between the widget and a frozen night: it's still worth asking for, since only an actual
+/// reload can bring genuinely new data (a changed forecast, a new aviso), which no amount of synthesizing
+/// from an already-fetched strip can produce.
 private func nextRefresh(after date: Date) -> Date {
     Calendar.current.date(byAdding: .hour, value: 1, to: date) ?? date.addingTimeInterval(3600)
+}
+
+/// One entry per upcoming hour already in the snapshot's own forecast, instead of a single entry frozen
+/// at `now`. A single-entry timeline is fully dependent on the next background wake actually happening —
+/// confirmed on-device to sometimes just not, since it's an opaque per-app budget outside this app's
+/// control — so between wakes the widget showed exactly the same pixels all night regardless of how much
+/// time had actually passed. `WeatherSnapshot.resolved(at:)` already re-derives every displayed field
+/// (temp, sky, precip…) for an arbitrary instant from the same hourly strip fetched once, so handing
+/// WidgetKit one entry per hour that strip covers lets it step through the correct value on its own
+/// clock, with no further process wake needed until the strip runs out. Capped well under WidgetKit's
+/// practical per-widget budget; AEMET's hourly product rarely carries more than ~48h anyway. Falls back
+/// to a single `now`-stamped entry when there's nothing cached yet, or the strip is exhausted.
+private func timelineEntries(snapshot: WeatherSnapshot?, now: Date,
+                             scene: HeroBackground.Family = .landscape) -> [AuraEntry] {
+    guard let snapshot else { return [AuraEntry(date: now, snapshot: nil, scene: scene)] }
+    let dates = snapshot.upcomingHourDates(now: now).prefix(48)
+    guard !dates.isEmpty else { return [AuraEntry(date: now, snapshot: snapshot, scene: scene)] }
+    return dates.map { AuraEntry(date: $0, snapshot: snapshot, scene: scene) }
 }
 
 /// Before rendering a timeline, refresh the shown location if the shared staleness gate says its cache is
@@ -66,8 +87,10 @@ struct AuraProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: SelectLocationIntent, in context: Context) async -> Timeline<AuraEntry> {
         await refreshIfStale(preferredINE: configuration.location?.id, isPreview: context.isPreview)
-        let entry = AuraEntry(date: Date(), snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: false))
-        return Timeline(entries: [entry], policy: .after(nextRefresh(after: entry.date)))
+        let now = Date()
+        let snapshot = resolveSnapshot(ine: configuration.location?.id, isPreview: false)
+        return Timeline(entries: timelineEntries(snapshot: snapshot, now: now),
+                        policy: .after(nextRefresh(after: now)))
     }
 }
 
@@ -86,10 +109,10 @@ struct AuraHomeProvider: AppIntentTimelineProvider {
 
     func timeline(for configuration: SelectHomeIntent, in context: Context) async -> Timeline<AuraEntry> {
         await refreshIfStale(preferredINE: configuration.location?.id, isPreview: context.isPreview)
-        let entry = AuraEntry(date: Date(),
-                              snapshot: resolveSnapshot(ine: configuration.location?.id, isPreview: false),
-                              scene: configuration.scene.family)
-        return Timeline(entries: [entry], policy: .after(nextRefresh(after: entry.date)))
+        let now = Date()
+        let snapshot = resolveSnapshot(ine: configuration.location?.id, isPreview: false)
+        return Timeline(entries: timelineEntries(snapshot: snapshot, now: now, scene: configuration.scene.family),
+                        policy: .after(nextRefresh(after: now)))
     }
 }
 

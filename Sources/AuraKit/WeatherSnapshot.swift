@@ -291,27 +291,19 @@ public extension WeatherSnapshot {
             || currentPrecipProb != nil || windSpeed != nil || windDirection != nil
     }
 
-    /// The hourly strip re-anchored to `now`: hours already past are dropped so the strip always begins
-    /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours or a
-    /// day later). The current hour itself is kept as the first column.
-    ///
-    /// Each slot's absolute instant is its stamped `date`; for snapshots cached before slots carried one,
-    /// it's reconstructed by walking the strip's wrapping hour sequence forward from `updated` (the build
-    /// time), so the fix applies to an already-cached snapshot without waiting for a fresh fetch. If the
-    /// snapshot is so old nothing remains ahead of `now`, the stored strip is returned unchanged.
-    func upcomingHours(now: Date = Date(),
-                       timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> [HourSlot] {
-        guard !hours.isEmpty else { return hours }
+    /// Pairs each hourly slot with its absolute instant, reconstructing it for any slot cached before
+    /// slots carried a stamped `date` (walking the strip's wrapping hour sequence forward from `updated`,
+    /// the build time). Shared by `upcomingHours` (needs the slot) and `upcomingHourDates` (needs only
+    /// the instant) so the reconstruction rule lives in one place.
+    private func datedHours(timeZone: TimeZone) -> [(slot: HourSlot, date: Date)] {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = timeZone
-        let hourStart = cal.dateInterval(of: .hour, for: now)?.start ?? now
-
         // Reconstruction anchor for nil-date slots: the build day's midnight, advanced by one day each
         // time the hour sequence wraps past midnight. The strip starts at/after the build hour, so the
         // first slot belongs to the build day.
         var anchorDay = cal.startOfDay(for: updated)
         var prevHour = -1
-        let dated: [(slot: HourSlot, date: Date)] = hours.map { slot in
+        return hours.map { slot in
             if let d = slot.date { return (slot, d) }
             if slot.hour < prevHour {
                 anchorDay = cal.date(byAdding: .day, value: 1, to: anchorDay) ?? anchorDay
@@ -320,8 +312,35 @@ public extension WeatherSnapshot {
             let d = cal.date(bySettingHour: slot.hour, minute: 0, second: 0, of: anchorDay) ?? anchorDay
             return (slot, d)
         }
-        let kept = dated.filter { $0.date >= hourStart }.map(\.slot)
+    }
+
+    /// The hourly strip re-anchored to `now`: hours already past are dropped so the strip always begins
+    /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours or a
+    /// day later). The current hour itself is kept as the first column. If the snapshot is so old nothing
+    /// remains ahead of `now`, the stored strip is returned unchanged.
+    func upcomingHours(now: Date = Date(),
+                       timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> [HourSlot] {
+        guard !hours.isEmpty else { return hours }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let hourStart = cal.dateInterval(of: .hour, for: now)?.start ?? now
+        let kept = datedHours(timeZone: timeZone).filter { $0.date >= hourStart }.map(\.slot)
         return kept.isEmpty ? hours : kept
+    }
+
+    /// Absolute instants for every upcoming hour in the strip, past hours dropped exactly like
+    /// `upcomingHours`. Widgets use this to seed one `TimelineEntry` per future hour instead of a single
+    /// entry stamped "now" — since `resolved(at:)` already re-derives every displayed field for whatever
+    /// date it's given, WidgetKit can then step through the already-fetched forecast on its own clock,
+    /// hour by hour, with no dependency on the app or extension ever being woken again. Empty once
+    /// nothing in the strip is still ahead of `now` (an old cache with nothing left to synthesize).
+    func upcomingHourDates(now: Date = Date(),
+                           timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> [Date] {
+        guard !hours.isEmpty else { return [] }
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let hourStart = cal.dateInterval(of: .hour, for: now)?.start ?? now
+        return datedHours(timeZone: timeZone).map(\.date).filter { $0 >= hourStart }
     }
 
     /// The next sun event to happen, for the sunrise/sunset complication: sunrise if it's still to
