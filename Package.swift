@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "AuraKit",
     defaultLocalization: "es",
-    platforms: [.macOS(.v13), .iOS(.v17), .watchOS(.v10)],
+    platforms: [.macOS(.v14), .iOS(.v17), .watchOS(.v10)],
     products: [
         .library(name: "AuraKit", targets: ["AuraKit"]),
         .executable(name: "aura-smoke", targets: ["AuraSmoke"]),

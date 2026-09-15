@@ -16,7 +16,7 @@ struct LocationEntity: AppEntity {
         DisplayRepresentation(title: "\(nombre)", subtitle: "\(provincia)")
     }
 
-    static var defaultQuery = LocationQuery()
+    static let defaultQuery = LocationQuery()
 }
 
 /// Populates the location chooser from the App Group list the app keeps in sync.

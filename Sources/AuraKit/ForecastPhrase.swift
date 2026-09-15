@@ -44,7 +44,6 @@ public enum ForecastPhrase {
     /// The data-as-prose second line: Máx/Mín, wind, humidity, rain — only the parts that are known.
     public static func dataline(for snapshot: WeatherSnapshot, now: Date = Date()) -> String {
         var rng = seededRNG(snapshot: snapshot, now: now, salt: 2)
-        let hasRange = snapshot.tempMin != nil && snapshot.tempMax != nil
         // Two structures, chosen by the seed, so the line's shape also varies.
         let rangeFirst = rng.bool()
 

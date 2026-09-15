@@ -361,7 +361,7 @@ public struct AuraHourlyCard: View {
                 .background(GeometryReader { geo in
                     Color.clear
                         .onAppear { columnWidth = geo.size.width / 5 }
-                        .onChange(of: geo.size.width) { newWidth in columnWidth = newWidth / 5 }
+                        .onChange(of: geo.size.width) { _, newWidth in columnWidth = newWidth / 5 }
                 })
             } else {
                 grid(columnWidth: nil, cap: 5)   // offline preview: the first five, spread to fill

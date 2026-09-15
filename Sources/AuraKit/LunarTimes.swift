@@ -153,7 +153,7 @@ public struct LunarTimes {
         var rises: [Date] = []
         var sets: [Date] = []
         var prev = start
-        var prevPos = LunarPosition(date: prev)
+        let prevPos = LunarPosition(date: prev)
         var prevDiff = prevPos.altitude(latitude: latitude, longitude: longitude, at: prev) - target(prevPos)
         for k in 1...count {
             let t = start.addingTimeInterval(step * Double(k))

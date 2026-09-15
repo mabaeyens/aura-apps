@@ -38,11 +38,11 @@ enum AEMETService {
 
     /// The BGAppRefreshTask identifier. Must match `BGTaskSchedulerPermittedIdentifiers` in Info.plist
     /// and the `.backgroundTask(.appRefresh(...))` handler in `AuraApp`.
-    static let backgroundRefreshIdentifier = "com.mab.Aura.refresh"
+    nonisolated static let backgroundRefreshIdentifier = "com.mab.Aura.refresh"
 
     /// Trace the background top-up so it can be watched on device with
     /// `log stream --predicate 'subsystem == "com.mab.Aura"'` (or Console.app) while measuring battery.
-    private static let bgLog = Logger(subsystem: "com.mab.Aura", category: "background")
+    private nonisolated static let bgLog = Logger(subsystem: "com.mab.Aura", category: "background")
 
     /// Refresh from the favourites mirrored to the App Group, for callers with no view/store (the
     /// background task). Same coalesced fetch path as the foreground; shows new data when there is any,

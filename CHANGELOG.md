@@ -6,6 +6,7 @@
 - The Watch now shows its last-updated time and whether an AEMET key is saved, and re-syncs its snapshot the moment it requests a missing key from the phone.
 - Confirmed the Watch's background auto-refresh fires and reschedules reliably on real hardware, so the complication stays current even with the wrist never raised.
 - The national forecast sheet's Hoy/Mañana/Pasado mañana segments each show a clear day header now, instead of running together as one paragraph.
+- Built and verified clean against the iOS/iPadOS/watchOS 27 SDKs (Xcode 27): adopted Swift 6 language mode across every target, fixed the concurrency and deprecation warnings that came with it, and added privacy manifests declaring the file-timestamp and UserDefaults usage the app already had.
 
 ## v1.2.0 (build 8)
 

@@ -497,7 +497,7 @@ private struct WindRose: View {
 
     /// Radius, as a fraction of the diameter, of the outer tip of every mark — the ring the marks and
     /// the cardinal letters share, and the ring the arrow's tips reach.
-    static let markRingRadiusFactor: CGFloat = 0.485
+    nonisolated static let markRingRadiusFactor: CGFloat = 0.485
 
     var body: some View {
         let d = diameter
