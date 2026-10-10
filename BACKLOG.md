@@ -71,6 +71,10 @@
 
 ## Pending
 
+### 1.4.0 follow-ups (2026-10-10)
+- **Validate 1.4.0 from TestFlight on device before submitting it for App Store review.** On top of the refresh audit checks above: the failed-refresh notice (airplane mode over an old cache), Watch push coalescing, the complication fallback to the phone's place, and the ranked location search.
+- **External TestFlight testing.** Needs an external group with testers in ASC, then a beta review submission for the build.
+
 ### Background refresh audit leftovers (2026-10-10)
 - **On-device pass for everything in 9b406f4 and 2bff0b9.** XL widget sun at dawn and dusk, Watch sun in the afternoon, no moon at 07:00 on iPad, the Predicción title wrapping, a widget-written aviso notifying once, and the Watch not reverting to old phone data at launch.
 - **0xdead10cc fix needs a Home Screen check.** The refresh now runs inside a background task and the log under Xcode shows the lock released after the app backgrounded with no kill. Xcode is lenient about suspension, so launch a build from the Home Screen, force a refresh, swipe away within a second or two, and look for a new `Aura-….ips` in Analytics Data a minute later. None means fixed.
