@@ -2,6 +2,7 @@ import AuraKit
 import BackgroundTasks
 import Foundation
 import os
+import UIKit
 import WidgetKit
 
 /// Bridges the app to `AEMETClient`: builds a client from the stored key, runs the one shared refresh
@@ -31,7 +32,14 @@ enum AEMETService {
     @discardableResult
     static func refreshAllForWidgets(_ locations: [Location], force: Bool = false,
                                      onlyINE: String? = nil) async -> String? {
-        await refreshGate.run(force: force) { await performRefresh(locations, force: force, onlyINE: onlyINE) }
+        // The pass holds the App Group lock (`CrossProcessRefreshLock`) for its whole network run. If the app
+        // is suspended while it does, the system kills it with 0xdead10cc (seen on device: backgrounding 3 s
+        // into a forced refresh). A background task keeps the app running until the pass returns and the
+        // lock is released; if the system's grace period runs out first, cancel the work so it unwinds and
+        // releases the lock before the app is suspended.
+        let guardTask = await BackgroundGuard.begin { Task { await refreshGate.cancel() } }
+        defer { Task { @MainActor in guardTask.end() } }
+        return await refreshGate.run(force: force) { await performRefresh(locations, force: force, onlyINE: onlyINE) }
     }
 
     // MARK: - Background refresh
@@ -130,4 +138,32 @@ private actor RefreshGate {
     }
 
     private func clear() { current = nil }
+
+    func cancel() { current?.cancel() }
+}
+
+/// A UIKit background task that ends exactly once, from whichever of "work finished" and "time expired" comes
+/// first. `onExpire` runs when the system's grace period is up, before the task is ended.
+@MainActor
+private final class BackgroundGuard {
+    private var id = UIBackgroundTaskIdentifier.invalid
+
+    static func begin(onExpire: @escaping @Sendable () -> Void) -> BackgroundGuard {
+        let guardTask = BackgroundGuard()
+        guardTask.id = UIApplication.shared.beginBackgroundTask(withName: "AuraRefresh") {
+            onExpire()
+            // Let the cancelled pass unwind and drop the lock before the task ends and the app can suspend.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guardTask.end()
+            }
+        }
+        return guardTask
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
+    }
 }
