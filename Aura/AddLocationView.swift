@@ -16,8 +16,7 @@ struct AddLocationView: View {
             return Location.seedCities.sorted { $0.nombre.localizedCaseInsensitiveCompare($1.nombre) == .orderedAscending }
         }
         // Accent- and case-insensitive search across the full municipality table, capped for a snappy list.
-        let folded = trimmed.foldedForSearch
-        return MunicipioDatabase.searchable.lazy.filter { $0.matches(folded) }.prefix(50).map(\.location)
+        return MunicipioDatabase.search(trimmed)
     }
 
     var body: some View {
@@ -36,6 +35,7 @@ struct AddLocationView: View {
                 }
                 .tint(.primary)
             }
+            .scrollDismissesKeyboard(.interactively)
             .searchable(text: $query, prompt: auraString("locations.search.prompt"))
             .navigationTitle(auraString("locations.add.title"))
             .navigationBarTitleDisplayMode(.inline)

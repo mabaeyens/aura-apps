@@ -37,6 +37,39 @@ public enum MunicipioDatabase {
         }
     }
 
+    /// Ranked search: exact name, then name prefix, then name substring, then province-only matches, each
+    /// tier alphabetical (`searchable` is pre-sorted). Without ranking, a province query or a short name
+    /// fills the capped list with alphabetically-early towns and the city itself never appears.
+    /// "name, province" or "name province" narrows same-named municipalities to that province.
+    public static func search(_ query: String, limit: Int = 50) -> [Location] {
+        let folded = query.foldedForSearch.trimmingCharacters(in: .whitespaces)
+        guard !folded.isEmpty else { return [] }
+
+        var namePart = folded
+        var provincePart: String?
+        if let comma = folded.firstIndex(of: ",") {
+            namePart = String(folded[..<comma]).trimmingCharacters(in: .whitespaces)
+            let rest = String(folded[folded.index(after: comma)...]).trimmingCharacters(in: .whitespaces)
+            provincePart = rest.isEmpty ? nil : rest
+        }
+
+        var tiers: [[Location]] = Array(repeating: [], count: 4)
+        for entry in searchable {
+            if let provincePart {
+                guard entry.foldedProvincia.contains(provincePart) else { continue }
+                if entry.foldedNombre == namePart { tiers[0].append(entry.location) }
+                else if entry.foldedNombre.hasPrefix(namePart) { tiers[1].append(entry.location) }
+                else if entry.foldedNombre.contains(namePart) { tiers[2].append(entry.location) }
+                continue
+            }
+            if entry.foldedNombre == namePart { tiers[0].append(entry.location) }
+            else if entry.foldedNombre.hasPrefix(namePart) { tiers[1].append(entry.location) }
+            else if entry.foldedNombre.contains(namePart) { tiers[2].append(entry.location) }
+            else if entry.foldedProvincia.contains(namePart) { tiers[3].append(entry.location) }
+        }
+        return Array(tiers.joined().prefix(limit))
+    }
+
     /// The nearest municipality to a coordinate by great-circle distance over the full table, or nil if the
     /// table is empty. Shared by the phone's `LocationManager` and the Watch's `WatchLocationManager` so a
     /// GPS fix snaps to the same town on both, and unit-testable here without either device layer.
