@@ -9,8 +9,8 @@ import os
 /// the foreground pull in `WatchRefreshModel`: the pull covers "I open the app and it updates", this
 /// covers "the complication is fresh when I glance at it".
 ///
-/// Mechanism: a `WKApplicationRefreshBackgroundTask` scheduled ~30 min out (matching the phone's
-/// BGAppRefreshTask cadence), refetching through the shared `AuraRefreshCore` path. The task type is
+/// Mechanism: a `WKApplicationRefreshBackgroundTask` scheduled ~2 h out (the phone runs its own ~30 min
+/// BGAppRefreshTask), refetching through the shared `AuraRefreshCore` path. The task type is
 /// generic app refresh, which needs no `WKBackgroundModes` key: that key is only for the special modes
 /// (location, workout, remote-notification), none of which apply here.
 final class WatchAppDelegate: NSObject, WKApplicationDelegate {
@@ -69,9 +69,11 @@ enum WatchBackgroundRefresher {
     /// be unreliable/version-dependent when checked on-device 2026-09-09).
     static let bgLog = Logger(subsystem: "com.mab.Aura.watchkitapp", category: "background")
 
-    /// Preferred spacing between background passes. watchOS throttles this itself (a floor, not a promise),
-    /// and matches the phone's ~30 min top-up so the two devices drift together rather than fighting.
-    static let interval: TimeInterval = 30 * 60
+    /// Preferred spacing between background passes. watchOS throttles this itself (a floor, not a promise).
+    /// Two hours, well apart from the phone's ~30 min top-up: both share one AEMET key and rate limit, and
+    /// the phone pushes fresh snapshots (the 1h stale gate below skips whenever one is recent), so the Watch
+    /// only fetches for itself when the phone has gone quiet.
+    static let interval: TimeInterval = 2 * 60 * 60
 
     /// Ask watchOS for the next background refresh. Called at launch and again after every handled task,
     /// so there is always exactly one pass armed ahead.

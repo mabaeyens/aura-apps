@@ -275,6 +275,10 @@ public enum AuraRefreshCore {
                     SharedCache.refreshBackoffUntil = Date().addingTimeInterval(Self.authBackoff); fatal = true
                 } else if case AEMETClient.ClientError.rateLimited = error {
                     SharedCache.refreshBackoffUntil = Date().addingTimeInterval(Self.rateLimitBackoff); fatal = true
+                    // The phone and the Watch draw on one AEMET key, so one device's 429 parks the other too.
+                    #if canImport(WatchConnectivity)
+                    WatchSync.shared.shareBackoff()
+                    #endif
                 }
                 continue
             }
