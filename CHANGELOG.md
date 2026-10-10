@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.0 (build 1)
+
+- Location search puts the exact city first, so searching Zaragoza finds Zaragoza instead of the whole province. Typing "name, province" narrows towns that share a name.
+- Widgets and the Watch stay current more reliably: refreshes no longer collide, the app finishes its refresh before suspending, and the phone and Watch share one rate-limit back-off.
+- The Watch and its complications use the phone's place when their own has no current data, and duplicate pushes to the Watch are skipped.
+- A notice appears when a refresh fails and older data is still on screen.
+- Fixed the XL widget sun arc, the Watch sun overlap, a hidden moon and a wrapped Predicción title. Verified support for the iOS, iPadOS and watchOS 27 SDKs.
+
 ## v1.3.0 (build 1)
 
 - Added a tap-to-refresh button on the Apple Watch app, since the swipe/Digital Crown gesture doesn't reliably trigger a refresh on real hardware.
