@@ -73,6 +73,8 @@
 ### Background refresh audit leftovers (2026-10-10)
 - **On-device pass for everything in 9b406f4 and 2bff0b9.** XL widget sun at dawn and dusk, Watch sun in the afternoon, no moon at 07:00 on iPad, the Predicción title wrapping, a widget-written aviso notifying once, and the Watch not reverting to old phone data at launch.
 - **0xdead10cc fix needs a Home Screen check.** The refresh now runs inside a background task and the log under Xcode shows the lock released after the app backgrounded with no kill. Xcode is lenient about suspension, so launch a build from the Home Screen, force a refresh, swipe away within a second or two, and look for a new `Aura-….ips` in Analytics Data a minute later. None means fixed.
+- **Duplicate Watch context pushes.** One refresh pass can send the same 18 KB context to the Watch two or three times within a second (scene-active evaluation plus the foreground pass). Harmless, but it triples the traffic; coalesce them in `WatchSync.send`.
+- **Watch own-location copy can still go stale in the background.** The background pass refreshes only the last shown place, and the view now refreshes a stale own-location copy on open, but nothing guards the complication in between. If the complication shows blanks, fall back to the phone's data when the selected place has no current-hour data.
 - **Stale-data banner.** `TodayView` still clears `errorMessage` whenever a cache exists, so a failed refresh is only visible through the dated stamp. Decide whether to add a visible stale warning.
 
 ### Open product decision, not a 1.3.0 blocker
