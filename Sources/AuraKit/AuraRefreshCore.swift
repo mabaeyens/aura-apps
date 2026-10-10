@@ -112,15 +112,30 @@ public enum AuraRefreshCore {
     /// `refreshIfStale` self-heal and the app's `BGAppRefreshTask` would independently hit AEMET at once and
     /// trip its rate limit. A caller that loses the race gets `.noop` back — never `force`'s error message —
     /// since the winner's own reload is what will actually update things.
+    ///
+    /// `lean` is for the Watch: it fetches only the place's own daily and hourly forecasts (4 AEMET requests)
+    /// and takes everything else from what the iPhone already pushed or what this device has cached, within
+    /// `leanReuseWindow`. The phone and Watch share one key and one rate limit, and the national feeds
+    /// (observations, UV, avisos, bulletin) are the bulk of a full pass.
     public static func refresh(locations: [Location], force: Bool = false,
-                               onlyINE: String? = nil) async -> RefreshOutcome {
+                               onlyINE: String? = nil, lean: Bool = false) async -> RefreshOutcome {
         await CrossProcessRefreshLock.tryRun(force: force) {
-            await performRefresh(locations: locations, force: force, onlyINE: onlyINE)
+            await performRefresh(locations: locations, force: force, onlyINE: onlyINE, lean: lean)
         } ?? .noop
     }
 
+    /// How old a cached snapshot may be and still lend its UV, aviso or air quality to a lean pass.
+    private static let leanReuseWindow: TimeInterval = 6 * 3600
+
+    /// The freshest cached snapshot in `location`'s province, other than its own, for province-wide data.
+    private static func provinceDonor(for location: Location, now: Date) -> WeatherSnapshot? {
+        SharedCache.read()
+            .filter { $0.ine.prefix(2) == location.provinciaCode && now.timeIntervalSince($0.updated) < leanReuseWindow }
+            .max { $0.updated < $1.updated }
+    }
+
     private static func performRefresh(locations: [Location], force: Bool,
-                                       onlyINE: String?) async -> RefreshOutcome {
+                                       onlyINE: String?, lean: Bool = false) async -> RefreshOutcome {
         // Drop cached snapshots for locations the user no longer tracks (and any long-stale leftover)
         // so the App Group cache stays bounded. Runs before the early-outs below so removed favourites
         // are cleaned up even when nothing needs fetching.
@@ -184,6 +199,7 @@ public enum AuraRefreshCore {
         // which isn't safe to call concurrently from multiple child tasks; they're folded into `firstError`
         // below in the same priority order this function always used.
         async let observationsLeg: ([StationObservation], Error?) = {
+            if lean { return ([], nil) }
             let rssMarker: Date? = alwaysFetch ? nil : (try? await client.observacionRssUpdated())
             guard observationDueFromMarker(storedPublished: SharedCache.lastObservationPublished,
                                            rssMarker: rssMarker,
@@ -204,11 +220,12 @@ public enum AuraRefreshCore {
         // Air quality comes from MITECO's national ICA feed (not AEMET), also one download for every
         // location. It never throws — an empty result on a miteco outage just leaves the card hidden and
         // never blocks the AEMET refresh.
-        async let airStationsLeg = MitecoAirQuality.stations()
+        async let airStationsLeg: [MitecoAirQuality.Station] = lean ? [] : MitecoAirQuality.stations()
 
         // Today's forecast max UV index — one AEMET call lists every provincial capital; resolved per
         // location by INE. A failure just leaves the UV card hidden.
         async let uvCitiesLeg: ([UVIForecast.City], Error?) = {
+            if lean { return ([], nil) }
             do { return (try await client.uviCities(dia: 0), nil) } catch { return ([], error) }
         }()
 
@@ -216,6 +233,7 @@ public enum AuraRefreshCore {
         // An area whose call fails is left out of the result (not set to `[]`), so its locations keep the
         // aviso they already had instead of flapping to "none" and re-notifying on the next good fetch.
         async let alertsLeg: ([String: [WeatherAlert]], Error?) = {
+            if lean { return ([:], nil) }
             var alertsByArea: [String: [WeatherAlert]] = [:]
             var firstAreaError: Error?
             for area in areas {
@@ -228,7 +246,7 @@ public enum AuraRefreshCore {
         // The Watch shows the primary location, so fetch its community bulletin once and attach it
         // there (only that snapshot carries the narrative — it's what the Watch renders).
         async let bulletinLeg: (ForecastBulletin?, Error?) = {
-            guard let comunidad = bulletinComunidad else { return (nil, nil) }
+            guard !lean, let comunidad = bulletinComunidad else { return (nil, nil) }
             do { return (try await client.comunidadBulletin(comunidad), nil) } catch { return (nil, error) }
         }()
 
@@ -300,15 +318,21 @@ public enum AuraRefreshCore {
             async let uvHourlyLeg = OpenMeteoUV.fetch(latitude: location.latitude,
                                                       longitude: location.longitude)
             let breakdown = await breakdownLeg
-            let airQuality = MitecoAirQuality.composite(from: breakdown)
-                ?? MitecoAirQuality.nearest(toLatitude: location.latitude,
-                                            longitude: location.longitude, in: airStations)
-            let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
+            // A lean pass fetched none of the above: lend UV and the aviso from the place's own recent copy or
+            // a same-province one, and air quality from its own copy only (it is station-specific).
+            let own = previous.flatMap { now.timeIntervalSince($0.updated) < leanReuseWindow ? $0 : nil }
+            let donor = lean ? (own ?? provinceDonor(for: location, now: now)) : nil
+            let airQuality = lean ? own?.airQuality
+                : (MitecoAirQuality.composite(from: breakdown)
+                    ?? MitecoAirQuality.nearest(toLatitude: location.latitude,
+                                                longitude: location.longitude, in: airStations))
+            let uvIndex = lean ? donor?.uvIndex : UVIndex.pick(ine: location.ine, in: uvCities)
             let uvHourly = await uvHourlyLeg
             let area = AvisoArea.forProvincia(location.provinciaCode)
-            let alert: WeatherAlert? = area.flatMap { alertsByArea[$0] }
-                .map { $0.topActive(forProvince: location.provinciaCode) }
-                ?? (area != nil ? previous?.alert : nil)   // area fetch failed: keep the last aviso
+            let alert: WeatherAlert? = lean ? donor?.alert
+                : (area.flatMap { alertsByArea[$0] }
+                    .map { $0.topActive(forProvince: location.provinciaCode) }
+                    ?? (area != nil ? previous?.alert : nil))   // area fetch failed: keep the last aviso
             let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
             let snapshot = WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
                                                 observed: observed, previousObserved: previous,
@@ -316,7 +340,7 @@ public enum AuraRefreshCore {
                                                 airQuality: airQuality, uvIndex: uvIndex,
                                                 uvHourly: uvHourly,
                                                 bulletin: bulletin,
-                                                keepPreviousBulletin: location.ine == primary?.ine && bulletinError != nil,
+                                                keepPreviousBulletin: location.ine == primary?.ine && (lean || bulletinError != nil),
                                                 timeZone: location.timeZone)
             // Record the before/after so the caller can notify. Only the primary location's event carries
             // `isPrimary`; the app acts only on that one (see `NotificationManager.evaluatePrimary`).

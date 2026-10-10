@@ -1,4 +1,5 @@
 import AuraKit
+import os
 import SwiftUI
 import UIKit
 import WidgetKit
@@ -55,7 +56,11 @@ struct WatchRootView: View {
     /// The place to show: the user's pick if it still has data, else the phone's active location, else the
     /// first cached snapshot. Resolved from the cache on every read so a new sync or a new pick re-points it.
     private func resolvedSnapshot() -> WeatherSnapshot? {
-        SharedCache.resolve(preferredINE: selectedINE)
+        let resolved = SharedCache.resolve(preferredINE: selectedINE)
+        let cached = SharedCache.read().map { "\($0.ine)@\($0.updated.formatted(date: .omitted, time: .standard))" }
+        Logger(subsystem: "com.mab.Aura.watchkitapp", category: "view").log(
+            "Resolve: selected '\(selectedINE, privacy: .public)' active '\(SharedCache.activeINE ?? "nil", privacy: .public)' cached [\(cached.joined(separator: ","), privacy: .public)] -> \(resolved?.ine ?? "none", privacy: .public) currentTemp \(String(describing: resolved?.currentTemp), privacy: .public) resolvedTemp \(String(describing: resolved?.resolved(at: Date()).currentTemp), privacy: .public) hourly \(resolved?.resolved(at: Date()).upcomingHours().count ?? -1, privacy: .public)")
+        return resolved
     }
 
     /// Refresh the shown selection and write the result back into `snapshot`. Shared by `.refreshable`
@@ -202,6 +207,11 @@ struct WatchRootView: View {
             // Catch-up for a Watch set up after the key was already entered on the phone: ask for it if we
             // have none. The phone replies over WatchConnectivity and `apiKeyDidUpdate` then kicks a fetch.
             WatchSync.shared.requestAPIKeyIfMissing()
+            // Own-location mode shows a place only this Watch fetches, so nothing else ever refreshes it:
+            // a copy left over from hours ago would sit there blank. Catch it up on open.
+            if currentMode, hasKey, AuraRefreshCore.isStale(snapshot) {
+                Task { await manualRefresh() }
+            }
         }
         .onChange(of: selectedINE) {
             snapshot = resolvedSnapshot()

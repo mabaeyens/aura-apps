@@ -122,7 +122,7 @@ enum WatchBackgroundRefresher {
             return
         }
 
-        let outcome = await AuraRefreshCore.refresh(locations: locations, onlyINE: ine)
+        let outcome = await AuraRefreshCore.refresh(locations: locations, onlyINE: ine, lean: true)
         bgLog.log("performRefresh fetched \(ine, privacy: .public), didUpdate=\(outcome.didUpdate, privacy: .public), error=\(outcome.errorMessage ?? "none", privacy: .public)")
         await MainActor.run {
             WidgetCenter.shared.reloadAllTimelines()

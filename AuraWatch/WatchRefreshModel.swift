@@ -50,14 +50,16 @@ final class WatchRefreshModel: ObservableObject {
         var locations = SharedLocations.read()
         if !locations.contains(where: { $0.ine == target.ine }) { locations.append(target) }
 
-        let outcome = await AuraRefreshCore.refresh(locations: locations, onlyINE: target.ine)
+        let outcome = await AuraRefreshCore.refresh(locations: locations, force: true, onlyINE: target.ine, lean: true)
         errorMessage = outcome.errorMessage
         Logger(subsystem: "com.mab.Aura.watchkitapp", category: "background")
             .log("Foreground refresh \(target.ine, privacy: .public): didUpdate \(outcome.didUpdate, privacy: .public), error \(outcome.errorMessage ?? "none", privacy: .public), backoff \(String(describing: SharedCache.refreshBackoffUntil), privacy: .public)")
 
         // Point both the app screen and the complication at the refreshed place. In current-location mode
         // the resolved town is the shown place; a favourite refresh keeps whatever was already shown.
-        if currentMode {
+        // Only when there is data to show for it: a failed fetch (rate limit, offline) must not repoint the
+        // screen and the complication at a place whose cached copy is hours old, which resolves to blanks.
+        if currentMode, outcome.didUpdate || !AuraRefreshCore.isStale(SharedCache.snapshot(forINE: target.ine)) {
             SharedCache.watchSelectedINE = target.ine
             SharedCache.activeINE = target.ine
         }
