@@ -886,11 +886,14 @@ public extension WeatherSnapshot {
         return nil
     }
 
+    /// Daily-block preference shared by the sky and wind pickers: whole day, then afternoon-leaning blocks.
+    private static let dailyBlockPreference = ["00-24", "12-24", "12", "06-12", "00-12"]
+
     /// The daytime sky code for a daily forecast block — prefers the whole-day/afternoon block so the
     /// days card shows a sun rather than a moon.
     private static func dailySky(_ dia: MunicipioForecast.Dia) -> String? {
         let blocks = dia.estadoCielo ?? []
-        for periodo in ["00-24", "12-24", "12", "06-12", "00-12"] {
+        for periodo in dailyBlockPreference {
             if let value = blocks.first(where: { $0.periodo == periodo })?.value, !value.isEmpty {
                 return value
             }
@@ -901,7 +904,7 @@ public extension WeatherSnapshot {
     /// The representative wind speed for a daily forecast block, km/h — same block preference as the sky.
     private static func dailyWind(_ dia: MunicipioForecast.Dia) -> Int? {
         let blocks = dia.viento ?? []
-        for periodo in ["00-24", "12-24", "12", "06-12", "00-12"] {
+        for periodo in dailyBlockPreference {
             if let speed = blocks.first(where: { $0.periodo == periodo })?.velocidad { return speed }
         }
         return blocks.compactMap { $0.velocidad }.max()

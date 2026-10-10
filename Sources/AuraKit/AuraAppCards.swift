@@ -143,8 +143,11 @@ public struct AuraForecastStack: View {
         if hasAir { sources.append("MITECO") }
         if hasHourlyUV { sources.append("Copernicus") }
         let list: String
-        if sources.count == 1 { list = sources[0] }
-        else { list = sources.dropLast().joined(separator: ", ") + " " + auraString("list.and") + " " + sources.last! }
+        if let last = sources.last, sources.count > 1 {
+            list = sources.dropLast().joined(separator: ", ") + " " + auraString("list.and") + " " + last
+        } else {
+            list = sources.joined()
+        }
         return auraString("attribution.madeWith", list)
     }
 

@@ -95,9 +95,10 @@ public struct AEMETClient: Sendable {
 
     private func requestEnvelope(path: String) async throws -> Envelope {
         guard !apiKey.isEmpty else { throw ClientError.missingAPIKey }
-        var comps = URLComponents(string: base + path)!
+        guard var comps = URLComponents(string: base + path) else { throw ClientError.invalidParameter(path) }
         comps.queryItems = [URLQueryItem(name: "api_key", value: apiKey)]
-        let data = try await perform(comps.url!)
+        guard let url = comps.url else { throw ClientError.invalidParameter(path) }
+        let data = try await perform(url)
         do {
             return try JSONDecoder().decode(Envelope.self, from: data)
         } catch {

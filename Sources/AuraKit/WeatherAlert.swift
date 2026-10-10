@@ -150,7 +150,6 @@ final class CAPParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didEndElement element: String, namespaceURI: String?,
                 qualifiedName: String?) {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let parent = stack.count >= 2 ? stack[stack.count - 2] : ""
         switch element {
         case "language": language = value
         case "event": event = value
@@ -171,7 +170,6 @@ final class CAPParser: NSObject, XMLParserDelegate {
         default:
             break
         }
-        _ = parent   // parent context is implicit via reset points; kept for clarity
         stack.removeLast()
     }
 

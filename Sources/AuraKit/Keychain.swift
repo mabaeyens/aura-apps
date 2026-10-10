@@ -18,12 +18,14 @@ public enum AuraKeychain {
     /// paste can carry a newline or space in the middle that end-trimming leaves in place. That
     /// corrupts the stored key and AEMET rejects it with a 401, so strip every whitespace character,
     /// not just the ends.
-    public static func setAPIKey(_ key: String) {
+    /// Returns false when the Keychain rejected the write, so a caller can tell the key was not saved.
+    @discardableResult
+    public static func setAPIKey(_ key: String) -> Bool {
         // A new (or removed) key voids any backoff earned by the old one.
         SharedCache.refreshBackoffUntil = nil
         let cleaned = key.filter { !$0.isWhitespace }
-        guard !cleaned.isEmpty else { delete(account: apiKeyAccount); return }
-        save(cleaned, account: apiKeyAccount)
+        guard !cleaned.isEmpty else { delete(account: apiKeyAccount); return true }
+        return save(cleaned, account: apiKeyAccount)
     }
 
     /// The stored AEMET API key, or nil if none has been set.
@@ -33,7 +35,7 @@ public enum AuraKeychain {
 
     // MARK: - Generic item access
 
-    private static func save(_ value: String, account: String) {
+    private static func save(_ value: String, account: String) -> Bool {
         let data = Data(value.utf8)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -53,8 +55,9 @@ public enum AuraKeychain {
             var insert = query
             insert[kSecValueData as String] = data
             insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            SecItemAdd(insert as CFDictionary, nil)
+            return SecItemAdd(insert as CFDictionary, nil) == errSecSuccess
         }
+        return status == errSecSuccess
     }
 
     private static func load(account: String) -> String? {

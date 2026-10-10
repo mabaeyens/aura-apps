@@ -166,10 +166,7 @@ public enum SharedCache {
     /// first cached entry. Reads the cache once. A nil or empty `preferredINE` skips straight to the active
     /// location (an unpinned widget, or the Watch before the user forces a place).
     public static func resolve(preferredINE: String?) -> WeatherSnapshot? {
-        let all = read()
-        if let ine = preferredINE, !ine.isEmpty, let s = all.first(where: { $0.ine == ine }) { return s }
-        if let active = activeINE, let s = all.first(where: { $0.ine == active }) { return s }
-        return all.first
+        complicationPick(from: read(), selectedINE: preferredINE, activeINE: activeINE)
     }
 
     /// The complication's pick from an already-read cache: the wrist's forced place, then the phone's active
