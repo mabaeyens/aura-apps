@@ -99,7 +99,7 @@ struct WatchRootView: View {
                 // crop the mountains, tree and river off the bottom of the tall art). `heroHorizon` pins a low
                 // dawn/dusk sun above the art's skyline so it rides the sky, not the scenery in front of it.
                 AuraSky(snapshot: snapshot?.resolved(at: now), now: now, heroImage: heroImage(now: now), heroAnchor: .bottom,
-                        heroHorizon: HeroBackground.heroHorizon(HeroBackground.Family(storage: heroFamily)),
+                        heroHorizon: HeroBackground.watchHeroHorizon(HeroBackground.Family(storage: heroFamily)),
                         heroAspect: HeroBackground.heroAspect).ignoresSafeArea()
                 if let snapshot {
                     // Hero fills the wrist screen — clean sky + landscape, system clock in its top-right

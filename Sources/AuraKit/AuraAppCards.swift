@@ -2434,7 +2434,7 @@ public struct AuraBulletinCard: View {
         AuraCard(size: size) {
             VStack(alignment: .leading, spacing: size == .phone ? 9 : 6) {
                 if let phenomenon {
-                    Label(phenomenon, systemImage: "exclamationmark.triangle.fill")
+                    Label(BulletinText.flattened(phenomenon), systemImage: "exclamationmark.triangle.fill")
                         .auraFont(size == .phone ? 18 : 14, relativeTo: .title3, weight: .semibold)
                         .foregroundStyle(Palette.tempOrange)
                 }

@@ -170,8 +170,12 @@ public enum HeroBackground {
     /// at the near green-hill line, ignoring the peak) pinned the sun *into the mountains*. Pinning to just
     /// above the peak instead puts the low sun in the clear sky over the range, the way the cityscape reads.
     /// Day and night share a family's composition, so one value each.
+    /// Re-measured against the per-condition wide grid (the art that now ships in the widgets and on iPad):
+    /// the landscape peak tops out near 0.68 and the edge terrain sits at ~0.76, so 0.72. The old 0.50 was
+    /// measured on the retired conditionless bases and pinned the sun far too high on short, wide canvases
+    /// (the XL widget started and ended its arc near the top edge).
     public static func wideBaseHorizon(_ family: Family) -> CGFloat {
-        family == .cityscape ? 0.84 : 0.50
+        family == .cityscape ? 0.84 : 0.72
     }
 
     // MARK: Wide per-condition grid (iPad / widgets)
@@ -230,6 +234,15 @@ public enum HeroBackground {
     /// (Cityscape keeps its prior 0.60 until its art actually ships and can be checked the same way.)
     public static func heroHorizon(_ family: Family) -> CGFloat {
         family == .cityscape ? 0.60 : 0.68
+    }
+
+    /// The portrait horizon for the **Watch**, pinned to the art's highest point (peak / tallest rooftop)
+    /// instead of the frame-edge skyline `heroHorizon` uses. The wrist screen is near-square, so the
+    /// `.bottom` crop zooms the tall art and the sun's whole afternoon arc crosses the scenery; pinning to
+    /// the edge skyline left the disc sitting in front of the mountain slope. The peak sits at ~0.59 of the
+    /// landscape art, so 0.58 keeps the disc in clear sky at every hour.
+    public static func watchHeroHorizon(_ family: Family) -> CGFloat {
+        family == .cityscape ? 0.56 : 0.58
     }
 
     /// The wide base **name** for a snapshot's day/night state (the string counterpart of

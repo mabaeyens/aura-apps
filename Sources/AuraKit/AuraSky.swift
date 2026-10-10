@@ -130,7 +130,11 @@ public struct AuraSky: View {
         // washes some stars out. Only meaningful at night; illumination pinned to 0 by day so the sun
         // path is untouched.
         let moonFraction = MoonPhaseMath.fraction(for: now)
-        let moonIllum = path.isNight ? MoonPhaseMath.illumination(fraction: moonFraction) : 0
+        // The night arc is a stand-in for the moon's path, so it would draw a moon even while the real one
+        // is below the horizon (e.g. 07:00 with moonset at 00:19). When the location is known, check the
+        // true altitude and drop the disc, its glow and the star wash entirely while the moon is down.
+        let moonVisible = !path.isNight || Self.moonIsUp(at: now, snapshot: snapshot)
+        let moonIllum = path.isNight && moonVisible ? MoonPhaseMath.illumination(fraction: moonFraction) : 0
         let moonWaxing = MoonPhaseMath.waxing(fraction: moonFraction)
 
         GeometryReader { geo in
@@ -194,7 +198,7 @@ public struct AuraSky: View {
                                endRadius: glowRadius)
 
                 // 3.5 — the light source itself: the defined sun/moon disc and its corona (see `lightDisc`).
-                lightDisc(discR: discR, occlusion: veil, hidesDisc: hidesDisc, path: path,
+                lightDisc(discR: discR, occlusion: veil, hidesDisc: hidesDisc || !moonVisible, path: path,
                           glow: sun, discPoint: discPoint, size: size,
                           moonIllum: moonIllum, moonWaxing: moonWaxing)
 
@@ -292,6 +296,17 @@ public struct AuraSky: View {
                     .blur(radius: discBlur)
             }
         }
+    }
+
+    // MARK: Is the moon above the horizon?
+
+    /// Whether the moon is above the horizon at `date` for the snapshot's location, using the same rise/set
+    /// altitude threshold as `LunarTimes`. True when the location is unknown, so the old behaviour (an
+    /// always-present night moon) is the fallback rather than a moonless sky.
+    static func moonIsUp(at date: Date, snapshot: WeatherSnapshot?) -> Bool {
+        guard let lat = snapshot?.latitude, let lon = snapshot?.longitude else { return true }
+        let pos = LunarPosition(date: date)
+        return pos.altitude(latitude: lat, longitude: lon, at: date) - (0.7275 * pos.parallax - 0.5667) >= 0
     }
 
     // MARK: Pinning the light to the art's horizon
