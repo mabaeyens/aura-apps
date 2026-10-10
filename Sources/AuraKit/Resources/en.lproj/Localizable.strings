@@ -334,6 +334,7 @@
 "today.scroll.a11y"          = "Swipe to see more";
 "today.needKey"              = "Add your AEMET key in Settings to see the data.";
 "today.loadError"            = "Couldn’t fetch the data.";
+"today.refreshFailed"         = "Couldn’t refresh. Showing data from %@.";
 
 /* Settings screen (opendata.aemet.es is a URL; the aviso level colours in the footer are prose) */
 "settings.apiKey.placeholder"    = "AEMET key";

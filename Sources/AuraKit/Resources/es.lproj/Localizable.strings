@@ -334,6 +334,7 @@
 "today.scroll.a11y"          = "Desliza para ver más";
 "today.needKey"              = "Añade tu clave de AEMET en Ajustes para ver los datos.";
 "today.loadError"            = "No se pudieron obtener los datos.";
+"today.refreshFailed"         = "No se pudo actualizar. Datos de %@.";
 
 /* Settings screen (opendata.aemet.es is a URL; the aviso level colours in the footer are prose) */
 "settings.apiKey.placeholder"    = "Clave de AEMET";

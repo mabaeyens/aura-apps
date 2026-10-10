@@ -55,6 +55,8 @@ struct TodayView: View {
     @State private var news: [NewsItem] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    /// The last refresh failed while an older snapshot is still on screen: say so instead of leaving only the stamp.
+    @State private var refreshFailedWithCache = false
     /// Which location `snapshot` belongs to, and when it was read — so a tab re-appearance or app
     /// foreground doesn't trigger a refresh when the on-screen data is already recent.
     @State private var loadedINE: String?
@@ -302,6 +304,10 @@ struct TodayView: View {
                     if !store.apiKeyPresent { keyBanner }
 
                     if let snap = displaySnapshot {
+                        if refreshFailedWithCache, snap.freshness(at: displayNow) != .fresh {
+                            notice { Label(auraString("today.refreshFailed", AuraTime.stamp(snap.updated, now: displayNow)),
+                                           systemImage: "wifi.slash") }
+                        }
                         AuraForecastStack(snapshot: snap, size: .phone, now: displayNow,
                                           radar: radar, surface: surface, national: national, news: news,
                                           heroFillHeight: geo.size.height)
@@ -362,6 +368,7 @@ struct TodayView: View {
         if force { lastForcedAt = Date() }
         isLoading = true
         errorMessage = nil
+        refreshFailedWithCache = false
         // A manual pull-to-refresh (force) refreshes only the place on screen; a passive load (launch,
         // returning to foreground) fills every stale favourite. Either way the shared national feeds are
         // fetched once and the whole favourites list is pruned/watch-synced. Read this location's snapshot
@@ -388,6 +395,7 @@ struct TodayView: View {
             SharedCache.activeINE = location.ine
             WidgetCenter.shared.reloadAllTimelines()
             errorMessage = nil
+            refreshFailedWithCache = refreshError != nil
             await loadRadar(for: location, force: force)
             await loadSurface()
             await loadNational(force: force)
