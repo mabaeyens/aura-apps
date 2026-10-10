@@ -38,13 +38,16 @@ struct AuraComplicationProvider: TimelineProvider {
         let now = Date()
         let cal = Calendar.current
         // Hourly entries for the next 12 hours, all off the same snapshot: each redraws with its own
-        // `date` as "now", so the time-sensitive faces — UV-now, the sun countdown — track the hour
-        // without waiting on the next iPhone sync. WidgetKit refreshes the whole set after the window.
+        // `date` as "now", so the time-sensitive faces (UV-now, the sun countdown) track the hour without
+        // waiting on the next iPhone sync. Entries sit on the hour (the first is now, the rest at the top
+        // of each following hour), matching the phone widgets' hour-aligned timeline so a face never lags
+        // the Lock Screen by up to 59 minutes. WidgetKit refreshes the whole set after the window.
+        let topOfHour = cal.dateInterval(of: .hour, for: now)?.start ?? now
         let entries = (0..<12).map { h -> AuraComplicationEntry in
-            let d = cal.date(byAdding: .hour, value: h, to: now) ?? now.addingTimeInterval(Double(h) * 3600)
+            let d = h == 0 ? now : (cal.date(byAdding: .hour, value: h, to: topOfHour) ?? now.addingTimeInterval(Double(h) * 3600))
             return AuraComplicationEntry(date: d, snapshot: snapshot)
         }
-        let next = cal.date(byAdding: .hour, value: 12, to: now) ?? now.addingTimeInterval(12 * 3600)
+        let next = cal.date(byAdding: .hour, value: 12, to: topOfHour) ?? now.addingTimeInterval(12 * 3600)
         completion(Timeline(entries: entries, policy: .after(next)))
     }
 }

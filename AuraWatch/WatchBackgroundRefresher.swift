@@ -25,9 +25,18 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 WatchBackgroundRefresher.bgLog.log("Received WKApplicationRefreshBackgroundTask")
                 // Arm the next pass before doing any work, so one failed refresh never breaks the chain.
                 WatchBackgroundRefresher.scheduleNext()
-                Task {
+                // watchOS can cut the budget short; if it does, cancel the fetch and complete right away so
+                // an overrun doesn't count against the app's future background allowance. Completion is
+                // idempotent because the finish path and the expiry path can both reach it.
+                let completion = TaskCompletion(refreshTask)
+                let work = Task {
                     await WatchBackgroundRefresher.performRefresh()
-                    refreshTask.setTaskCompletedWithSnapshot(false)
+                    completion.finish()
+                }
+                refreshTask.expirationHandler = {
+                    WatchBackgroundRefresher.bgLog.error("Background refresh expired before finishing; cancelling")
+                    work.cancel()
+                    completion.finish()
                 }
             default:
                 // Snapshot, connectivity, URLSession and any other task type: complete promptly so watchOS
@@ -36,6 +45,20 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate {
                 task.setTaskCompletedWithSnapshot(false)
             }
         }
+    }
+}
+
+/// Completes a background task at most once, from whichever of "work finished" and "budget expired" comes first.
+private final class TaskCompletion: @unchecked Sendable {
+    private let task: WKRefreshBackgroundTask
+    private let lock = NSLock()
+    private var done = false
+    init(_ task: WKRefreshBackgroundTask) { self.task = task }
+    func finish() {
+        lock.lock(); defer { lock.unlock() }
+        guard !done else { return }
+        done = true
+        task.setTaskCompletedWithSnapshot(false)
     }
 }
 

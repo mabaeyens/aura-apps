@@ -239,31 +239,48 @@ public extension WeatherSnapshot {
         // station observation fill in rather than blanking, gated on the same `observationIsFresh` the
         // observation card uses, so the hero borrows a reading only while that reading is on screen. Then
         // the frozen scalar, then nil. The observation never overrides an available forecast.
+        //
+        // Exhausted strip: when every stored slot is already past (the cache is more than a strip old — a
+        // day or two offline), nothing in it describes *now*, and the frozen scalars below are just as old.
+        // Show "—" rather than an old temperature dressed up as current; only a fresh observation may fill
+        // the hero. Everything else current-hour goes nil for the same reason.
+        let exhausted = !hours.isEmpty && strip.isEmpty
+        func stale<T>(_ value: T?) -> T? { exhausted ? nil : value }
         let heroTemp = first(\.temp)
             ?? (observationIsFresh(now: now) ? observedTemp : nil)
-            ?? currentTemp
+            ?? stale(currentTemp)
+        // Today's high/low/humidity follow the *displayed* day: past midnight the stored scalars still hold
+        // yesterday's, so re-pick them from the day entry that matches `now` and drop days already gone. When
+        // the list has nothing for today (a cache older than its outlook) the scalars would be wrong, so nil.
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = timeZone
+        let startOfToday = cal.startOfDay(for: now)
+        let liveDays = days.filter { cal.startOfDay(for: $0.date) >= startOfToday }
+        let todayEntry = days.first { cal.isDate($0.date, inSameDayAs: now) }
+        let dayMin = days.isEmpty ? tempMin : todayEntry?.min
+        let dayMax = days.isEmpty ? tempMax : todayEntry?.max
+        let dayHumidity = days.isEmpty ? humedadMax : todayEntry?.humidityMax
         return WeatherSnapshot(
             ine: ine, localidad: localidad, provincia: provincia,
-            tempMin: tempMin, tempMax: tempMax, humedadMax: humedadMax,
+            tempMin: dayMin, tempMax: dayMax, humedadMax: dayHumidity,
             currentTemp: heroTemp,
             observedTemp: observedTemp, observedStation: observedStation,
             observedStationDistanceKm: observedStationDistanceKm, observedMetrics: observedMetrics,
             observedReading: observedReading, observedAt: observedAt,
-            currentSky: first(\.sky) ?? currentSky,
-            currentSkyText: first(\.skyText) ?? currentSkyText,
-            currentHumidity: first(\.humidity) ?? currentHumidity,
-            currentPrecipProb: first(\.precipProb) ?? currentPrecipProb,
-            currentPrecipMm: first(\.precipMm) ?? currentPrecipMm,
-            currentSnowMm: first(\.snowMm) ?? currentSnowMm,
-            currentFeelsLike: first(\.feelsLike) ?? currentFeelsLike,
-            currentStormProb: first(\.stormProb) ?? currentStormProb,
-            windSpeed: first(\.windSpeed) ?? windSpeed,
-            windDirection: first(\.windDirection) ?? windDirection,
-            windGust: first(\.windGust) ?? windGust,
+            currentSky: first(\.sky) ?? stale(currentSky),
+            currentSkyText: first(\.skyText) ?? stale(currentSkyText),
+            currentHumidity: first(\.humidity) ?? stale(currentHumidity),
+            currentPrecipProb: first(\.precipProb) ?? stale(currentPrecipProb),
+            currentPrecipMm: first(\.precipMm) ?? stale(currentPrecipMm),
+            currentSnowMm: first(\.snowMm) ?? stale(currentSnowMm),
+            currentFeelsLike: first(\.feelsLike) ?? stale(currentFeelsLike),
+            currentStormProb: first(\.stormProb) ?? stale(currentStormProb),
+            windSpeed: first(\.windSpeed) ?? stale(windSpeed),
+            windDirection: first(\.windDirection) ?? stale(windDirection),
+            windGust: first(\.windGust) ?? stale(windGust),
             airQuality: airQuality, uvIndex: uvIndex, uvHourly: uvHourly,
             sunrise: sunrise, sunset: sunset,
             latitude: latitude, longitude: longitude,
-            days: days, hours: hours, alert: alert,
+            days: liveDays, hours: hours, alert: alert,
             bulletin: bulletin, bulletinPhenomenon: bulletinPhenomenon,
             updated: updated)
     }
@@ -317,7 +334,7 @@ public extension WeatherSnapshot {
     /// The hourly strip re-anchored to `now`: hours already past are dropped so the strip always begins
     /// at the *current* hour, even when the snapshot was built earlier (or served from cache hours or a
     /// day later). The current hour itself is kept as the first column. If the snapshot is so old nothing
-    /// remains ahead of `now`, the stored strip is returned unchanged.
+    /// remains ahead of `now`, the strip is empty (callers show "—" rather than a stale hour).
     func upcomingHours(now: Date = Date(),
                        timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current) -> [HourSlot] {
         guard !hours.isEmpty else { return hours }
@@ -325,7 +342,7 @@ public extension WeatherSnapshot {
         cal.timeZone = timeZone
         let hourStart = cal.dateInterval(of: .hour, for: now)?.start ?? now
         let kept = datedHours(timeZone: timeZone).filter { $0.date >= hourStart }.map(\.slot)
-        return kept.isEmpty ? hours : kept
+        return kept
     }
 
     /// Absolute instants for every upcoming hour in the strip, past hours dropped exactly like
@@ -463,6 +480,7 @@ public extension WeatherSnapshot {
                      uvIndex: UVIndex? = nil,
                      uvHourly: [UVHourSlot]? = nil,
                      bulletin: ForecastBulletin? = nil,
+                     keepPreviousBulletin: Bool = false,
                      timeZone: TimeZone = TimeZone(identifier: "Europe/Madrid") ?? .current,
                      now: Date = Date()) -> WeatherSnapshot {
         let today = daily.prediccion.dia.first
@@ -587,8 +605,11 @@ public extension WeatherSnapshot {
             days: days,
             hours: hoursStrip,
             alert: alert,
-            bulletin: bulletin?.texto,
-            bulletinPhenomenon: bulletin?.fenomenoSignificativo,
+            // A failed bulletin call (`keepPreviousBulletin`) keeps the last one rather than wiping it, which
+            // would also make the next good fetch look like a brand-new forecast.
+            bulletin: bulletin?.texto ?? (keepPreviousBulletin ? previousObserved?.bulletin : nil),
+            bulletinPhenomenon: bulletin?.fenomenoSignificativo
+                ?? (keepPreviousBulletin ? previousObserved?.bulletinPhenomenon : nil),
             updated: now
         )
     }

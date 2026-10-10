@@ -22,6 +22,8 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     private let snapshotsKey = "snapshots"    // all favourites' snapshots, so the Watch can switch instantly
     private let locationsKey = "locations"    // the favourites menu (names/coords) for the Watch's picker
     private let activeKey = "activeINE"        // which favourite the phone considers active
+    private let sentAtKey = "sentAt"          // when the phone built this context, so the Watch applies each push once
+    private let appliedSentAtDefaultsKey = "AuraKit.watchAppliedSentAt"
     private let clockKey = "use24h"            // the phone's 24/12-hour choice, mirrored onto the Watch
 
     // Option A key handoff (iPhone Keychain → Watch Keychain). The Watch can't read the phone's
@@ -57,6 +59,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         var context: [String: Any] = [payloadKey: data]
         context[activeKey] = snapshot.ine
         context[clockKey] = AuraTime.use24h
+        context[sentAtKey] = Date().timeIntervalSince1970
         try? session.updateApplicationContext(context)
     }
 
@@ -64,7 +67,8 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     /// favourite's cached snapshot, so the Watch shows the right place by default *and* can switch to any
     /// favourite that has data without waiting for the phone. Coalesced by the system like the single send.
     public func send(active: WeatherSnapshot, favorites: [Location]) {
-        guard WCSession.isSupported() else { return }
+        // No Watch session on this device (iPad): record the stamp anyway so "newer than the last push" settles.
+        guard WCSession.isSupported() else { SharedCache.lastWatchPushedUpdated = active.updated; return }
         let session = WCSession.default
         guard session.activationState == .activated else { return }
 
@@ -84,6 +88,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         if let d = try? Self.encoder.encode(snaps) { context[snapshotsKey] = d }
         if let d = try? Self.encoder.encode(favorites) { context[locationsKey] = d }
         try? session.updateApplicationContext(context)
+        SharedCache.lastWatchPushedUpdated = active.updated
     }
 
     // MARK: - Option A key handoff
@@ -166,6 +171,15 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     }
 
     private func cache(_ context: [String: Any]) {
+        // Apply each phone push once. `activationDidComplete` replays the last received context at every
+        // launch, which would otherwise overwrite the active place, the favourites menu and any newer
+        // snapshot the Watch fetched on its own with hours-old phone data. Contexts from before the stamp
+        // existed carry none and apply as before.
+        if let sentAt = context[sentAtKey] as? Double {
+            let defaults = SharedCache.groupDefaults
+            guard sentAt > (defaults?.double(forKey: appliedSentAtDefaultsKey) ?? 0) else { return }
+            defaults?.set(sentAt, forKey: appliedSentAtDefaultsKey)
+        }
         // Remember which location the phone considers active, so the Watch can default to it.
         if let active = context[activeKey] as? String {
             SharedCache.groupDefaults?.set(active, forKey: SharedCache.activeINEKey)
@@ -207,6 +221,11 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         if !snapshot.hasCurrentHourData,
            let existing = SharedCache.snapshot(forINE: snapshot.ine),
            existing.hasCurrentHourData {
+            return
+        }
+        // Never go backwards: a snapshot the Watch built itself (standalone fetch) that is newer than the
+        // phone's stays.
+        if let existing = SharedCache.snapshot(forINE: snapshot.ine), existing.updated > snapshot.updated {
             return
         }
         SharedCache.upsert(snapshot)

@@ -122,7 +122,7 @@
 "attribution.madeWith" = "Elaborado con datos de %@";
 
 /* Last-updated footer, shared by iPhone and Watch (AuraForecastStack) */
-"stack.updatedAt" = "Actualizado a las %@";
+"stack.updatedAt" = "Actualizado %@";
 
 /* Relative time */
 "rel.now"      = "ahora";

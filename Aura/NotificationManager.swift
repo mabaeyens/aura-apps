@@ -63,28 +63,41 @@ enum NotificationManager {
         requestAuthorization()
     }
 
-    /// Compare the previously cached snapshot against the new one for the active location and post
-    /// notifications per the user's setting. Call this for the primary location only.
-    static func evaluatePrimary(old: WeatherSnapshot?, new: WeatherSnapshot) {
-        let level = NotificationLevel.current
-        guard level != .off else { return }
+    /// Compare the cached primary snapshot against what the user was last told (the per-location baseline in
+    /// `SharedCache`) and post notifications per the user's setting. Call this for the primary location only,
+    /// on every refresh pass whether or not it wrote anything: a widget's refresh can land new data in the
+    /// shared cache without the app seeing it, and the baseline (not an in-process old/new pair) is what
+    /// still lets that change notify exactly once. The first evaluation for a location only records the
+    /// baseline, so enabling notifications never fires for what was already showing.
+    static func evaluatePrimary(_ new: WeatherSnapshot) {
+        let ine = new.ine
+        let seen = SharedCache.hasNotifiedBaseline(forINE: ine)
+        let oldAlertKey = SharedCache.notifiedAlertKey(forINE: ine)
+        let oldBulletin = SharedCache.notifiedBulletin(forINE: ine)
+        let newAlertKey = new.alert.map { "\($0.id)|\($0.level.rawValue)" }
 
-        if level.wantsAvisos {
-            evaluateAviso(old: old?.alert, new: new.alert, localidad: new.localidad, ine: new.ine)
+        let level = NotificationLevel.current
+        if seen, level.wantsAvisos {
+            evaluateAviso(oldKey: oldAlertKey, new: new.alert, newKey: newAlertKey,
+                          localidad: new.localidad, ine: ine)
         }
-        if level.wantsForecasts {
-            evaluateForecast(old: old?.bulletin, new: new.bulletin,
-                             phenomenon: new.bulletinPhenomenon, localidad: new.localidad, ine: new.ine)
+        if seen, level.wantsForecasts {
+            evaluateForecast(old: oldBulletin, new: new.bulletin,
+                             phenomenon: new.bulletinPhenomenon, localidad: new.localidad, ine: ine)
         }
+        // A missing bulletin (failed call, or a pass that never fetched one) must not erase the baseline:
+        // that would make the next good fetch look like a new forecast.
+        SharedCache.setNotified(alertKey: newAlertKey,
+                                bulletin: new.bulletin ?? oldBulletin, forINE: ine)
+        SharedCache.markNotifiedBaseline(forINE: ine)
     }
 
     /// Naranja or rojo only, and only when it is genuinely new: a different warning, or an upgrade of the
-    /// one already showing. (The event title embeds the level, so an upgrade changes the alert id too;
-    /// the level check is a belt-and-braces second signal.)
-    private static func evaluateAviso(old: WeatherAlert?, new: WeatherAlert?, localidad: String, ine: String) {
-        guard let new, new.level.rank >= WeatherAlert.Level.naranja.rank else { return }
-        let isNew = old.map { $0.id != new.id || $0.level != new.level } ?? true
-        guard isNew else { return }
+    /// one already showing. (The key embeds the id and the level, so either changing makes it new.)
+    private static func evaluateAviso(oldKey: String?, new: WeatherAlert?, newKey: String?,
+                                      localidad: String, ine: String) {
+        guard let new, let newKey, new.level.rank >= WeatherAlert.Level.naranja.rank,
+              oldKey != newKey else { return }
 
         post(id: "aviso-\(ine)",
              title: auraString("notif.aviso.title", new.level.rawValue, localidad),

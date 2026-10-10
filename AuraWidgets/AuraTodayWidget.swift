@@ -71,7 +71,11 @@ private func refreshIfStale(preferredINE: String?, isPreview: Bool) async {
     guard let targetINE = preferredINE ?? SharedCache.activeINE ?? favorites.first?.ine,
           favorites.contains(where: { $0.ine == targetINE }),
           AuraRefreshCore.isStale(SharedCache.snapshot(forINE: targetINE)) else { return }
-    _ = await AuraRefreshCore.refresh(locations: favorites, onlyINE: targetINE)
+    let outcome = await AuraRefreshCore.refresh(locations: favorites, onlyINE: targetINE)
+    // The winner of the cross-process lock reloads everyone: a sibling widget that lost the race (or
+    // rendered before this write landed) is otherwise left on the old cache until its own next hourly
+    // reload. The reload re-enters `refreshIfStale`, finds the cache fresh and stops.
+    if outcome.didUpdate { WidgetCenter.shared.reloadAllTimelines() }
 }
 
 /// Reads the shared cache the app fills, for the location the widget is configured to show, topping it up

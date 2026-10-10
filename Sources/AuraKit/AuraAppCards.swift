@@ -220,7 +220,7 @@ public struct AuraForecastStack: View {
                 .padding(.top, size == .phone ? 4 : 2)
             // When this snapshot was actually built, so a stuck or stale screen (Watch away from the
             // phone, a background refresh that silently failed) is visible instead of looking current.
-            Text(auraString("stack.updatedAt", AuraTime.hhmm(snapshot.updated)))
+            Text(auraString("stack.updatedAt", AuraTime.stamp(snapshot.updated)))
                 .auraFont(size == .phone ? 12 : 9, relativeTo: .caption, weight: .regular)
                 .foregroundStyle(.white.opacity(0.45))
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -2437,6 +2437,7 @@ public struct AuraBulletinCard: View {
                     Label(BulletinText.flattened(phenomenon), systemImage: "exclamationmark.triangle.fill")
                         .auraFont(size == .phone ? 18 : 14, relativeTo: .title3, weight: .semibold)
                         .foregroundStyle(Palette.tempOrange)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(Array(BulletinText.sentences(text).enumerated()), id: \.offset) { _, line in
                     Text(line)

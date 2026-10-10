@@ -64,6 +64,54 @@ public enum SharedCache {
         }
     }
 
+    /// What the user was last told about, per location: the aviso (`id|level`) and the bulletin text. The
+    /// notification layer compares the *cache* against this baseline instead of a refresh's old-vs-new, so a
+    /// change written by another process (a widget's refresh) is still noticed by the app's next pass, and a
+    /// still-active aviso never re-notifies. Nil until the first evaluation for that location.
+    public static func notifiedAlertKey(forINE ine: String) -> String? {
+        groupDefaults?.string(forKey: "AuraKit.notified.alert.\(ine)")
+    }
+    public static func notifiedBulletin(forINE ine: String) -> String? {
+        groupDefaults?.string(forKey: "AuraKit.notified.bulletin.\(ine)")
+    }
+    public static func setNotified(alertKey: String?, bulletin: String?, forINE ine: String) {
+        for (key, value) in [("alert", alertKey), ("bulletin", bulletin)] {
+            let full = "AuraKit.notified.\(key).\(ine)"
+            if let value { groupDefaults?.set(value, forKey: full) } else { groupDefaults?.removeObject(forKey: full) }
+        }
+    }
+    /// True once a baseline exists for the location (distinguishes "never evaluated" from "nothing to report").
+    public static func hasNotifiedBaseline(forINE ine: String) -> Bool {
+        groupDefaults?.object(forKey: "AuraKit.notified.seen.\(ine)") != nil
+    }
+    public static func markNotifiedBaseline(forINE ine: String) {
+        groupDefaults?.set(true, forKey: "AuraKit.notified.seen.\(ine)")
+    }
+
+    /// Until when passive refreshes (widget reloads, background passes, foreground opens) should not touch
+    /// AEMET: set after a 429 (short) or a rejected key (longer) so a rate-limited or revoked key isn't
+    /// hammered on every hourly widget reload. A forced pull-to-refresh ignores it. Shared across the app and
+    /// the widget extension through the App Group.
+    public static let refreshBackoffUntilKey = "AuraKit.refreshBackoffUntil"
+    public static var refreshBackoffUntil: Date? {
+        get { groupDefaults?.object(forKey: refreshBackoffUntilKey) as? Date }
+        set {
+            if let newValue { groupDefaults?.set(newValue, forKey: refreshBackoffUntilKey) }
+            else { groupDefaults?.removeObject(forKey: refreshBackoffUntilKey) }
+        }
+    }
+
+    /// The `updated` stamp of the primary snapshot last pushed to the Watch. A widget refresh writes newer
+    /// data without the app seeing `didUpdate`; comparing against this lets the app's next pass push it.
+    public static let lastWatchPushedUpdatedKey = "AuraKit.lastWatchPushedUpdated"
+    public static var lastWatchPushedUpdated: Date? {
+        get { groupDefaults?.object(forKey: lastWatchPushedUpdatedKey) as? Date }
+        set {
+            if let newValue { groupDefaults?.set(newValue, forKey: lastWatchPushedUpdatedKey) }
+            else { groupDefaults?.removeObject(forKey: lastWatchPushedUpdatedKey) }
+        }
+    }
+
     /// When the surface analysis chart was last successfully fetched. The chart is reissued every ~12h
     /// (00/12 UTC), so `SurfaceAnalysisService` re-fetches only when this marker is older than 12h (or the
     /// disk cache is empty), keeping the AEMET request budget flat across repeated app opens. App-process

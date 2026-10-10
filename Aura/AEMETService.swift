@@ -31,7 +31,7 @@ enum AEMETService {
     @discardableResult
     static func refreshAllForWidgets(_ locations: [Location], force: Bool = false,
                                      onlyINE: String? = nil) async -> String? {
-        await refreshGate.run { await performRefresh(locations, force: force, onlyINE: onlyINE) }
+        await refreshGate.run(force: force) { await performRefresh(locations, force: force, onlyINE: onlyINE) }
     }
 
     // MARK: - Background refresh
@@ -80,18 +80,20 @@ enum AEMETService {
         // side effects the core can't (notifications, widget reload, Watch push).
         let outcome = await AuraRefreshCore.refresh(locations: locations, force: force, onlyINE: onlyINE)
 
-        // Only the active location notifies. The core captured old-vs-new before each upsert, so a
-        // genuinely new aviso or an updated forecast fires exactly once.
-        for event in outcome.events where event.isPrimary {
-            NotificationManager.evaluatePrimary(old: event.old, new: event.new)
-        }
+        // Only the active location notifies, judged against what the user was last told (a per-location
+        // baseline in the shared cache) rather than this run's old/new pair, and on every pass: a widget's
+        // refresh can land a new aviso in the cache while the app sees a fresh location and `didUpdate` false.
+        let primarySnapshot = locations.first.flatMap { SharedCache.snapshot(forINE: $0.ine) }
+        if let primarySnapshot { NotificationManager.evaluatePrimary(primarySnapshot) }
 
-        if outcome.didUpdate {
+        // The cache can be newer than the last Watch push for the same reason, so push on that too.
+        let newerThanWatch = primarySnapshot.map { $0.updated > (SharedCache.lastWatchPushedUpdated ?? .distantPast) } ?? false
+        if outcome.didUpdate || newerThanWatch {
             WidgetCenter.shared.reloadAllTimelines()
             // Keep the Watch fed even if the user never opens "Hoy": push the primary location as active,
             // plus the whole favourites menu and their snapshots so the Watch can switch places on its own.
-            if let primary = locations.first, let snapshot = SharedCache.snapshot(forINE: primary.ine) {
-                WatchSync.shared.send(active: snapshot, favorites: locations)
+            if let primarySnapshot {
+                WatchSync.shared.send(active: primarySnapshot, favorites: locations)
             }
         }
         return outcome.errorMessage
@@ -103,16 +105,29 @@ enum AEMETService {
 }
 
 /// Serializes refreshes: the first caller runs the work; concurrent callers await that same run and
-/// share its result, so overlapping triggers never fan out into duplicate AEMET requests.
+/// share its result, so overlapping triggers never fan out into duplicate AEMET requests. A *forced*
+/// caller (pull-to-refresh) that lands on a passive run in flight waits for it, then runs its own: the
+/// passive run honours the staleness gate and may not fetch the place the user just asked about.
 private actor RefreshGate {
     private var current: Task<String?, Never>?
+    private var currentForce = false
 
-    func run(_ operation: @Sendable @escaping () async -> String?) async -> String? {
-        if let current { return await current.value }
-        let task = Task { await operation() }
+    func run(force: Bool, _ operation: @Sendable @escaping () async -> String?) async -> String? {
+        if let running = current {
+            let result = await running.value
+            // The finishing task clears `current` itself before it completes, so by now a forced waiter can
+            // start its own run (or join whichever run has started since).
+            return force && !currentForce ? await run(force: true, operation) : result
+        }
+        currentForce = force
+        let task = Task { [self] in
+            let result = await operation()
+            await clear()
+            return result
+        }
         current = task
-        let result = await task.value
-        current = nil
-        return result
+        return await task.value
     }
+
+    private func clear() { current = nil }
 }

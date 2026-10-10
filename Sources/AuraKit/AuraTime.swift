@@ -31,6 +31,16 @@ public enum AuraTime {
         (use24h ? formatter24 : formatter12).string(from: date)
     }
 
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter(); f.locale = .autoupdatingCurrent; f.setLocalizedDateFormatFromTemplate("d MMM"); return f
+    }()
+
+    /// A freshness stamp: the bare time while it is from today, "8 oct 18:08" once it is from an earlier day,
+    /// so a stale cache (airplane mode, a revoked key) can't pass for current by showing only a clock time.
+    public static func stamp(_ date: Date, now: Date = Date()) -> String {
+        Calendar.current.isDate(date, inSameDayAs: now) ? hhmm(date) : "\(dayFormatter.string(from: date)) \(hhmm(date))"
+    }
+
     private static let weekdayFormatter: DateFormatter = {
         let f = DateFormatter(); f.locale = .autoupdatingCurrent; f.dateFormat = "EEE"; return f
     }()

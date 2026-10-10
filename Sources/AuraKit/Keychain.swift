@@ -19,6 +19,8 @@ public enum AuraKeychain {
     /// corrupts the stored key and AEMET rejects it with a 401, so strip every whitespace character,
     /// not just the ends.
     public static func setAPIKey(_ key: String) {
+        // A new (or removed) key voids any backoff earned by the old one.
+        SharedCache.refreshBackoffUntil = nil
         let cleaned = key.filter { !$0.isWhitespace }
         guard !cleaned.isEmpty else { delete(account: apiKeyAccount); return }
         save(cleaned, account: apiKeyAccount)

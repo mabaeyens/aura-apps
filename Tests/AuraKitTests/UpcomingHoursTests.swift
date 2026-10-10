@@ -68,17 +68,35 @@ final class UpcomingHoursTests: XCTestCase {
         XCTAssertEqual(strip.map(\.hour), Array(9...19))
     }
 
-    // Nothing left ahead of now (a two-day-old cache): return the stored strip rather than an empty one.
-    func testExhaustedStripFallsBackToStored() {
+    // Nothing left ahead of now (a two-day-old cache): the strip is empty and the hero shows "—"
+    // instead of a stale hour passing as current.
+    func testExhaustedStripIsEmptyAndHeroBlanks() {
         let built = at(DateComponents(year: 2026, month: 8, day: 19), 20)
         let hours = ([20, 21, 22, 23] + Array(0...19)).map {
             HourSlot(hour: $0, temp: 20, sky: "11", precipProb: 0)
         }
         let snap = WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
-                                   tempMin: 10, tempMax: 20, humedadMax: 50,
+                                   tempMin: 10, tempMax: 20, humedadMax: 50, currentTemp: 20,
                                    sunrise: nil, sunset: nil, hours: hours, updated: built)
-        let strip = snap.upcomingHours(now: at(DateComponents(year: 2026, month: 8, day: 21), 9),
-                                       timeZone: madrid)
-        XCTAssertEqual(strip.count, hours.count)
+        let now = at(DateComponents(year: 2026, month: 8, day: 21), 9)
+        XCTAssertTrue(snap.upcomingHours(now: now, timeZone: madrid).isEmpty)
+        XCTAssertNil(snap.resolved(at: now, timeZone: madrid).currentTemp)
+    }
+
+    // Past midnight the stored scalars still hold yesterday's high/low: resolved(at:) re-picks today's
+    // from the day list and drops days already gone.
+    func testResolvedRepicksTodaysHighLowAndDropsPastDays() {
+        let day1 = at(DateComponents(year: 2026, month: 8, day: 20), 0)
+        let day2 = at(DateComponents(year: 2026, month: 8, day: 21), 0)
+        let snap = WeatherSnapshot(ine: "28079", localidad: "Madrid", provincia: "Madrid",
+                                   tempMin: 10, tempMax: 20, humedadMax: 50,
+                                   sunrise: nil, sunset: nil,
+                                   days: [DaySnapshot(date: day1, min: 10, max: 20),
+                                          DaySnapshot(date: day2, min: 12, max: 31)],
+                                   updated: day1)
+        let r = snap.resolved(at: at(DateComponents(year: 2026, month: 8, day: 21), 1), timeZone: madrid)
+        XCTAssertEqual(r.tempMin, 12)
+        XCTAssertEqual(r.tempMax, 31)
+        XCTAssertEqual(r.days.count, 1)
     }
 }

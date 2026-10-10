@@ -127,6 +127,9 @@ public enum AuraRefreshCore {
         SharedCache.prune(keepINEs: Set(locations.map(\.ine)))
 
         guard let client = makeClient() else { return .noop }
+        // A recent 429 or rejected key parks passive refreshes (see `SharedCache.refreshBackoffUntil`); only
+        // a forced pull goes through, and a success below clears it.
+        if !force, let until = SharedCache.refreshBackoffUntil, until > Date() { return .noop }
         var firstError: String?
         func note(_ error: Error) { if firstError == nil { firstError = message(for: error) } }
 
@@ -162,7 +165,9 @@ public enum AuraRefreshCore {
         // distinct jobs: the RSS publish time drives fetch cadence (compared RSS-to-RSS), the freshest `fint`
         // drives the display gate and the TTL fallback — different clocks, never compared against each other.
         // Mirrors aura-android's `observationDueFromMarker` (unified-freshness spec).
-        let alwaysFetch = force || onlyINE != nil
+        // Only a forced pull skips the RSS gate. A widget reload also scopes to one place (`onlyINE`) but
+        // is a passive background pass: it must not download the national feed when nothing new is published.
+        let alwaysFetch = force
         let now = Date()
         let areas = Set(stale.compactMap { AvisoArea.forProvincia($0.provinciaCode) })
         let primary = locations.first
@@ -208,15 +213,14 @@ public enum AuraRefreshCore {
         }()
 
         // Fetch each distinct avisos area at most once, then resolve per location by province.
+        // An area whose call fails is left out of the result (not set to `[]`), so its locations keep the
+        // aviso they already had instead of flapping to "none" and re-notifying on the next good fetch.
         async let alertsLeg: ([String: [WeatherAlert]], Error?) = {
             var alertsByArea: [String: [WeatherAlert]] = [:]
             var firstAreaError: Error?
             for area in areas {
                 do { alertsByArea[area] = try await client.avisos(area: area) }
-                catch {
-                    if firstAreaError == nil { firstAreaError = error }
-                    alertsByArea[area] = []
-                }
+                catch { if firstAreaError == nil { firstAreaError = error } }
             }
             return (alertsByArea, firstAreaError)
         }()
@@ -238,9 +242,16 @@ public enum AuraRefreshCore {
         let (primaryBulletin, bulletinError) = await bulletinLeg
         if let bulletinError { note(bulletinError) }
 
+        // A rejected key or a rate limit won't clear by trying the next place: stop, and park passive
+        // refreshes so the next widget reload or background pass doesn't repeat the doomed calls.
+        let legErrors = [obsError, uvError, alertsError, bulletinError].compactMap { $0 }
+        var fatal = legErrors.first(where: Self.isAuthRejection) != nil
+        if fatal { SharedCache.refreshBackoffUntil = Date().addingTimeInterval(Self.authBackoff) }
+
         var events: [RefreshEvent] = []
         var didUpdate = false
         for location in stale {
+            if fatal { break }
             // Stop fetching the rest the moment the task is cancelled; whatever was already upserted still
             // stands, so a partial refresh isn't wasted.
             if Task.isCancelled { break }
@@ -258,7 +269,14 @@ public enum AuraRefreshCore {
             let daily: MunicipioForecast
             switch await dailyLeg {
             case .success(let value): daily = value
-            case .failure(let error): note(error); continue
+            case .failure(let error):
+                note(error)
+                if Self.isAuthRejection(error) {
+                    SharedCache.refreshBackoffUntil = Date().addingTimeInterval(Self.authBackoff); fatal = true
+                } else if case AEMETClient.ClientError.rateLimited = error {
+                    SharedCache.refreshBackoffUntil = Date().addingTimeInterval(Self.rateLimitBackoff); fatal = true
+                }
+                continue
             }
             let hourly = await hourlyLeg
             let observed = StationObservation.nearest(toLatitude: location.latitude,
@@ -283,9 +301,10 @@ public enum AuraRefreshCore {
                                             longitude: location.longitude, in: airStations)
             let uvIndex = UVIndex.pick(ine: location.ine, in: uvCities)
             let uvHourly = await uvHourlyLeg
-            let alert = AvisoArea.forProvincia(location.provinciaCode)
-                .flatMap { alertsByArea[$0] }?
-                .topActive(forProvince: location.provinciaCode)
+            let area = AvisoArea.forProvincia(location.provinciaCode)
+            let alert: WeatherAlert? = area.flatMap { alertsByArea[$0] }
+                .map { $0.topActive(forProvince: location.provinciaCode) }
+                ?? (area != nil ? previous?.alert : nil)   // area fetch failed: keep the last aviso
             let bulletin = location.ine == primary?.ine ? primaryBulletin : nil
             let snapshot = WeatherSnapshot.make(location: location, daily: daily, hourly: hourly,
                                                 observed: observed, previousObserved: previous,
@@ -293,6 +312,7 @@ public enum AuraRefreshCore {
                                                 airQuality: airQuality, uvIndex: uvIndex,
                                                 uvHourly: uvHourly,
                                                 bulletin: bulletin,
+                                                keepPreviousBulletin: location.ine == primary?.ine && bulletinError != nil,
                                                 timeZone: location.timeZone)
             // Record the before/after so the caller can notify. Only the primary location's event carries
             // `isPrimary`; the app acts only on that one (see `NotificationManager.evaluatePrimary`).
@@ -307,9 +327,21 @@ public enum AuraRefreshCore {
                 SharedCache.upsert(snapshot)
             }
             didUpdate = true
+            SharedCache.refreshBackoffUntil = nil
         }
 
         return RefreshOutcome(events: events, didUpdate: didUpdate, errorMessage: firstError)
+    }
+
+    private static let authBackoff: TimeInterval = 60 * 60
+    private static let rateLimitBackoff: TimeInterval = 10 * 60
+
+    /// AEMET answers 401/403 when it rejects the api_key.
+    private static func isAuthRejection(_ error: Error) -> Bool {
+        switch error {
+        case AEMETClient.ClientError.http(401), AEMETClient.ClientError.http(403): return true
+        default: return false
+        }
     }
 
     /// Localized message for any error surfaced while talking to AEMET (the AEMET status `desc` is
