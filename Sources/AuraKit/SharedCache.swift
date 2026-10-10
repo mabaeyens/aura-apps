@@ -172,6 +172,23 @@ public enum SharedCache {
         return all.first
     }
 
+    /// The complication's pick from an already-read cache: the wrist's forced place, then the phone's active
+    /// place, then the first entry. When the forced place has no current-hour data at `now` (its hourly feed
+    /// failed or lapsed in the background) and the phone's active place does, the active place wins, so the
+    /// face shows real numbers instead of blanks. A forced place with no better alternative is kept as is.
+    public static func complicationPick(from all: [WeatherSnapshot], selectedINE: String?, activeINE: String?,
+                                        now: Date = Date()) -> WeatherSnapshot? {
+        let active = activeINE.flatMap { ine in all.first { $0.ine == ine } }
+        if let sel = selectedINE, !sel.isEmpty, let forced = all.first(where: { $0.ine == sel }) {
+            if !forced.resolved(at: now).hasCurrentHourData,
+               let active, active.ine != forced.ine, active.resolved(at: now).hasCurrentHourData {
+                return active
+            }
+            return forced
+        }
+        return active ?? all.first
+    }
+
     /// Replace all cached snapshots.
     public static func write(_ snapshots: [WeatherSnapshot]) {
         sync {

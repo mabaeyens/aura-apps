@@ -16,12 +16,8 @@ struct AuraComplicationProvider: TimelineProvider {
     /// snapshot before the first sync. Reading the forced pick straight from the App Group is what fixes
     /// the complication tracking a different, stale location than the app after a wrist location switch.
     private func activeSnapshot() -> WeatherSnapshot? {
-        let all = SharedCache.read()
-        if let sel = SharedCache.watchSelectedINE, !sel.isEmpty,
-           let s = all.first(where: { $0.ine == sel }) { return s }
-        if let active = SharedCache.activeINE,
-           let s = all.first(where: { $0.ine == active }) { return s }
-        return all.first
+        SharedCache.complicationPick(from: SharedCache.read(), selectedINE: SharedCache.watchSelectedINE,
+                                     activeINE: SharedCache.activeINE)
     }
 
     func placeholder(in context: Context) -> AuraComplicationEntry {
