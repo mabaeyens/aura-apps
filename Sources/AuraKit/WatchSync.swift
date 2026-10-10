@@ -99,17 +99,30 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
             if let d = try? Self.encoder.encode([active]) { context[snapshotsKey] = d }
             size = Self.byteCount(context)
         }
+        // Identical to the push that just went out (the fingerprint ignores the send timestamp): skip it.
+        var stable = context
+        stable[sentAtKey] = nil
+        if let fingerprint = try? PropertyListSerialization.data(fromPropertyList: stable, format: .binary, options: 0),
+           !pushLock.withLock({ coalescer.shouldSend(fingerprint) }) {
+            Self.log.log("Watch context unchanged, skipped")
+            SharedCache.lastWatchPushedUpdated = active.updated
+            return
+        }
         Self.log.log("Watch context \(size, privacy: .public) B, \(snaps.count, privacy: .public) places")
         do {
             try session.updateApplicationContext(context)
             SharedCache.lastWatchPushedUpdated = active.updated
         } catch {
             // Leave the stamp alone so the next pass sees the cache as newer than the Watch and retries.
+            pushLock.withLock { coalescer.reset() }
             Self.log.error("Watch context rejected: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     private static let log = Logger(subsystem: "com.mab.Aura", category: "watchsync")
+
+    private let pushLock = NSLock()
+    private var coalescer = PushCoalescer()
 
     /// Well under the point where `updateApplicationContext` starts throwing `payloadTooLarge`, so the
     /// fallback engages with headroom rather than after the first failure.
@@ -306,7 +319,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     #endif
 
     private static let encoder: JSONEncoder = {
-        let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601; return e
+        let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601; e.outputFormatting = .sortedKeys; return e
     }()
     private static let decoder: JSONDecoder = {
         let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d
