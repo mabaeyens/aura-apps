@@ -225,8 +225,15 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         // existed carry none and apply as before.
         if let sentAt = context[sentAtKey] as? Double {
             let defaults = SharedCache.groupDefaults
-            guard sentAt > (defaults?.double(forKey: appliedSentAtDefaultsKey) ?? 0) else { return }
-            defaults?.set(sentAt, forKey: appliedSentAtDefaultsKey)
+            let applied = defaults?.double(forKey: appliedSentAtDefaultsKey) ?? 0
+            // A replay is only skippable while the cache still holds what that push carried. The stamp can
+            // outlive the data (reinstall, cleared cache), and then the replay is the only copy there is.
+            let cacheHasActive = (context[activeKey] as? String).flatMap { SharedCache.snapshot(forINE: $0) } != nil
+            guard sentAt > applied || !cacheHasActive else {
+                Self.log.log("Context skipped: sentAt \(sentAt, privacy: .public) not newer than applied \(applied, privacy: .public)")
+                return
+            }
+            defaults?.set(max(sentAt, applied), forKey: appliedSentAtDefaultsKey)
         }
         // Remember which location the phone considers active, so the Watch can default to it.
         if let active = context[activeKey] as? String {
@@ -243,6 +250,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         // the Watch can switch locations, and mirror the menu so its picker can list places the phone knows.
         if let data = context[snapshotsKey] as? Data,
            let snaps = try? Self.decoder.decode([WeatherSnapshot].self, from: data), !snaps.isEmpty {
+            Self.log.log("Context applied: \(snaps.count, privacy: .public) snapshots, active \((context[self.activeKey] as? String) ?? "-", privacy: .public)")
             for snap in snaps { upsertGuarded(snap) }
             if let locData = context[locationsKey] as? Data,
                let locs = try? Self.decoder.decode([Location].self, from: locData) {
@@ -269,11 +277,13 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
         if !snapshot.hasCurrentHourData,
            let existing = SharedCache.snapshot(forINE: snapshot.ine),
            existing.hasCurrentHourData {
+            Self.log.log("Push for \(snapshot.ine, privacy: .public) ignored: cached copy has current-hour data, this one is thin")
             return
         }
         // Never go backwards: a snapshot the Watch built itself (standalone fetch) that is newer than the
         // phone's stays.
         if let existing = SharedCache.snapshot(forINE: snapshot.ine), existing.updated > snapshot.updated {
+            Self.log.log("Push for \(snapshot.ine, privacy: .public) ignored: cached copy is newer")
             return
         }
         SharedCache.upsert(snapshot)

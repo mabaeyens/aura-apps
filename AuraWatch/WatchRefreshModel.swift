@@ -1,4 +1,5 @@
 import AuraKit
+import os
 import SwiftUI
 import WidgetKit
 
@@ -51,6 +52,8 @@ final class WatchRefreshModel: ObservableObject {
 
         let outcome = await AuraRefreshCore.refresh(locations: locations, onlyINE: target.ine)
         errorMessage = outcome.errorMessage
+        Logger(subsystem: "com.mab.Aura.watchkitapp", category: "background")
+            .log("Foreground refresh \(target.ine, privacy: .public): didUpdate \(outcome.didUpdate, privacy: .public), error \(outcome.errorMessage ?? "none", privacy: .public), backoff \(String(describing: SharedCache.refreshBackoffUntil), privacy: .public)")
 
         // Point both the app screen and the complication at the refreshed place. In current-location mode
         // the resolved town is the shown place; a favourite refresh keeps whatever was already shown.
