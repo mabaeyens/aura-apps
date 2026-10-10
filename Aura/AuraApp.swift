@@ -1,4 +1,5 @@
 import AuraKit
+import os
 import SwiftUI
 
 @main
@@ -37,6 +38,7 @@ struct AuraApp: App {
                     AEMETService.scheduleBackgroundRefresh()
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    Logger(subsystem: "com.mab.Aura", category: "lock").log("Scene phase \(String(describing: phase), privacy: .public)")
                     switch phase {
                     case .active:
                         // Refresh widget data whenever the app comes to the foreground.

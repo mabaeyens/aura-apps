@@ -1,5 +1,6 @@
 #if canImport(WatchConnectivity)
 import Foundation
+import os
 import WatchConnectivity
 #if canImport(WidgetKit)
 import WidgetKit
@@ -24,6 +25,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     private let activeKey = "activeINE"        // which favourite the phone considers active
     private let sentAtKey = "sentAt"          // when the phone built this context, so the Watch applies each push once
     private let appliedSentAtDefaultsKey = "AuraKit.watchAppliedSentAt"
+    private let backoffKey = "backoffUntil"    // either direction: a rate-limited device parks the other (one shared AEMET key)
     private let clockKey = "use24h"            // the phone's 24/12-hour choice, mirrored onto the Watch
 
     // Option A key handoff (iPhone Keychain → Watch Keychain). The Watch can't read the phone's
@@ -84,11 +86,56 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
 
         var context: [String: Any] = [activeKey: active.ine]
         context[clockKey] = AuraTime.use24h
-        if let d = try? Self.encoder.encode(active) { context[payloadKey] = d }      // legacy fallback
-        if let d = try? Self.encoder.encode(snaps) { context[snapshotsKey] = d }
+        context[sentAtKey] = Date().timeIntervalSince1970
         if let d = try? Self.encoder.encode(favorites) { context[locationsKey] = d }
-        try? session.updateApplicationContext(context)
-        SharedCache.lastWatchPushedUpdated = active.updated
+        if let d = try? Self.encoder.encode(snaps) { context[snapshotsKey] = d }
+
+        // The context is one plist the system caps in size, and a failed update used to be swallowed. Log
+        // the size, and when it runs large send only the active place (the Watch fetches the rest itself).
+        // The legacy single-snapshot copy is dropped once the batch is present: new Watches read the batch.
+        var size = Self.byteCount(context)
+        if size > Self.contextSoftLimit {
+            Self.log.error("Watch context \(size, privacy: .public) B over soft limit, sending the active place only")
+            if let d = try? Self.encoder.encode([active]) { context[snapshotsKey] = d }
+            size = Self.byteCount(context)
+        }
+        Self.log.log("Watch context \(size, privacy: .public) B, \(snaps.count, privacy: .public) places")
+        do {
+            try session.updateApplicationContext(context)
+            SharedCache.lastWatchPushedUpdated = active.updated
+        } catch {
+            // Leave the stamp alone so the next pass sees the cache as newer than the Watch and retries.
+            Self.log.error("Watch context rejected: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private static let log = Logger(subsystem: "com.mab.Aura", category: "watchsync")
+
+    /// Well under the point where `updateApplicationContext` starts throwing `payloadTooLarge`, so the
+    /// fallback engages with headroom rather than after the first failure.
+    private static let contextSoftLimit = 200_000
+
+    private static func byteCount(_ context: [String: Any]) -> Int {
+        (try? PropertyListSerialization.data(fromPropertyList: context, format: .binary, options: 0).count) ?? 0
+    }
+
+    // MARK: - Shared rate-limit back-off
+
+    /// Tell the other device our rate-limit back-off, since both draw on one AEMET key and one 429 would
+    /// otherwise be rediscovered by the other side. Queued one-shot delivery; a no-op where no session is
+    /// active (the widget extension) or there is no live back-off to share.
+    public func shareBackoff() {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated,
+              let until = SharedCache.refreshBackoffUntil, until > Date() else { return }
+        WCSession.default.transferUserInfo([backoffKey: until.timeIntervalSince1970])
+    }
+
+    private func adoptBackoff(_ userInfo: [String: Any]) {
+        guard let t = userInfo[backoffKey] as? Double else { return }
+        let until = Date(timeIntervalSince1970: t)
+        guard until > Date(), until > (SharedCache.refreshBackoffUntil ?? .distantPast) else { return }
+        SharedCache.refreshBackoffUntil = until
+        Self.log.log("Adopted the other device's back-off until \(until, privacy: .public)")
     }
 
     // MARK: - Option A key handoff
@@ -125,6 +172,7 @@ public final class WatchSync: NSObject, WCSessionDelegate, @unchecked Sendable {
     }
 
     public func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        adoptBackoff(userInfo)
         #if os(watchOS)
         // Watch side: store or clear the handed-over key in the Watch's own Keychain.
         if let key = userInfo[apiKeyKey] as? String {

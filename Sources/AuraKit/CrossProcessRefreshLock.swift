@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Keeps the app and the widget extension from ever running `AuraRefreshCore.refresh` at the same time.
 ///
@@ -18,6 +19,7 @@ import Foundation
 /// shows whatever's cached — which is about to be replaced by the winner's reload anyway.
 enum CrossProcessRefreshLock {
     private static let fileName = "refresh.lock"
+    private static let log = Logger(subsystem: "com.mab.Aura", category: "lock")
 
     /// Runs `body` only while holding the lock, or returns nil immediately if another process already
     /// holds it — this never blocks, since a widget extension can't afford to wait out another process's
@@ -33,11 +35,17 @@ enum CrossProcessRefreshLock {
         let attempts = force ? 4 : 1
         for attempt in 1...attempts {
             if let fd = acquire(at: url) {
-                defer { flock(fd, LOCK_UN); close(fd) }
+                let started = Date()
+                log.log("Lock acquired pid=\(getpid(), privacy: .public) force=\(force, privacy: .public)")
+                defer {
+                    flock(fd, LOCK_UN); close(fd)
+                    log.log("Lock released after \(Date().timeIntervalSince(started), format: .fixed(precision: 1), privacy: .public)s")
+                }
                 return await body()
             }
             if attempt < attempts { try? await Task.sleep(nanoseconds: 200_000_000) }
         }
+        log.log("Lock busy, skipped pid=\(getpid(), privacy: .public)")
         return nil
     }
 
