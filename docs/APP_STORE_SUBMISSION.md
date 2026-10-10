@@ -5,8 +5,7 @@ this file tracks the **App Store metadata** that lives in the ASC UI, not in the
 I set by hand when I promote a build to an App Store version and submit it for review.
 
 App: **Aura · El tiempo** · bundle `com.mab.Aura` · ASC app id **6804193524** · primary locale `es-ES`,
-also `en-US`. Live version as of 2026-09-09: **1.2.0 (build 8, READY_FOR_DISTRIBUTION)**, verified via the ASC API. 1.3.0 was submitted
-2026-09-10 and its train is closed, so confirm the live version in ASC and bump the marketing version before the next release. Keywords, description and What's New for 1.2.0 all match what was prepared in the
+also `en-US`. Live version: **1.3.0 (READY_FOR_SALE)**, confirmed via the ASC API 2026-10-10 (1.2.0, 1.1.1 and 1.0.0 are also READY_FOR_SALE). The 1.3.0 train is closed, so the next release needs a marketing-version bump. Keywords, description and What's New for 1.2.0 all match what was prepared in the
 "1.2.0 submission" section below; the es-ES description typo and the "complications" keyword item
 noted in the 1.1.0 log were both already resolved back in 1.1.1, and both are confirmed still correct
 on the live 1.2.0 copy.
