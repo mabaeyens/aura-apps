@@ -316,3 +316,15 @@ What's new:
 • The Watch's background refresh now works reliably, so the complication stays current even without raising your wrist.
 • In AEMET's national forecast, each segment (Hoy, Mañana, Pasado mañana) now shows a clear header instead of running together as one paragraph.
 ```
+
+## 1.4.0 submission (2026-10-17)
+
+> **Status: SUBMITTED.** The 1.4.0 iOS version (id `eb0fac98-9e23-49d6-941e-4c0cf38b41d7`) is **WAITING_FOR_REVIEW**, confirmed via the ASC API 2026-10-17. Live 1.3.0 stays for sale until 1.4.0 is approved.
+>
+> Done via the ASC API with the shared aura-release credentials:
+> - Version 1.4.0 (IOS) created with build 1 (uploaded 2026-10-10, `VALID`) attached on creation, release type AFTER_APPROVAL.
+> - **What's New** set in both locales (es-ES 899 chars, en-US 764 chars), from the `CHANGELOG.md` v1.4.0 entry.
+> - **App Review notes** rewritten (730 chars); contact fields carried forward from 1.3.0.
+> - Keywords, description, URLs and promotional text carried forward unchanged.
+> - **Submitted through the API this time.** `POST /v1/reviewSubmissions` (platform IOS), then `POST /v1/reviewSubmissionItems` with the version, then `PATCH /v1/reviewSubmissions/{id}` with `submitted: true`. This works with the shared key, unlike the legacy `appStoreVersionSubmissions` endpoint that returned 403 for 1.3.0. No manual UI click needed.
+
